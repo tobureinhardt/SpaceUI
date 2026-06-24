@@ -1859,6 +1859,78 @@ do
         end))
 
 
+        -- ── Tab Resize Handle (góc bottom-right) ─────────────────────────────
+        local TabResizeHandle = Instance.new("ImageButton", tab.Objects.TabDragCanvas)
+        TabResizeHandle.Name = "ResizeHandle"
+        TabResizeHandle.AnchorPoint = Vector2.new(1, 1)
+        TabResizeHandle.Position = UDim2.fromScale(1, 1)
+        TabResizeHandle.Size = UDim2.fromOffset(24, 24)
+        TabResizeHandle.BackgroundTransparency = 1
+        TabResizeHandle.AutoButtonColor = false
+        TabResizeHandle.ZIndex = 10000001
+        TabResizeHandle.Image = "rbxassetid://11295287825"
+        TabResizeHandle.ImageColor3 = Color3.fromRGB(255, 255, 255)
+        TabResizeHandle.ImageTransparency = 0.5
+        TabResizeHandle.ScaleType = Enum.ScaleType.Fit
+
+        table.insert(SpaceUI.Connections, TabResizeHandle.MouseEnter:Connect(function()
+            TweenService:Create(TabResizeHandle, TweenInfo.new(0.15), {ImageTransparency = 0.1}):Play()
+        end))
+        table.insert(SpaceUI.Connections, TabResizeHandle.MouseLeave:Connect(function()
+            TweenService:Create(TabResizeHandle, TweenInfo.new(0.15), {ImageTransparency = 0.5}):Play()
+        end))
+
+        tab.Data.Resizing = false
+        tab.Data.ResizeLastPos = nil
+
+        tab.Functions.ResizeTab = function(input)
+            if not tab.Data.Resizing or not tab.Data.ResizeLastPos then return end
+            local delta = input.Position - tab.Data.ResizeLastPos
+            local parentSize = tab.Objects.ActualTab.Parent.AbsoluteSize
+            local cur = tab.Objects.ActualTab.AbsoluteSize
+            local newW = math.clamp(cur.X + delta.X, 280, 950)
+            local newH = math.clamp(cur.Y + delta.Y, 280, 950)
+            local sx = newW / parentSize.X
+            local sy = newH / parentSize.Y
+            tab.Objects.ActualTab.Size = UDim2.fromScale(sx, sy)
+            tab.Data.ResizeLastPos = input.Position
+            if not SpaceUI.Config.Game.Other.TabSize then
+                SpaceUI.Config.Game.Other.TabSize = {}
+            end
+            SpaceUI.Config.Game.Other.TabSize[tab.Name] = {W = sx, H = sy}
+        end
+
+        table.insert(SpaceUI.Connections, TabResizeHandle.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or
+               input.UserInputType == Enum.UserInputType.Touch then
+                tab.Data.Resizing = true
+                tab.Data.ResizeLastPos = input.Position
+                SpaceUI.CurrntInputChangeCallback = function(inp)
+                    if inp.UserInputType == Enum.UserInputType.MouseMovement or
+                       inp.UserInputType == Enum.UserInputType.Touch then
+                        tab.Functions.ResizeTab(inp)
+                    end
+                end
+                SpaceUI.InputEndFunc = function(inp)
+                    if inp.UserInputType == Enum.UserInputType.MouseButton1 or
+                       inp.UserInputType == Enum.UserInputType.Touch then
+                        tab.Data.Resizing = false
+                        tab.Data.ResizeLastPos = nil
+                        SpaceUI.CurrntInputChangeCallback = function() end
+                        Assets.Config.Save(SpaceUI.GameSave, SpaceUI.Config.Game)
+                        SpaceUI.InputEndFunc = nil
+                    end
+                end
+            end
+        end))
+
+        -- Restore saved tab size
+        if SpaceUI.Config.Game.Other.TabSize and SpaceUI.Config.Game.Other.TabSize[tab.Name] then
+            local s = SpaceUI.Config.Game.Other.TabSize[tab.Name]
+            tab.Objects.ActualTab.Size = UDim2.fromScale(s.W, s.H)
+        end
+
+
         
         local TabPad = Instance.new("UIPadding", tab.Objects.ActualTab)
         TabPad.PaddingBottom = UDim.new(0, 10)
