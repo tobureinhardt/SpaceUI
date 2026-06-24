@@ -11,7 +11,7 @@ local Assets = {
     Main = {ToggleVisibility = nil}
 }
 
--- Initialize SpaceUI Library global state if not already set
+-- Initialize Hub global if not already set
 if not getgenv().SpaceUI then
     getgenv().SpaceUI = {
         Notifications = { Active = {}, Objects = {} },
@@ -124,7 +124,7 @@ do
         return false
     end
     Assets.Functions.GetModule = function(name: string)
-        if name and SpaceUI and SpaceUI.Tabs and SpaceUI.Tabs.Tabs then
+        if name and Hub and SpaceUI.Tabs and SpaceUI.Tabs.Tabs then
             for i,v in SpaceUI.Tabs.Tabs do
                 if v.Modules and v.Modules[name] then
                     return v.Modules[name]
@@ -1213,7 +1213,7 @@ do
 
         local TEXT_SIZE = if SpaceUI.Mobile then 16 else 24
         
-        local download = Assets.Font.Download("Product-Sans-Regular", "https://raw.githubusercontent.com/warprbx/HubRewrite/refs/heads/main/SpaceUI/Assets/Fonts/Product-Sans-Regular.ttf")
+        local download = Assets.Font.Download("Product-Sans-Regular", "https://raw.githubusercontent.com/warprbx/HubRewrite/refs/heads/main/Hub/Assets/Fonts/Product-Sans-Regular.ttf")
         if not download then
             return 
         end
@@ -2491,36 +2491,53 @@ do
 
             local DropOpen = false
             local db = false
+            local DropOpen = false
+            local db = false
+            local _toggleJustClicked = false
+
+            local function _collapsePanel()
+                DropOpen = false
+                TweenService:Create(ModuleData.Objects.Module, TweenInfo.new(0.5, Enum.EasingStyle.Exponential), {Size = UDim2.new(1, 0, 0, 65)}):Play()
+                if not ModuleData.Data.Enabled then
+                    Requirements.Visible = false
+                    TweenService:Create(Requirements, TweenInfo.new(0.5, Enum.EasingStyle.Exponential), {AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, 2)}):Play()
+                else
+                    TweenService:Create(DescriptionText, TweenInfo.new(0.5, Enum.EasingStyle.Exponential), {TextTransparency = 1}):Play()
+                    TweenService:Create(SettingsButton, TweenInfo.new(0.5, Enum.EasingStyle.Exponential), {TextTransparency = 1, BackgroundTransparency = 1}):Play()
+                    TweenService:Create(SettingsButtonIcon, TweenInfo.new(0.5, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
+                    task.wait(0.5)
+                    DescriptionText.Visible = false
+                    SettingsButton.Visible = false
+                end
+            end
+
+            local function _expandPanel()
+                DropOpen = true
+                DescriptionText.TextTransparency = 0.6
+                SettingsButton.TextTransparency = 0.2
+                SettingsButton.BackgroundTransparency = 0.7
+                SettingsButtonIcon.ImageTransparency = 0.5
+                DescriptionText.Visible = true
+                SettingsButton.Visible = true
+                Requirements.Visible = true
+                Requirements.AnchorPoint = Vector2.new(0.5, 1)
+                Requirements.Position = UDim2.new(0.5, 0, 1, 2)
+                TweenService:Create(Requirements, TweenInfo.new(0.5, Enum.EasingStyle.Exponential), {AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 2)}):Play()
+                TweenService:Create(ModuleData.Objects.Module, TweenInfo.new(0.5, Enum.EasingStyle.Exponential), {Size = UDim2.new(1, 0, 0, 150)}):Play()
+            end
+
             local moduleclickcon = ModuleData.Objects.Module.MouseButton1Click:Connect(function()
+                -- ToggleButton click bubble lên đây -> bỏ qua, đã handle ở togglebuttoncon
+                if _toggleJustClicked then
+                    _toggleJustClicked = false
+                    return
+                end
                 if db then return end
                 db = true
-                DropOpen = not DropOpen
                 if DropOpen then
-                    DescriptionText.TextTransparency = 0.6
-                    SettingsButton.TextTransparency = 0.2
-                    SettingsButton.BackgroundTransparency = 0.7
-                    SettingsButtonIcon.ImageTransparency = 0.5
-
-                    DescriptionText.Visible = true
-                    SettingsButton.Visible = true
-                    Requirements.Visible = true
-                    Requirements.AnchorPoint = Vector2.new(0.5, 1)
-                    Requirements.Position = UDim2.new(0.5, 0, 1, 2)
-                    TweenService:Create(Requirements, TweenInfo.new(0.5, Enum.EasingStyle.Exponential), {AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 2)}):Play()
-                    TweenService:Create(ModuleData.Objects.Module, TweenInfo.new(0.5, Enum.EasingStyle.Exponential), {Size = UDim2.new(1, 0, 0, 150)}):Play()
+                    _collapsePanel()
                 else
-                    TweenService:Create(ModuleData.Objects.Module, TweenInfo.new(0.5, Enum.EasingStyle.Exponential), {Size = UDim2.new(1, 0, 0, 65)}):Play()
-                    if not ModuleData.Data.Enabled then
-                        Requirements.Visible = false
-                        TweenService:Create(Requirements, TweenInfo.new(0.5, Enum.EasingStyle.Exponential), {AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, 2)}):Play()
-                    else
-                        TweenService:Create(DescriptionText, TweenInfo.new(0.5, Enum.EasingStyle.Exponential), {TextTransparency = 1}):Play()
-                        TweenService:Create(SettingsButton, TweenInfo.new(0.5, Enum.EasingStyle.Exponential), {TextTransparency = 1, BackgroundTransparency = 1}):Play()
-                        TweenService:Create(SettingsButtonIcon, TweenInfo.new(0.5, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
-                        task.wait(0.5)
-                        DescriptionText.Visible = false
-                        SettingsButton.Visible = false
-                    end
+                    _expandPanel()
                 end
                 db = false
             end)
@@ -2735,6 +2752,8 @@ do
 
 
             local togglebuttoncon = ToggleButton.MouseButton1Click:Connect(function()
+                -- Set flag để moduleclickcon bỏ qua event bubble-up này
+                _toggleJustClicked = true
                 ModuleData.Functions.Toggle(not ModuleData.Data.Enabled, false, true, true, true)
             end)
             table.insert(SpaceUI.Connections, togglebuttoncon)
@@ -4708,11 +4727,11 @@ do
             end})
 
 
-            Assets.Functions.LoadFile("SpaceUI/Games/"..file..".lua", "https://raw.githubusercontent.com/warprbx/HubRewrite/refs/heads/main/SpaceUI/Games/"..file..".lua")
+            Assets.Functions.LoadFile("SpaceUI/Games/"..file..".lua", "https://raw.githubusercontent.com/warprbx/HubRewrite/refs/heads/main/Hub/Games/"..file..".lua")
             Assets.Config.Load(file, "Game")
             return {Background = SpaceUI.Background, Dashboard = SpaceUI.Dashboard, Settings = Settings}
         else
-            Assets.Functions.LoadFile("SpaceUI/Games/"..file..".lua", "https://raw.githubusercontent.com/warprbx/HubRewrite/refs/heads/main/SpaceUI/Games/"..file..".lua")
+            Assets.Functions.LoadFile("SpaceUI/Games/"..file..".lua", "https://raw.githubusercontent.com/warprbx/HubRewrite/refs/heads/main/Hub/Games/"..file..".lua")
             Assets.Config.Load(SpaceUI.GameSave, "Game")
             return {Background = SpaceUI.Background, Dashboard = SpaceUI.Dashboard}
         end
