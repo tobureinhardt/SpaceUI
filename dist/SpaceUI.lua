@@ -1705,24 +1705,23 @@ do
         end
 
         if not SpaceUI.Tabs.TabBackground then
-            SpaceUI.Tabs.TabBackground = Instance.new("ImageButton", SpaceUI.Background.Objects.MainFrame)
+            SpaceUI.Tabs.TabBackground = Instance.new("ImageButton", SpaceUI.Background.Objects.MainScreenGui)
             SpaceUI.Tabs.TabBackground.AnchorPoint = Vector2.new(0.5, 0.5)
             SpaceUI.Tabs.TabBackground.BackgroundTransparency = 1
             SpaceUI.Tabs.TabBackground.Position = UDim2.fromScale(0.5, 0.5)
             SpaceUI.Tabs.TabBackground.Size = UDim2.fromScale(1, 1)
-            SpaceUI.Tabs.TabBackground.Image = "rbxassetid://16286761786"
-            SpaceUI.Tabs.TabBackground.ImageTransparency = 0.5
-            SpaceUI.Tabs.TabBackground.ScaleType = Enum.ScaleType.Stretch
+            SpaceUI.Tabs.TabBackground.Image = ""
+            SpaceUI.Tabs.TabBackground.ImageTransparency = 1
             SpaceUI.Tabs.TabBackground.Visible = false
+            SpaceUI.Tabs.TabBackground.Active = false
             SpaceUI.Tabs.TabBackground.AutoButtonColor = false
-            Instance.new("UICorner", SpaceUI.Tabs.TabBackground).CornerRadius = UDim.new(0, 20)
         end
 
         tab.Objects.ActualTab = Instance.new("ImageButton", SpaceUI.Tabs.TabBackground)
         tab.Objects.ActualTab.AnchorPoint = Vector2.new(0.5, 0.5)
         tab.Objects.ActualTab.BackgroundTransparency = 1
         tab.Objects.ActualTab.Position = UDim2.fromScale(0.5, 0.5)
-        tab.Objects.ActualTab.Size = UDim2.fromScale(0.8, 0.8)
+        tab.Objects.ActualTab.Size = UDim2.fromScale(0.8 * SpaceUI.Config.UI.Size.X, 0.8 * SpaceUI.Config.UI.Size.Y)
         tab.Objects.ActualTab.Image = "rbxassetid://16286719854"
         tab.Objects.ActualTab.ImageColor3 = Color3.fromRGB(SpaceUI.Config.UI.TabColor.value1, SpaceUI.Config.UI.TabColor.value2, SpaceUI.Config.UI.TabColor.value3)
         tab.Objects.ActualTab.ImageTransparency = SpaceUI.Config.UI.TabTransparency
@@ -1731,6 +1730,19 @@ do
         tab.Objects.ActualTab.SliceScale = 0.1
         tab.Objects.ActualTab.AutoButtonColor = false
         tab.Objects.ActualTab.Visible = false
+        
+        tab.Objects.ActualTab.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                if tab.Objects.ActualTab.ZIndex ~= 100 then
+                    for _, v in pairs(SpaceUI.Tabs.Tabs) do
+                        if v.Objects and v.Objects.ActualTab then
+                            v.Objects.ActualTab.ZIndex = 1
+                        end
+                    end
+                    tab.Objects.ActualTab.ZIndex = 100
+                end
+            end
+        end)
         if not SpaceUI.Config.Game.Other.TabPos then 
             SpaceUI.Config.Game.Other.TabPos = {}
         end
@@ -1864,7 +1876,7 @@ do
         TabResizeHandle.Name = "ResizeHandle"
         TabResizeHandle.AnchorPoint = Vector2.new(1, 1)
         TabResizeHandle.Position = UDim2.fromScale(1, 1)
-        TabResizeHandle.Size = UDim2.fromOffset(24, 24)
+        TabResizeHandle.Size = UDim2.fromOffset(15, 15)
         TabResizeHandle.BackgroundTransparency = 1
         TabResizeHandle.AutoButtonColor = false
         TabResizeHandle.ZIndex = 10000001
@@ -2632,11 +2644,13 @@ do
                 end
 
                 local Array
-                if not SpaceUI.ArrayList.Loaded then
-                    Array = Assets.ArrayList.Init()
-                else
-                    Array = SpaceUI.ArrayList
-                end
+                pcall(function()
+                    if not SpaceUI.ArrayList.Loaded then
+                        Array = Assets.ArrayList.Init()
+                    else
+                        Array = SpaceUI.ArrayList
+                    end
+                end)
 
                 if enabled then
                     if not ModuleData.Data.Enabled or override then
@@ -2651,10 +2665,12 @@ do
                             end
                         end)
 
-                        if updateArray then
-                            ModuleData.Data.ArrayIndex = Array.Functions.PushModule({
-                                Name = ModuleData.Name
-                            })
+                        if updateArray and Array and Array.Functions then
+                            pcall(function()
+                                ModuleData.Data.ArrayIndex = Array.Functions.PushModule({
+                                    Name = ModuleData.Name
+                                })
+                            end)
                         end
 
                         if not DropOpen then
@@ -2688,10 +2704,12 @@ do
                         end)
 
                         if updateArray and ModuleData.Data.ArrayIndex then
-                            local Index = ModuleData.Data.ArrayIndex
-                            if Index.Deconstruct then
-                                Index.Deconstruct()
-                            end
+                            pcall(function()
+                                local Index = ModuleData.Data.ArrayIndex
+                                if Index.Deconstruct then
+                                    Index.Deconstruct()
+                                end
+                            end)
                             ModuleData.Data.ArrayIndex = nil
                         end
 
@@ -4550,56 +4568,28 @@ do
         local Players = game:GetService("Players")
         local LocalPlayer = Players.LocalPlayer
 
-        local TopbarGui = Instance.new("ScreenGui")
-        TopbarGui.Name = "SpaceUITopbar"
-        TopbarGui.ResetOnSpawn = false
-        TopbarGui.IgnoreGuiInset = true
-        TopbarGui.DisplayOrder = 9999
-        TopbarGui.Parent = Assets.Functions.gethui and Assets.Functions.gethui() or LocalPlayer.PlayerGui
-
-        -- Nút nằm sát góc phải, căn giữa theo chiều cao topbar (36px trên PC, ~56px mobile)
-        local Btn = Instance.new("ImageButton")
-        Btn.Name = "SpaceUIBtn"
-        Btn.AnchorPoint = Vector2.new(1, 0)
-        Btn.Position = UDim2.new(1, -8, 0, 8)
-        Btn.Size = UDim2.fromOffset(44, 44)
-        Btn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-        Btn.BackgroundTransparency = 0.3
-        Btn.BorderSizePixel = 0
-        Btn.AutoButtonColor = false
-        Btn.Parent = TopbarGui
-        Instance.new("UICorner", Btn).CornerRadius = UDim.new(1, 0)
-
-        local BtnIcon = Instance.new("ImageLabel", Btn)
-        BtnIcon.AnchorPoint = Vector2.new(0.5, 0.5)
-        BtnIcon.Position = UDim2.fromScale(0.5, 0.5)
-        BtnIcon.Size = UDim2.fromOffset(26, 26)
-        BtnIcon.BackgroundTransparency = 1
-        BtnIcon.Image = "rbxassetid://117924444252444"
-        BtnIcon.ScaleType = Enum.ScaleType.Fit
-        BtnIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
-
-        Btn.MouseEnter:Connect(function()
-            Btn.BackgroundTransparency = 0.1
+        local success, Icon = pcall(function()
+            return loadstring(game:HttpGet("https://raw.githubusercontent.com/Therealtobu/Topbar-Plus-For-Executor/main/Icon.lua"))()
         end)
-        Btn.MouseLeave:Connect(function()
-            Btn.BackgroundTransparency = 0.3
-        end)
+        
+        if success and Icon then
+            local SpaceUIIcon = Icon.new()
+                :setLabel("SpaceUI")
+                :setImage("rbxassetid://139148956602864")
+                :setRight()
+                :bindEvent("selected", function()
+                    if not SpaceUI.Background.Objects.MainFrame.Visible then
+                        Assets.Main.ToggleVisibility(true)
+                    end
+                end)
+                :bindEvent("deselected", function()
+                    if SpaceUI.Background.Objects.MainFrame.Visible then
+                        Assets.Main.ToggleVisibility(false)
+                    end
+                end)
 
-        Btn.MouseButton1Click:Connect(function()
-            local newVisible = not SpaceUI.Background.Objects.MainFrame.Visible
-            Assets.Main.ToggleVisibility(newVisible)
-        end)
-
-        -- Sync khi đóng từ nút X bên trong UI
-        local origToggle = Assets.Main.ToggleVisibility
-        Assets.Main.ToggleVisibility = function(visible)
-            origToggle(visible)
-            Btn.BackgroundTransparency = visible and 0.1 or 0.3
+            SpaceUI.TopbarIcon = SpaceUIIcon
         end
-
-        SpaceUI.TopbarGui = TopbarGui
-        SpaceUI.TopbarBtn = Btn
     end
 
     Assets.Main.Uninject = function()
@@ -4608,7 +4598,7 @@ do
         SpaceUI.Background.Objects.MainScreenGui:Destroy()
         SpaceUI.Notifications.Objects.NotificationGui:Destroy()
         SpaceUI.ArrayList.Objects.ArrayGui:Destroy()
-        if SpaceUI.TopbarGui then SpaceUI.TopbarGui:Destroy() end
+        if SpaceUI.TopbarIcon then SpaceUI.TopbarIcon:Destroy() end
 
         if SpaceUI.Mobile then
             for i,v in SpaceUI.Background.MobileButtons.Buttons do
@@ -4816,6 +4806,13 @@ do
     local Restore = {}
     local IsToggleAnimating = false
     Assets.Main.ToggleVisibility = function(visible)
+        if SpaceUI.TopbarIcon then
+            if visible then
+                SpaceUI.TopbarIcon:select()
+            else
+                SpaceUI.TopbarIcon:deselect()
+            end
+        end
         do
             if not SpaceUI.Config.UI.Anim then
                 SpaceUI.Background.Objects.MainFrame.Visible = visible
