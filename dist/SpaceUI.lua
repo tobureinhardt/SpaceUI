@@ -1731,17 +1731,40 @@ do
         tab.Objects.ActualTab.AutoButtonColor = false
         tab.Objects.ActualTab.Visible = false
         
-        tab.Objects.ActualTab.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                if tab.Objects.ActualTab.ZIndex ~= 100 then
-                    for _, v in pairs(SpaceUI.Tabs.Tabs) do
-                        if v.Objects and v.Objects.ActualTab then
-                            v.Objects.ActualTab.ZIndex = 1
+        tab.Objects.DimOverlay = Instance.new("TextButton", tab.Objects.ActualTab)
+        tab.Objects.DimOverlay.Name = "DimOverlay"
+        tab.Objects.DimOverlay.Size = UDim2.fromScale(1, 1)
+        tab.Objects.DimOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        tab.Objects.DimOverlay.BackgroundTransparency = 0.5
+        tab.Objects.DimOverlay.Text = ""
+        tab.Objects.DimOverlay.AutoButtonColor = false
+        tab.Objects.DimOverlay.ZIndex = 5000
+        tab.Objects.DimOverlay.Visible = false
+        Instance.new("UICorner", tab.Objects.DimOverlay).CornerRadius = UDim.new(0, 20)
+
+        tab.Functions.Focus = function()
+            if tab.Objects.ActualTab.ZIndex ~= 100 then
+                for _, v in pairs(SpaceUI.Tabs.Tabs) do
+                    if v.Objects and v.Objects.ActualTab then
+                        v.Objects.ActualTab.ZIndex = 50
+                        if v.Objects.DimOverlay then
+                            v.Objects.DimOverlay.Visible = true
                         end
                     end
-                    tab.Objects.ActualTab.ZIndex = 100
                 end
+                tab.Objects.ActualTab.ZIndex = 100
+                tab.Objects.DimOverlay.Visible = false
             end
+        end
+
+        tab.Objects.ActualTab.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                tab.Functions.Focus()
+            end
+        end)
+        
+        tab.Objects.DimOverlay.MouseButton1Click:Connect(function()
+            tab.Functions.Focus()
         end)
         if not SpaceUI.Config.Game.Other.TabPos then 
             SpaceUI.Config.Game.Other.TabPos = {}
@@ -1808,8 +1831,8 @@ do
                         Delta = (Vector2.new(input.Position.X, input.Position.Y) - Vector2.new(mouseStart.X, mouseStart.Y))
                     end
         
-                    local newX = frameStart.X.Scale + (Delta.X / (Viewport.X / (SpaceUI.Background.Objects.MainFrame.Size.X.Scale + 2.13)))
-                    local newY = frameStart.Y.Scale + (Delta.Y / (Viewport.Y / 2))
+                    local newX = frameStart.X.Scale + (Delta.X / Viewport.X)
+                    local newY = frameStart.Y.Scale + (Delta.Y / Viewport.Y)
         
                     tab.Objects.ActualTab.Position = UDim2.fromScale(newX, newY)
                     local flagged = false
@@ -2288,6 +2311,9 @@ do
         local dashboardbuttonclickcon = tab.Objects.DashBoardButton.MouseButton1Click:Connect(function()
             TweenService:Create(tab.Objects.DashBoardButton, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(17,17,17)}):Play()
             tab.Functions.ToggleTab(not tab.Opened, true)
+            if tab.Opened and tab.Functions.Focus then
+                tab.Functions.Focus()
+            end
         end)
         table.insert(tab.Connections, dashboardbuttonclickcon)
         table.insert(SpaceUI.Connections, dashboardbuttonclickcon)
@@ -4575,7 +4601,7 @@ do
         if success and Icon then
             local SpaceUIIcon = Icon.new()
                 :setLabel("SpaceUI")
-                :setImage("rbxassetid://139148956602864")
+                :setImage("rbxassetid://79492318115364")
                 :setRight()
                 :bindEvent("selected", function()
                     if not SpaceUI.Background.Objects.MainFrame.Visible then
