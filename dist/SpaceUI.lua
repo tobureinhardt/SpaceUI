@@ -1772,7 +1772,16 @@ do
 
         tab.Objects.ActualTab.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                tab.Functions.Focus()
+                -- Các tab có thể đè chồng vị trí nhau (đều spawn ở 0.5,0.5), InputBegan fires
+                -- cho MỌI tab nằm dưới điểm click, không theo z-order. Phải tự check xem
+                -- tab này có đang là tab trên cùng tại điểm click không, tránh nhiều Focus()
+                -- chạy đua cùng lúc khiến tab bị click lại thành ra bị dim ngược.
+                local pos = input.Position
+                local hitObjects = UserInputService:GetGuiObjectsAtPosition(pos.X, pos.Y)
+                local topHit = hitObjects[1]
+                if topHit == tab.Objects.ActualTab or (topHit and topHit:IsDescendantOf(tab.Objects.ActualTab)) then
+                    tab.Functions.Focus()
+                end
             end
         end)
         if not SpaceUI.Config.Game.Other.TabPos then 
