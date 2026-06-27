@@ -4569,7 +4569,7 @@ do
         local LocalPlayer = Players.LocalPlayer
 
         local success, Icon = pcall(function()
-            return loadstring(game:HttpGet("https://raw.githubusercontent.com/Therealtobu/Topbar-Plus-For-Executor/main/Icon.lua"))()
+            return loadstring(game:HttpGet("https://raw.githubusercontent.com/Therealtobu/Topbar-Plus-For-Executor/main/init.lua"))()
         end)
         
         if success and Icon then
