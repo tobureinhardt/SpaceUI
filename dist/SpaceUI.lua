@@ -1957,6 +1957,7 @@ do
         table.insert(SpaceUI.Connections, TabResizeHandle.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or
                input.UserInputType == Enum.UserInputType.Touch then
+                if tab.Functions.Focus then tab.Functions.Focus() end
                 tab.Data.Resizing = true
                 tab.Data.ResizeLastPos = input.Position
                 SpaceUI.CurrntInputChangeCallback = function(inp)
