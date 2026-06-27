@@ -1738,7 +1738,15 @@ do
         tab.Objects.ActualTab.SliceScale = 0.1
         tab.Objects.ActualTab.AutoButtonColor = false
         tab.Objects.ActualTab.Visible = false
-        
+
+        -- CanvasGroup bao toàn bộ content để dim bằng GroupTransparency
+        tab.Objects.ContentCanvas = Instance.new("CanvasGroup", tab.Objects.ActualTab)
+        tab.Objects.ContentCanvas.AnchorPoint = Vector2.new(0.5, 0.5)
+        tab.Objects.ContentCanvas.BackgroundTransparency = 1
+        tab.Objects.ContentCanvas.Position = UDim2.fromScale(0.5, 0.5)
+        tab.Objects.ContentCanvas.Size = UDim2.fromScale(1, 1)
+        tab.Objects.ContentCanvas.ZIndex = 1
+
         tab.Functions.Focus = function()
             local maxZ = 0
             local openCount = 0
@@ -1750,19 +1758,14 @@ do
                     end
                 end
             end
-            -- Chỉ 1 tab mở hoặc tab này đã là top: không làm gì
             if openCount <= 1 or tab.Objects.ActualTab.ZIndex == maxZ then return end
-
-            -- Bring tab này lên top
             tab.Objects.ActualTab.ZIndex = maxZ + 1
-
-            -- Xóa dim của tab này
-            TweenService:Create(tab.Objects.TabDimFrame, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {BackgroundTransparency = 1}):Play()
-
-            -- Dim tất cả tab khác đang visible
+            -- Xóa dim tab này
+            TweenService:Create(tab.Objects.ContentCanvas, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {GroupTransparency = 0}):Play()
+            -- Dim tất cả tab khác đang mở
             for _, v in pairs(SpaceUI.Tabs.Tabs) do
-                if v ~= tab and v.Objects and v.Objects.ActualTab and v.Objects.ActualTab.Visible and v.Objects.TabDimFrame then
-                    TweenService:Create(v.Objects.TabDimFrame, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
+                if v ~= tab and v.Objects and v.Objects.ActualTab and v.Objects.ActualTab.Visible and v.Objects.ContentCanvas then
+                    TweenService:Create(v.Objects.ContentCanvas, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {GroupTransparency = 0.6}):Play()
                 end
             end
         end
@@ -1785,7 +1788,7 @@ do
             end
         end
 
-        local TabPrism = Instance.new("ImageLabel", tab.Objects.ActualTab)
+        local TabPrism = Instance.new("ImageLabel", tab.Objects.ContentCanvas)
         TabPrism.AnchorPoint = Vector2.new(0.5, 0.5)
         TabPrism.BackgroundTransparency = 1
         TabPrism.Position = UDim2.fromScale(0.5, 0.5)
@@ -1986,20 +1989,7 @@ do
         local TabConstraint = Instance.new("UISizeConstraint", tab.Objects.ActualTab)
         TabConstraint.MaxSize = Vector2.new(1000, 800)
 
-        -- Dim overlay: Frame tối nằm trên content nhưng dưới TabDragCanvas
-        local TabDimFrame = Instance.new("Frame", tab.Objects.ActualTab)
-        TabDimFrame.Name = "TabDimFrame"
-        TabDimFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-        TabDimFrame.Position = UDim2.fromScale(0.5, 0.5)
-        TabDimFrame.Size = UDim2.fromScale(1, 1)
-        TabDimFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-        TabDimFrame.BackgroundTransparency = 1
-        TabDimFrame.BorderSizePixel = 0
-        TabDimFrame.ZIndex = 9999999  -- dưới TabDragCanvas (10000000) nhưng trên content
-        Instance.new("UICorner", TabDimFrame).CornerRadius = UDim.new(0, 20)
-        tab.Objects.TabDimFrame = TabDimFrame
-
-        local TabHeader = Instance.new("TextLabel", tab.Objects.ActualTab)
+        local TabHeader = Instance.new("TextLabel", tab.Objects.ContentCanvas)
         TabHeader.AnchorPoint = Vector2.new(0.5, 0)
         TabHeader.BackgroundTransparency = 1
         TabHeader.Position = UDim2.fromScale(0.5, 0.04)
@@ -2011,7 +2001,7 @@ do
         TabHeader.TextTransparency = 0.1
         TabHeader.ZIndex = 2
 
-        local CloseButton = Instance.new("ImageButton", tab.Objects.ActualTab)
+        local CloseButton = Instance.new("ImageButton", tab.Objects.ContentCanvas)
         CloseButton.AnchorPoint = Vector2.new(1, 0)
         CloseButton.BackgroundColor3 = Color3.fromRGB(SpaceUI.Config.UI.TabColor.value1 + 20, SpaceUI.Config.UI.TabColor.value2 + 20, SpaceUI.Config.UI.TabColor.value3 + 20)
         CloseButton.Position = UDim2.new(1, -5, 0, 5)
@@ -2031,7 +2021,7 @@ do
         CloseButtonIcon.ZIndex = 2
         CloseButtonIcon.ScaleType = Enum.ScaleType.Fit
 
-        tab.Objects.ScrollFrame = Instance.new("ScrollingFrame", tab.Objects.ActualTab)
+        tab.Objects.ScrollFrame = Instance.new("ScrollingFrame", tab.Objects.ContentCanvas)
         tab.Objects.ScrollFrame.AnchorPoint = Vector2.new(0.5, 0)
         tab.Objects.ScrollFrame.BackgroundTransparency = 1
         tab.Objects.ScrollFrame.Position = UDim2.new(0.5, 0, 0.04, 50)
@@ -2152,6 +2142,21 @@ do
                     end
                     table.clear(resotredback.backbuttons)
                     table.clear(resotredback.keybinds)
+
+                    -- Dim: tab này lên top, dim các tab khác đang mở
+                    local maxZ = 0
+                    for _, v in pairs(SpaceUI.Tabs.Tabs) do
+                        if v ~= tab and v.Objects and v.Objects.ActualTab and v.Objects.ActualTab.Visible then
+                            if v.Objects.ActualTab.ZIndex > maxZ then maxZ = v.Objects.ActualTab.ZIndex end
+                        end
+                    end
+                    tab.Objects.ActualTab.ZIndex = maxZ + 1
+                    tab.Objects.ContentCanvas.GroupTransparency = 0
+                    for _, v in pairs(SpaceUI.Tabs.Tabs) do
+                        if v ~= tab and v.Objects and v.Objects.ActualTab and v.Objects.ActualTab.Visible and v.Objects.ContentCanvas then
+                            TweenService:Create(v.Objects.ContentCanvas, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {GroupTransparency = 0.6}):Play()
+                        end
+                    end
                     if anim and SpaceUI.Config.UI.Anim then
                         tab.Objects.ActualTab.ImageTransparency = 1
                         TabScale.Scale = 1.2
@@ -2218,23 +2223,6 @@ do
                         TabScale.Scale = 1
                         tab.Objects.ActualTab.ImageTransparency = SpaceUI.Config.UI.TabTransparency
                     end
-
-                    -- Dim: tab này lên top, dim các tab khác đang mở
-                    local maxZ = 0
-                    for _, v in pairs(SpaceUI.Tabs.Tabs) do
-                        if v ~= tab and v.Objects and v.Objects.ActualTab and v.Objects.ActualTab.Visible then
-                            if v.Objects.ActualTab.ZIndex > maxZ then maxZ = v.Objects.ActualTab.ZIndex end
-                        end
-                    end
-                    tab.Objects.ActualTab.ZIndex = maxZ + 1
-                    -- Tab này mới mở: xóa dim của nó
-                    tab.Objects.TabDimFrame.BackgroundTransparency = 1
-                    -- Dim các tab khác đang mở
-                    for _, v in pairs(SpaceUI.Tabs.Tabs) do
-                        if v ~= tab and v.Objects and v.Objects.ActualTab and v.Objects.ActualTab.Visible and v.Objects.TabDimFrame then
-                            TweenService:Create(v.Objects.TabDimFrame, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-                        end
-                    end
                 else
                     if not reopen then
                         table.remove(SpaceUI.CurrentOpenTab, table.find(SpaceUI.CurrentOpenTab, tab))
@@ -2242,6 +2230,33 @@ do
                     SpaceUI.IsAllowedToHoverTabButton = false
                     CloseButton.Visible = false
                     tab.Objects.TabDragCanvas.Visible = false
+                    -- Reset dim của tab này
+                    tab.Objects.ContentCanvas.GroupTransparency = 0
+                    -- Sau khi đóng: xóa dim top tab còn lại
+                    task.spawn(function()
+                        task.wait(0.1)
+                        local topTab = nil
+                        local maxZ = 0
+                        local remaining = 0
+                        for _, v in pairs(SpaceUI.Tabs.Tabs) do
+                            if v ~= tab and v.Objects and v.Objects.ActualTab and v.Objects.ActualTab.Visible then
+                                remaining += 1
+                                if v.Objects.ActualTab.ZIndex > maxZ then
+                                    maxZ = v.Objects.ActualTab.ZIndex
+                                    topTab = v
+                                end
+                            end
+                        end
+                        if remaining <= 1 then
+                            for _, v in pairs(SpaceUI.Tabs.Tabs) do
+                                if v.Objects and v.Objects.ContentCanvas then
+                                    TweenService:Create(v.Objects.ContentCanvas, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {GroupTransparency = 0}):Play()
+                                end
+                            end
+                        elseif topTab and topTab.Objects.ContentCanvas then
+                            TweenService:Create(topTab.Objects.ContentCanvas, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {GroupTransparency = 0}):Play()
+                        end
+                    end)
                     for i,v in tab.Modules do
                         if v.Objects and v.Objects.BackButton and v.Objects.BackButton.Visible then 
                             v.Objects.BackButton.Visible = false
@@ -2253,9 +2268,6 @@ do
                         end
                     end
                     TabHeader.TextTransparency = 1
-                    -- Reset dim của tab này khi đóng
-                    tab.Objects.TabDimFrame.BackgroundTransparency = 1
-
                     if anim and SpaceUI.Config.UI.Anim  then
                         TweenService:Create(tab.Objects.ActualTab, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
                         TweenService:Create(TabScale, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {Scale = 1.2}):Play()
@@ -2322,34 +2334,6 @@ do
                             end
                         end
                     end
-
-                    -- Sau khi đóng: tìm top tab còn lại và xóa dim của nó
-                    task.spawn(function()
-                        task.wait(0.1)
-                        local topTab = nil
-                        local maxZ = 0
-                        local remaining = 0
-                        for _, v in pairs(SpaceUI.Tabs.Tabs) do
-                            if v ~= tab and v.Objects and v.Objects.ActualTab and v.Objects.ActualTab.Visible then
-                                remaining += 1
-                                if v.Objects.ActualTab.ZIndex > maxZ then
-                                    maxZ = v.Objects.ActualTab.ZIndex
-                                    topTab = v
-                                end
-                            end
-                        end
-                        if remaining <= 1 then
-                            -- Chỉ còn 0 hoặc 1 tab: xóa hết dim
-                            for _, v in pairs(SpaceUI.Tabs.Tabs) do
-                                if v.Objects and v.Objects.TabDimFrame then
-                                    TweenService:Create(v.Objects.TabDimFrame, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {BackgroundTransparency = 1}):Play()
-                                end
-                            end
-                        elseif topTab and topTab.Objects.TabDimFrame then
-                            TweenService:Create(topTab.Objects.TabDimFrame, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {BackgroundTransparency = 1}):Play()
-                        end
-                    end)
-
                     local cnt = 0 
                     for i,v in SpaceUI.CurrentOpenTab do
                         cnt += 1
@@ -2625,7 +2609,7 @@ do
             SettingsButtonIcon.ImageTransparency = 0.5
             SettingsButtonIcon.ScaleType = Enum.ScaleType.Fit
 
-            local Backbutton = Instance.new("ImageButton", tab.Objects.ActualTab)
+            local Backbutton = Instance.new("ImageButton", tab.Objects.ContentCanvas)
             Backbutton.BackgroundColor3 = Color3.fromRGB(SpaceUI.Config.UI.TabColor.value1 + 20, SpaceUI.Config.UI.TabColor.value2 + 20, SpaceUI.Config.UI.TabColor.value3 + 20)
             Backbutton.Position = UDim2.new(1.8, 0, 0, 5)
             Backbutton.Size = UDim2.fromOffset(30, 30)
@@ -2652,7 +2636,7 @@ do
 
             local ModuleSettings = Instance.new("Folder", ModuleData.Objects.Module)
 
-            local KeyBindButton = Instance.new("TextButton", tab.Objects.ActualTab)
+            local KeyBindButton = Instance.new("TextButton", tab.Objects.ContentCanvas)
             KeyBindButton.AnchorPoint = Vector2.new(0.5, 1)
             KeyBindButton.AutoButtonColor = false
             KeyBindButton.BackgroundColor3 = Color3.fromRGB(SpaceUI.Config.UI.KeybindColor.value1, SpaceUI.Config.UI.KeybindColor.value2, SpaceUI.Config.UI.KeybindColor.value3)
