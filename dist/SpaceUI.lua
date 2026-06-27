@@ -1989,7 +1989,9 @@ do
         local TabConstraint = Instance.new("UISizeConstraint", tab.Objects.ActualTab)
         TabConstraint.MaxSize = Vector2.new(1000, 800)
 
-        local TabHeader = Instance.new("TextLabel", tab.Objects.ContentCanvas)
+        -- Parent vào ActualTab (sibling của ContentCanvas), không phải vào trong ContentCanvas,
+        -- để tên tab KHÔNG bị dim theo GroupTransparency của content (đúng hành vi Leaflet)
+        local TabHeader = Instance.new("TextLabel", tab.Objects.ActualTab)
         TabHeader.AnchorPoint = Vector2.new(0.5, 0)
         TabHeader.BackgroundTransparency = 1
         TabHeader.Position = UDim2.fromScale(0.5, 0.04)
@@ -2117,6 +2119,12 @@ do
         local resotredback = {backbuttons = {}, keybinds = {}}
         tab.Functions.ToggleTab = function(visible, anim, reopen)
             task.spawn(function()
+                -- Nếu Module Settings đang bị kẹt mở (vd: tab bị đóng/dim trước khi bấm Back),
+                -- force-close nó về trạng thái bình thường trước khi tiếp tục, để tránh
+                -- TabHeader/ScrollFrame bị kẹt ở Position lệch ngoài màn hình.
+                if tab.Data.SettingsOpen and tab.Functions.CloseModuleSettings then
+                    tab.Functions.CloseModuleSettings()
+                end
                 tab.Opened = visible
                 tab.Objects.ScrollFrame.Visible = visible
                 if visible then
@@ -2928,9 +2936,11 @@ do
             table.insert(SpaceUI.Connections, togglebuttoncon)
             table.insert(ModuleData.Connections, togglebuttoncon)
 
+            local currentbackbuttonfunc
             local settingsbuttoncon = SettingsButton.MouseButton1Click:Connect(function()
                 tab.Data.SettingsOpen = true
                 ModuleData.Data.SettingsOpen = true
+                tab.Functions.CloseModuleSettings = function() currentbackbuttonfunc() end
                 tab.Objects.ActualTab.ClipsDescendants = true      
                 tab.ClipNeeded = true          
                 TweenService:Create(tab.Objects.ScrollFrame, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {Position = UDim2.new(-1.8, 0, 0.04, 50)}):Play()
@@ -2989,7 +2999,7 @@ do
             table.insert(SpaceUI.Connections, settingsbuttoncon)
             table.insert(ModuleData.Connections, settingsbuttoncon)
 
-            local currentbackbuttonfunc = function()
+            currentbackbuttonfunc = function()
                 tab.Data.SettingsOpen = false
                 ModuleData.Data.SettingsOpen = false
                 if ModuleData.Data.SettingKeybind then
