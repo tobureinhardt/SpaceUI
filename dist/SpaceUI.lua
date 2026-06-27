@@ -61,14 +61,22 @@ if not getgenv().SpaceUI then
     }
 end
 local SpaceUI = getgenv().SpaceUI
-Assets.Functions.cloneref = cloneref or function(ref: Instance) return ref end
+local safe_cloneref = function(ref: Instance) return ref end
+pcall(function()
+    if getgenv and getgenv().cloneref then
+        safe_cloneref = getgenv().cloneref
+    elseif cloneref then
+        safe_cloneref = cloneref
+    end
+end)
+Assets.Functions.cloneref = safe_cloneref
 
-local PlayersSV = Assets.Functions.cloneref(game:GetService("Players"))
-local HttpService = Assets.Functions.cloneref(game:GetService("HttpService"))
-local TweenService = Assets.Functions.cloneref(game:GetService("TweenService"))
-local UserInputService = Assets.Functions.cloneref(game:GetService("UserInputService"))
-local Workspace = Assets.Functions.cloneref(game:GetService("Workspace"))
-local TextService = Assets.Functions.cloneref(game:GetService("TextService"))
+local PlayersSV = safe_cloneref(game:GetService("Players"))
+local HttpService = safe_cloneref(game:GetService("HttpService"))
+local TweenService = safe_cloneref(game:GetService("TweenService"))
+local UserInputService = safe_cloneref(game:GetService("UserInputService"))
+local Workspace = safe_cloneref(game:GetService("Workspace"))
+local TextService = safe_cloneref(game:GetService("TextService"))
 
 local UserCamera = Workspace.CurrentCamera
 local LocalPlayer = PlayersSV.LocalPlayer
@@ -2310,8 +2318,9 @@ do
 
         local dashboardbuttonclickcon = tab.Objects.DashBoardButton.MouseButton1Click:Connect(function()
             TweenService:Create(tab.Objects.DashBoardButton, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(17,17,17)}):Play()
-            tab.Functions.ToggleTab(not tab.Opened, true)
-            if tab.Opened and tab.Functions.Focus then
+            local willOpen = not tab.Opened
+            tab.Functions.ToggleTab(willOpen, true)
+            if willOpen and tab.Functions.Focus then
                 tab.Functions.Focus()
             end
         end)
@@ -4604,13 +4613,17 @@ do
                 :setImage("rbxassetid://79492318115364")
                 :setRight()
                 :bindEvent("selected", function()
-                    if not SpaceUI.Background.Objects.MainFrame.Visible then
-                        Assets.Main.ToggleVisibility(true)
+                    if SpaceUI.Background and SpaceUI.Background.Objects and SpaceUI.Background.Objects.MainFrame then
+                        if not SpaceUI.Background.Objects.MainFrame.Visible then
+                            Assets.Main.ToggleVisibility(true)
+                        end
                     end
                 end)
                 :bindEvent("deselected", function()
-                    if SpaceUI.Background.Objects.MainFrame.Visible then
-                        Assets.Main.ToggleVisibility(false)
+                    if SpaceUI.Background and SpaceUI.Background.Objects and SpaceUI.Background.Objects.MainFrame then
+                        if SpaceUI.Background.Objects.MainFrame.Visible then
+                            Assets.Main.ToggleVisibility(false)
+                        end
                     end
                 end)
 
