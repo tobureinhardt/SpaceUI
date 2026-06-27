@@ -1739,29 +1739,14 @@ do
         tab.Objects.ActualTab.AutoButtonColor = false
         tab.Objects.ActualTab.Visible = false
         
-        tab.Objects.DimOverlay = Instance.new("TextButton", tab.Objects.ActualTab)
-        tab.Objects.DimOverlay.Name = "DimOverlay"
-        tab.Objects.DimOverlay.Size = UDim2.fromScale(1, 1)
-        tab.Objects.DimOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-        tab.Objects.DimOverlay.BackgroundTransparency = 0.5
-        tab.Objects.DimOverlay.Text = ""
-        tab.Objects.DimOverlay.AutoButtonColor = false
-        tab.Objects.DimOverlay.ZIndex = 5000
-        tab.Objects.DimOverlay.Visible = false
-        Instance.new("UICorner", tab.Objects.DimOverlay).CornerRadius = UDim.new(0, 20)
-
         tab.Functions.Focus = function()
             if tab.Objects.ActualTab.ZIndex ~= 100 then
                 for _, v in pairs(SpaceUI.Tabs.Tabs) do
                     if v.Objects and v.Objects.ActualTab then
                         v.Objects.ActualTab.ZIndex = 50
-                        if v.Objects.DimOverlay then
-                            v.Objects.DimOverlay.Visible = true
-                        end
                     end
                 end
                 tab.Objects.ActualTab.ZIndex = 100
-                tab.Objects.DimOverlay.Visible = false
             end
         end
 
@@ -1769,10 +1754,6 @@ do
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                 tab.Functions.Focus()
             end
-        end)
-        
-        tab.Objects.DimOverlay.MouseButton1Click:Connect(function()
-            tab.Functions.Focus()
         end)
         if not SpaceUI.Config.Game.Other.TabPos then 
             SpaceUI.Config.Game.Other.TabPos = {}
@@ -1881,6 +1862,7 @@ do
         local InputStarting, FrameStarting = nil, nil
         table.insert(SpaceUI.Connections, tab.Objects.DragButton.InputBegan:Connect(function(input)
             if (input.UserInputType == Enum.UserInputType.MouseButton1) or (input.UserInputType == Enum.UserInputType.Touch) then
+                if tab.Functions.Focus then tab.Functions.Focus() end
                 tab.Data.Dragging, InputStarting, FrameStarting = true, input.Position, tab.Objects.ActualTab.Position
                 SpaceUI.CurrntInputChangeCallback = function(input)
                     if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then  
@@ -4608,26 +4590,32 @@ do
         end)
         
         if success and Icon then
-            local SpaceUIIcon = Icon.new()
-                :setLabel("SpaceUI")
-                :setImage("rbxassetid://79492318115364")
-                :setRight()
-                :bindEvent("selected", function()
-                    if SpaceUI.Background and SpaceUI.Background.Objects and SpaceUI.Background.Objects.MainFrame then
-                        if not SpaceUI.Background.Objects.MainFrame.Visible then
-                            Assets.Main.ToggleVisibility(true)
+            local success2, err = pcall(function()
+                local SpaceUIIcon = Icon.new()
+                    :setLabel("SpaceUI")
+                    :setImage("rbxassetid://79492318115364")
+                    :setRight()
+                    :bindEvent("selected", function()
+                        if SpaceUI.Background and SpaceUI.Background.Objects and SpaceUI.Background.Objects.MainFrame then
+                            if not SpaceUI.Background.Objects.MainFrame.Visible then
+                                Assets.Main.ToggleVisibility(true)
+                            end
                         end
-                    end
-                end)
-                :bindEvent("deselected", function()
-                    if SpaceUI.Background and SpaceUI.Background.Objects and SpaceUI.Background.Objects.MainFrame then
-                        if SpaceUI.Background.Objects.MainFrame.Visible then
-                            Assets.Main.ToggleVisibility(false)
+                    end)
+                    :bindEvent("deselected", function()
+                        if SpaceUI.Background and SpaceUI.Background.Objects and SpaceUI.Background.Objects.MainFrame then
+                            if SpaceUI.Background.Objects.MainFrame.Visible then
+                                Assets.Main.ToggleVisibility(false)
+                            end
                         end
-                    end
-                end)
-
-            SpaceUI.TopbarIcon = SpaceUIIcon
+                    end)
+                SpaceUI.TopbarIcon = SpaceUIIcon
+            end)
+            if not success2 then
+                warn("SpaceUI Topbar Icon Error:", err)
+            end
+        else
+            warn("SpaceUI Failed to load TopbarPlus Library:", Icon)
         end
     end
 
