@@ -1751,7 +1751,7 @@ do
             local maxZ = 0
             local openCount = 0
             for _, v in pairs(SpaceUI.Tabs.Tabs) do
-                if v.Objects and v.Objects.ActualTab and v.Objects.ActualTab.Visible then
+                if v.Opened and v.Objects and v.Objects.ActualTab then
                     openCount += 1
                     if v.Objects.ActualTab.ZIndex > maxZ then
                         maxZ = v.Objects.ActualTab.ZIndex
@@ -1764,7 +1764,7 @@ do
             TweenService:Create(tab.Objects.ContentCanvas, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {GroupTransparency = 0}):Play()
             -- Dim tất cả tab khác đang mở
             for _, v in pairs(SpaceUI.Tabs.Tabs) do
-                if v ~= tab and v.Objects and v.Objects.ActualTab and v.Objects.ActualTab.Visible and v.Objects.ContentCanvas then
+                if v ~= tab and v.Opened and v.Objects and v.Objects.ContentCanvas then
                     TweenService:Create(v.Objects.ContentCanvas, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {GroupTransparency = 0.6}):Play()
                 end
             end
@@ -2182,16 +2182,18 @@ do
                     table.clear(resotredback.keybinds)
 
                     -- Dim: tab này lên top, dim các tab khác đang mở
+                    -- Dùng v.Opened thay vì ActualTab.Visible vì tab hiện tại chưa Visible=true
+                    -- tại thời điểm này (set ở cuối ToggleTab), tránh openCount đếm sai
                     local maxZ = 0
                     for _, v in pairs(SpaceUI.Tabs.Tabs) do
-                        if v ~= tab and v.Objects and v.Objects.ActualTab and v.Objects.ActualTab.Visible then
+                        if v ~= tab and v.Opened and v.Objects and v.Objects.ActualTab then
                             if v.Objects.ActualTab.ZIndex > maxZ then maxZ = v.Objects.ActualTab.ZIndex end
                         end
                     end
                     tab.Objects.ActualTab.ZIndex = maxZ + 1
                     tab.Objects.ContentCanvas.GroupTransparency = 0
                     for _, v in pairs(SpaceUI.Tabs.Tabs) do
-                        if v ~= tab and v.Objects and v.Objects.ActualTab and v.Objects.ActualTab.Visible and v.Objects.ContentCanvas then
+                        if v ~= tab and v.Opened and v.Objects and v.Objects.ContentCanvas then
                             TweenService:Create(v.Objects.ContentCanvas, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {GroupTransparency = 0.6}):Play()
                         end
                     end
@@ -2294,6 +2296,7 @@ do
                         elseif topTab and topTab.Objects.ContentCanvas then
                             TweenService:Create(topTab.Objects.ContentCanvas, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {GroupTransparency = 0}):Play()
                         end
+
                     end)
                     for i,v in tab.Modules do
                         if v.Objects and v.Objects.BackButton and v.Objects.BackButton.Visible then 
@@ -2405,6 +2408,7 @@ do
             if willOpen and tab.Functions.Focus then
                 tab.Functions.Focus()
             end
+
         end)
         table.insert(tab.Connections, dashboardbuttonclickcon)
         table.insert(SpaceUI.Connections, dashboardbuttonclickcon)
