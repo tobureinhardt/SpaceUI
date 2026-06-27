@@ -52,7 +52,6 @@ if not getgenv().SpaceUI then
         Pageselector = nil,
         Dashboard = nil,
         CurrentOpenTab = {},
-        TopFocusedTab = nil,
         ControlsVisible = false,
         IsAllowedToHoverTabButton = false,
         CurrntInputChangeCallback = function() end,
@@ -1749,24 +1748,19 @@ do
         tab.Objects.ContentCanvas.ZIndex = 1
 
         tab.Functions.Focus = function()
-            -- Đếm tab đang mở, nếu chỉ 1 tab thì không cần dim
+            local maxZ = 0
             local openCount = 0
             for _, v in pairs(SpaceUI.Tabs.Tabs) do
-                if v.Opened then openCount += 1 end
-            end
-            if openCount <= 1 then return end
-            -- Nếu tab này đã là focused rồi thì không làm gì
-            if SpaceUI.TopFocusedTab == tab then return end
-            SpaceUI.TopFocusedTab = tab
-            -- Raise ZIndex
-            local maxZ = 0
-            for _, v in pairs(SpaceUI.Tabs.Tabs) do
-                if v.Objects and v.Objects.ActualTab then
-                    if v.Objects.ActualTab.ZIndex > maxZ then maxZ = v.Objects.ActualTab.ZIndex end
+                if v.Opened and v.Objects and v.Objects.ActualTab then
+                    openCount += 1
+                    if v.Objects.ActualTab.ZIndex > maxZ then
+                        maxZ = v.Objects.ActualTab.ZIndex
+                    end
                 end
             end
+            if openCount <= 1 or tab.Objects.ActualTab.ZIndex == maxZ then return end
             tab.Objects.ActualTab.ZIndex = maxZ + 1
-            -- Undim tab này
+            -- Xóa dim tab này
             TweenService:Create(tab.Objects.ContentCanvas, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {GroupTransparency = 0}):Play()
             -- Dim tất cả tab khác đang mở
             for _, v in pairs(SpaceUI.Tabs.Tabs) do
@@ -1778,10 +1772,18 @@ do
 
         tab.Objects.ActualTab.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                -- Gọi Focus() trực tiếp - Focus() tự check SpaceUI.TopFocusedTab
-                -- để tránh chạy thừa. InputBegan fires cho mọi tab chồng nhau
-                -- nhưng Focus() guard bằng "đã focused rồi thì return".
-                if tab.Opened then
+                -- So sánh ZIndex của ActualTab trực tiếp thay vì dùng GetGuiObjectsAtPosition,
+                -- vì TabDragCanvas ZIndex=10000000 khiến topHit luôn là child của mọi tab
+                -- đang visible → Focus() bị gọi đồng thời → race condition dim lẫn nhau.
+                local maxZ = 0
+                for _, v in pairs(SpaceUI.Tabs.Tabs) do
+                    if v.Opened and v.Objects and v.Objects.ActualTab then
+                        if v.Objects.ActualTab.ZIndex > maxZ then
+                            maxZ = v.Objects.ActualTab.ZIndex
+                        end
+                    end
+                end
+                if tab.Opened and tab.Objects.ActualTab.ZIndex < maxZ then
                     tab.Functions.Focus()
                 end
             end
@@ -2184,11 +2186,12 @@ do
                     table.clear(resotredback.backbuttons)
                     table.clear(resotredback.keybinds)
 
-                    -- Tab mới mở: set TopFocusedTab, raise ZIndex, dim các tab khác
-                    SpaceUI.TopFocusedTab = tab
+                    -- Dim: tab này lên top, dim các tab khác đang mở
+                    -- Dùng v.Opened thay vì ActualTab.Visible vì tab hiện tại chưa Visible=true
+                    -- tại thời điểm này (set ở cuối ToggleTab), tránh openCount đếm sai
                     local maxZ = 0
                     for _, v in pairs(SpaceUI.Tabs.Tabs) do
-                        if v.Objects and v.Objects.ActualTab then
+                        if v ~= tab and v.Opened and v.Objects and v.Objects.ActualTab then
                             if v.Objects.ActualTab.ZIndex > maxZ then maxZ = v.Objects.ActualTab.ZIndex end
                         end
                     end
@@ -2274,18 +2277,14 @@ do
                     tab.Objects.TabDragCanvas.Visible = false
                     -- Reset dim của tab này
                     tab.Objects.ContentCanvas.GroupTransparency = 0
-                    -- Nếu tab đang focused bị đóng, clear TopFocusedTab
-                    if SpaceUI.TopFocusedTab == tab then
-                        SpaceUI.TopFocusedTab = nil
-                    end
-                    -- Sau khi đóng: tìm tab còn lại có ZIndex cao nhất, undim nó
+                    -- Sau khi đóng: xóa dim top tab còn lại
                     task.spawn(function()
                         task.wait(0.1)
                         local topTab = nil
                         local maxZ = 0
                         local remaining = 0
                         for _, v in pairs(SpaceUI.Tabs.Tabs) do
-                            if v ~= tab and v.Opened and v.Objects and v.Objects.ActualTab then
+                            if v ~= tab and v.Objects and v.Objects.ActualTab and v.Objects.ActualTab.Visible then
                                 remaining += 1
                                 if v.Objects.ActualTab.ZIndex > maxZ then
                                     maxZ = v.Objects.ActualTab.ZIndex
@@ -2294,18 +2293,15 @@ do
                             end
                         end
                         if remaining <= 1 then
-                            -- Chỉ còn 1 tab, undim hết
                             for _, v in pairs(SpaceUI.Tabs.Tabs) do
                                 if v.Objects and v.Objects.ContentCanvas then
                                     TweenService:Create(v.Objects.ContentCanvas, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {GroupTransparency = 0}):Play()
                                 end
                             end
-                            SpaceUI.TopFocusedTab = topTab
                         elseif topTab and topTab.Objects.ContentCanvas then
-                            -- Còn nhiều tab, undim tab ZIndex cao nhất
                             TweenService:Create(topTab.Objects.ContentCanvas, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {GroupTransparency = 0}):Play()
-                            SpaceUI.TopFocusedTab = topTab
                         end
+
                     end)
                     for i,v in tab.Modules do
                         if v.Objects and v.Objects.BackButton and v.Objects.BackButton.Visible then 
