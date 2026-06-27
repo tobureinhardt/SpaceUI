@@ -4593,7 +4593,6 @@ do
             local success2, err = pcall(function()
                 local SpaceUIIcon = Icon.new()
                     :setLabel("SpaceUI")
-                    :setImage("rbxassetid://79492318115364")
                     :setRight()
                     :bindEvent("selected", function()
                         if SpaceUI.Background and SpaceUI.Background.Objects and SpaceUI.Background.Objects.MainFrame then
