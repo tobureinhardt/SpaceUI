@@ -1772,14 +1772,18 @@ do
 
         tab.Objects.ActualTab.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                -- Các tab có thể đè chồng vị trí nhau (đều spawn ở 0.5,0.5), InputBegan fires
-                -- cho MỌI tab nằm dưới điểm click, không theo z-order. Phải tự check xem
-                -- tab này có đang là tab trên cùng tại điểm click không, tránh nhiều Focus()
-                -- chạy đua cùng lúc khiến tab bị click lại thành ra bị dim ngược.
-                local pos = input.Position
-                local hitObjects = UserInputService:GetGuiObjectsAtPosition(pos.X, pos.Y)
-                local topHit = hitObjects[1]
-                if topHit == tab.Objects.ActualTab or (topHit and topHit:IsDescendantOf(tab.Objects.ActualTab)) then
+                -- So sánh ZIndex của ActualTab trực tiếp thay vì dùng GetGuiObjectsAtPosition,
+                -- vì TabDragCanvas ZIndex=10000000 khiến topHit luôn là child của mọi tab
+                -- đang visible → Focus() bị gọi đồng thời → race condition dim lẫn nhau.
+                local maxZ = 0
+                for _, v in pairs(SpaceUI.Tabs.Tabs) do
+                    if v.Opened and v.Objects and v.Objects.ActualTab then
+                        if v.Objects.ActualTab.ZIndex > maxZ then
+                            maxZ = v.Objects.ActualTab.ZIndex
+                        end
+                    end
+                end
+                if tab.Opened and tab.Objects.ActualTab.ZIndex < maxZ then
                     tab.Functions.Focus()
                 end
             end
@@ -2156,6 +2160,7 @@ do
                     tab.Functions.CloseModuleSettings()
                 end
                 tab.Opened = visible
+                tab.Objects.ActualTab.Visible = visible
                 tab.Objects.ScrollFrame.Visible = visible
                 if visible then
                     if not reopen then
@@ -2383,7 +2388,6 @@ do
                         SpaceUI.Tabs.TabBackground.Visible = false
                     end
                 end
-                tab.Objects.ActualTab.Visible = visible
             end)
         end
 
