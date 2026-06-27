@@ -1739,23 +1739,8 @@ do
         tab.Objects.ActualTab.AutoButtonColor = false
         tab.Objects.ActualTab.Visible = false
         
-        -- Dim overlay: hiện khi tab bị tab khác đè lên
-        tab.Objects.DimOverlay = Instance.new("ImageButton", tab.Objects.ActualTab)
-        tab.Objects.DimOverlay.Name = "DimOverlay"
-        tab.Objects.DimOverlay.AnchorPoint = Vector2.new(0.5, 0.5)
-        tab.Objects.DimOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-        tab.Objects.DimOverlay.BackgroundTransparency = 1
-        tab.Objects.DimOverlay.Position = UDim2.fromScale(0.5, 0.5)
-        tab.Objects.DimOverlay.Size = UDim2.fromScale(1, 1)
-        tab.Objects.DimOverlay.AutoButtonColor = false
-        tab.Objects.DimOverlay.ZIndex = 100000000
-        tab.Objects.DimOverlay.ImageTransparency = 1
-        tab.Objects.DimOverlay.Image = ""
-        tab.Objects.DimOverlay.Active = false
-        Instance.new("UICorner", tab.Objects.DimOverlay).CornerRadius = UDim.new(0, 27)
-
         tab.Functions.Focus = function()
-            -- Tìm ZIndex cao nhất hiện tại
+            -- Tìm maxZ trong các tab đang visible
             local maxZ = 0
             for _, v in pairs(SpaceUI.Tabs.Tabs) do
                 if v.Objects and v.Objects.ActualTab and v.Objects.ActualTab.Visible then
@@ -1764,29 +1749,11 @@ do
                     end
                 end
             end
-            -- Nếu tab này đã là top rồi thì thôi
+            -- Tab này đã là top rồi thì thôi
             if tab.Objects.ActualTab.ZIndex == maxZ then return end
-
             -- Bring lên top
             tab.Objects.ActualTab.ZIndex = maxZ + 1
-
-            -- Xóa dim của tab này
-            TweenService:Create(tab.Objects.DimOverlay, TweenInfo.new(0.25, Enum.EasingStyle.Quad), {BackgroundTransparency = 1}):Play()
-            tab.Objects.DimOverlay.Active = false
-
-            -- Dim tất cả tab khác đang mở
-            for _, v in pairs(SpaceUI.Tabs.Tabs) do
-                if v ~= tab and v.Objects and v.Objects.ActualTab and v.Objects.ActualTab.Visible and v.Objects.DimOverlay then
-                    TweenService:Create(v.Objects.DimOverlay, TweenInfo.new(0.25, Enum.EasingStyle.Quad), {BackgroundTransparency = 0.55}):Play()
-                    v.Objects.DimOverlay.Active = true
-                end
-            end
         end
-
-        -- Click vào dim overlay = focus tab đó
-        tab.Objects.DimOverlay.MouseButton1Click:Connect(function()
-            tab.Functions.Focus()
-        end)
 
         tab.Objects.ActualTab.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -2152,25 +2119,6 @@ do
                     end
                     tab.Objects.TabDragCanvas.Visible = true
                     TabHeader.TextTransparency = 0.1
-
-                    -- Khi mở tab mới: dim tất cả tab đang mở khác, tab này lên top
-                    local maxZ = 0
-                    for _, v in pairs(SpaceUI.Tabs.Tabs) do
-                        if v.Objects and v.Objects.ActualTab and v.Objects.ActualTab.Visible then
-                            if v.Objects.ActualTab.ZIndex > maxZ then
-                                maxZ = v.Objects.ActualTab.ZIndex
-                            end
-                        end
-                    end
-                    tab.Objects.ActualTab.ZIndex = maxZ + 1
-                    tab.Objects.DimOverlay.BackgroundTransparency = 1
-                    tab.Objects.DimOverlay.Active = false
-                    for _, v in pairs(SpaceUI.Tabs.Tabs) do
-                        if v ~= tab and v.Objects and v.Objects.ActualTab and v.Objects.ActualTab.Visible and v.Objects.DimOverlay then
-                            TweenService:Create(v.Objects.DimOverlay, TweenInfo.new(0.25, Enum.EasingStyle.Quad), {BackgroundTransparency = 0.55}):Play()
-                            v.Objects.DimOverlay.Active = true
-                        end
-                    end
                     for i,v in resotredback.backbuttons do
                         v.Visible = true
                     end
@@ -2179,68 +2127,43 @@ do
                     end
                     table.clear(resotredback.backbuttons)
                     table.clear(resotredback.keybinds)
+                    -- Tính số tab khác đang mở để quyết định có show TabBackground không
+                    local otherVisible = false
+                    for i,v in SpaceUI.Tabs.Tabs do
+                        if v ~= tab and v.Objects and v.Objects.ActualTab and v.Objects.ActualTab.Visible then
+                            local TabPos = v.Objects.ActualTab.Position
+                            if not (TabPos.X.Scale > 0.9 or 0 > TabPos.X.Scale or TabPos.Y.Scale >= 0.95 or 0 > TabPos.Y.Scale) then
+                                otherVisible = true
+                                break
+                            end
+                        end
+                    end
+
                     if anim and SpaceUI.Config.UI.Anim then
                         tab.Objects.ActualTab.ImageTransparency = 1
                         TabScale.Scale = 1.2
 
-                        local flagged = false
-                        for i,v in SpaceUI.Tabs.Tabs do
-                            if v.Objects and v.Objects.ActualTab then
-                                local Tab = v.Objects.ActualTab
-                                local TabPos = Tab.Position
-                                if TabPos.X.Scale > 0.9 or 0 > TabPos.X.Scale or TabPos.Y.Scale >= 0.95 or 0 > TabPos.Y.Scale then
-                                    if not flagged then
-                                        local t = TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1})
-                                        t:Play()
-                                        task.spawn(function()
-                                            t.Completed:Wait()
-                                            task.wait(0.1)
-                                            if not flagged and SpaceUI.Tabs.TabBackground.ZIndex ~= -100 then
-                                                SpaceUI.Tabs.TabBackground.ZIndex = -100
-                                            end
-                                        end)
-                                        SpaceUI.IsAllowedToHoverTabButton = false
-                                    end
-                                else
-                                    if v.Objects.ActualTab.Visible and v ~= tab or v == tab then
-                                        SpaceUI.Tabs.TabBackground.ZIndex = 1
-                                        TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
-                                        SpaceUI.IsAllowedToHoverTabButton = true
-                                        flagged = true
-                                    end
-                                end
-                            end
+                        if otherVisible then
+                            SpaceUI.Tabs.TabBackground.ZIndex = 1
+                            TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 0.5}):Play()
+                            SpaceUI.IsAllowedToHoverTabButton = true
+                        else
+                            SpaceUI.Tabs.TabBackground.ZIndex = -100
+                            TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
+                            SpaceUI.IsAllowedToHoverTabButton = false
                         end
+
                         TweenService:Create(tab.Objects.ActualTab, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = SpaceUI.Config.UI.TabTransparency}):Play()
                         TweenService:Create(TabScale, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {Scale = 1}):Play()
                     else
-                        local flagged = false
-                        for i,v in SpaceUI.Tabs.Tabs do
-                            if v.Objects and v.Objects.ActualTab then
-                                local Tab = v.Objects.ActualTab
-                                local TabPos = Tab.Position
-                                if TabPos.X.Scale > 0.9 or 0 > TabPos.X.Scale or TabPos.Y.Scale >= 0.95 or 0 > TabPos.Y.Scale then
-                                    if not flagged then
-                                        local t = TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1})
-                                        t:Play()
-                                        task.spawn(function()
-                                            t.Completed:Wait()
-                                            task.wait(0.1)
-                                            if not flagged and SpaceUI.Tabs.TabBackground.ZIndex ~= -100 then
-                                                SpaceUI.Tabs.TabBackground.ZIndex = -100
-                                            end
-                                        end)
-                                        SpaceUI.IsAllowedToHoverTabButton = false
-                                    end
-                                else
-                                    if v.Objects.ActualTab.Visible and v ~= tab or v == tab then
-                                        SpaceUI.Tabs.TabBackground.ZIndex = 1
-                                        TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
-                                        SpaceUI.IsAllowedToHoverTabButton = true
-                                        flagged = true
-                                    end
-                                end
-                            end
+                        if otherVisible then
+                            SpaceUI.Tabs.TabBackground.ZIndex = 1
+                            SpaceUI.Tabs.TabBackground.ImageTransparency = 0.5
+                            SpaceUI.IsAllowedToHoverTabButton = true
+                        else
+                            SpaceUI.Tabs.TabBackground.ZIndex = -100
+                            SpaceUI.Tabs.TabBackground.ImageTransparency = 1
+                            SpaceUI.IsAllowedToHoverTabButton = false
                         end
                         TabScale.Scale = 1
                         tab.Objects.ActualTab.ImageTransparency = SpaceUI.Config.UI.TabTransparency
@@ -2252,29 +2175,6 @@ do
                     SpaceUI.IsAllowedToHoverTabButton = false
                     CloseButton.Visible = false
                     tab.Objects.TabDragCanvas.Visible = false
-
-                    -- Reset dim overlay của tab này khi đóng
-                    TweenService:Create(tab.Objects.DimOverlay, TweenInfo.new(0.15), {BackgroundTransparency = 1}):Play()
-                    tab.Objects.DimOverlay.Active = false
-
-                    -- Tìm tab đang ở top và xóa dim của nó (vì nó là top rồi)
-                    task.spawn(function()
-                        task.wait(0.3)
-                        local topTab = nil
-                        local maxZ = 0
-                        for _, v in pairs(SpaceUI.Tabs.Tabs) do
-                            if v.Objects and v.Objects.ActualTab and v.Objects.ActualTab.Visible then
-                                if v.Objects.ActualTab.ZIndex > maxZ then
-                                    maxZ = v.Objects.ActualTab.ZIndex
-                                    topTab = v
-                                end
-                            end
-                        end
-                        if topTab and topTab.Objects.DimOverlay then
-                            TweenService:Create(topTab.Objects.DimOverlay, TweenInfo.new(0.2), {BackgroundTransparency = 1}):Play()
-                            topTab.Objects.DimOverlay.Active = false
-                        end
-                    end)
                     for i,v in tab.Modules do
                         if v.Objects and v.Objects.BackButton and v.Objects.BackButton.Visible then 
                             v.Objects.BackButton.Visible = false
