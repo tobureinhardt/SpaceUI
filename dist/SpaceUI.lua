@@ -2191,7 +2191,7 @@ do
                     tab.Objects.ContentCanvas.GroupTransparency = 0
                     for _, v in pairs(SpaceUI.Tabs.Tabs) do
                         if v ~= tab and v.Opened and v.Objects and v.Objects.ContentCanvas then
-                            TweenService:Create(v.Objects.ContentCanvas, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {GroupTransparency = 0.6}):Play()
+                            TweenService:Create(v.Objects.ContentCanvas, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {GroupTransparency = 0}):Play()
                         end
                     end
                     if anim and SpaceUI.Config.UI.Anim then
