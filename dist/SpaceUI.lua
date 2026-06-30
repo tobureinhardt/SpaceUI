@@ -1740,7 +1740,7 @@ do
         tab.Objects.ActualTab.Visible = false
 
         -- CanvasGroup bao toàn bộ content để dim bằng GroupTransparency
-        tab.Objects.ContentCanvas = Instance.new("CanvasGroup", tab.Objects.ActualTab)
+        tab.Objects.ContentCanvas = Instance.new("Frame", tab.Objects.ActualTab)
         tab.Objects.ContentCanvas.AnchorPoint = Vector2.new(0.5, 0.5)
         tab.Objects.ContentCanvas.BackgroundTransparency = 1
         tab.Objects.ContentCanvas.Position = UDim2.fromScale(0.5, 0.5)
@@ -1809,7 +1809,7 @@ do
         PrismStroke.Color = Color3.fromRGB(255, 255, 255)
         PrismStroke.Transparency = 0.85
 
-        tab.Objects.TabDragCanvas = Instance.new("CanvasGroup", tab.Objects.ActualTab)
+        tab.Objects.TabDragCanvas = Instance.new("Frame", tab.Objects.ActualTab)
         tab.Objects.TabDragCanvas.AnchorPoint = Vector2.new(0.5, 0.5)
         tab.Objects.TabDragCanvas.BackgroundTransparency = 1
         tab.Objects.TabDragCanvas.Position = UDim2.fromScale(0.5, 0.5)
@@ -2188,10 +2188,10 @@ do
                         end
                     end
                     tab.Objects.ActualTab.ZIndex = maxZ + 1
-                    tab.Objects.ContentCanvas.GroupTransparency = 0
+
                     for _, v in pairs(SpaceUI.Tabs.Tabs) do
                         if v ~= tab and v.Opened and v.Objects and v.Objects.ContentCanvas then
-                            TweenService:Create(v.Objects.ContentCanvas, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {GroupTransparency = 0}):Play()
+
                         end
                     end
                     if anim and SpaceUI.Config.UI.Anim then
@@ -2268,7 +2268,7 @@ do
                     CloseButton.Visible = false
                     tab.Objects.TabDragCanvas.Visible = false
                     -- Reset dim của tab này
-                    tab.Objects.ContentCanvas.GroupTransparency = 0
+
                     -- Sau khi đóng: xóa dim top tab còn lại
                     task.spawn(function()
                         task.wait(0.1)
@@ -2287,11 +2287,11 @@ do
                         if remaining <= 1 then
                             for _, v in pairs(SpaceUI.Tabs.Tabs) do
                                 if v.Objects and v.Objects.ContentCanvas then
-                                    TweenService:Create(v.Objects.ContentCanvas, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {GroupTransparency = 0}):Play()
+
                                 end
                             end
                         elseif topTab and topTab.Objects.ContentCanvas then
-                            TweenService:Create(topTab.Objects.ContentCanvas, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {GroupTransparency = 0}):Play()
+
                         end
 
                     end)
