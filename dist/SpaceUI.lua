@@ -1736,6 +1736,14 @@ do
         tab.Objects.ActualTab.ScaleType = Enum.ScaleType.Slice
         tab.Objects.ActualTab.SliceCenter = Rect.new(512, 512, 512, 512)
         tab.Objects.ActualTab.SliceScale = 0.1
+
+        tab.Objects.ActualTab.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                SpaceUI.Tabs.HighestZIndex = (SpaceUI.Tabs.HighestZIndex or 1) + 1
+                tab.Objects.ActualTab.ZIndex = SpaceUI.Tabs.HighestZIndex
+                if tab.Functions.Focus then tab.Functions.Focus() end
+            end
+        end)
         tab.Objects.ActualTab.AutoButtonColor = false
         tab.Objects.ActualTab.Visible = false
 
@@ -1895,17 +1903,9 @@ do
         local InputStarting, FrameStarting = nil, nil
         table.insert(SpaceUI.Connections, tab.Objects.DragButton.InputBegan:Connect(function(input)
             if (input.UserInputType == Enum.UserInputType.MouseButton1) or (input.UserInputType == Enum.UserInputType.Touch) then
-                -- Chỉ Focus nếu tab này đang là top-most (tránh tab bị dim bên dưới
-                -- fires InputBegan trước rồi dim ngược tab đang active)
-                local maxZ = 0
-                for _, v in pairs(SpaceUI.Tabs.Tabs) do
-                    if v.Objects and v.Objects.ActualTab and v.Objects.ActualTab.Visible then
-                        if v.Objects.ActualTab.ZIndex > maxZ then maxZ = v.Objects.ActualTab.ZIndex end
-                    end
-                end
-                if tab.Objects.ActualTab.ZIndex >= maxZ then
-                    if tab.Functions.Focus then tab.Functions.Focus() end
-                end
+                SpaceUI.Tabs.HighestZIndex = (SpaceUI.Tabs.HighestZIndex or 1) + 1
+                tab.Objects.ActualTab.ZIndex = SpaceUI.Tabs.HighestZIndex
+                if tab.Functions.Focus then tab.Functions.Focus() end
                 tab.Data.Dragging, InputStarting, FrameStarting = true, input.Position, tab.Objects.ActualTab.Position
                 SpaceUI.CurrntInputChangeCallback = function(input)
                     if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then  
