@@ -1736,14 +1736,6 @@ do
         tab.Objects.ActualTab.ScaleType = Enum.ScaleType.Slice
         tab.Objects.ActualTab.SliceCenter = Rect.new(512, 512, 512, 512)
         tab.Objects.ActualTab.SliceScale = 0.1
-
-        tab.Objects.ActualTab.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                SpaceUI.Tabs.HighestZIndex = (SpaceUI.Tabs.HighestZIndex or 1) + 1
-                tab.Objects.ActualTab.ZIndex = SpaceUI.Tabs.HighestZIndex
-                if tab.Functions.Focus then tab.Functions.Focus() end
-            end
-        end)
         tab.Objects.ActualTab.AutoButtonColor = false
         tab.Objects.ActualTab.Visible = false
 
@@ -1768,14 +1760,6 @@ do
             end
             if openCount <= 1 or tab.Objects.ActualTab.ZIndex == maxZ then return end
             tab.Objects.ActualTab.ZIndex = maxZ + 1
-            -- Xóa dim tab này
-            TweenService:Create(tab.Objects.ContentCanvas, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {GroupTransparency = 0}):Play()
-            -- Dim tất cả tab khác đang mở
-            for _, v in pairs(SpaceUI.Tabs.Tabs) do
-                if v ~= tab and v.Opened and v.Objects and v.Objects.ContentCanvas then
-                    TweenService:Create(v.Objects.ContentCanvas, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {GroupTransparency = 0.6}):Play()
-                end
-            end
         end
 
         tab.Objects.ActualTab.InputBegan:Connect(function(input)
@@ -1903,9 +1887,17 @@ do
         local InputStarting, FrameStarting = nil, nil
         table.insert(SpaceUI.Connections, tab.Objects.DragButton.InputBegan:Connect(function(input)
             if (input.UserInputType == Enum.UserInputType.MouseButton1) or (input.UserInputType == Enum.UserInputType.Touch) then
-                SpaceUI.Tabs.HighestZIndex = (SpaceUI.Tabs.HighestZIndex or 1) + 1
-                tab.Objects.ActualTab.ZIndex = SpaceUI.Tabs.HighestZIndex
-                if tab.Functions.Focus then tab.Functions.Focus() end
+                -- Chỉ Focus nếu tab này đang là top-most (tránh tab bị dim bên dưới
+                -- fires InputBegan trước rồi dim ngược tab đang active)
+                local maxZ = 0
+                for _, v in pairs(SpaceUI.Tabs.Tabs) do
+                    if v.Objects and v.Objects.ActualTab and v.Objects.ActualTab.Visible then
+                        if v.Objects.ActualTab.ZIndex > maxZ then maxZ = v.Objects.ActualTab.ZIndex end
+                    end
+                end
+                if tab.Objects.ActualTab.ZIndex < maxZ then
+                    if tab.Functions.Focus then tab.Functions.Focus() end
+                end
                 tab.Data.Dragging, InputStarting, FrameStarting = true, input.Position, tab.Objects.ActualTab.Position
                 SpaceUI.CurrntInputChangeCallback = function(input)
                     if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then  
@@ -1979,7 +1971,7 @@ do
                         if v.Objects.ActualTab.ZIndex > maxZ then maxZ = v.Objects.ActualTab.ZIndex end
                     end
                 end
-                if tab.Objects.ActualTab.ZIndex >= maxZ then
+                if tab.Objects.ActualTab.ZIndex < maxZ then
                     if tab.Functions.Focus then tab.Functions.Focus() end
                 end
                 tab.Data.Resizing = true
