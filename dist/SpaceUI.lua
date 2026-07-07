@@ -1739,7 +1739,7 @@ do
         tab.Objects.ActualTab.AutoButtonColor = false
         tab.Objects.ActualTab.Visible = false
 
-        -- CanvasGroup bao toàn bộ content để dim bằng GroupTransparency
+        -- CanvasGroup bao toàn bộ content của tab
         tab.Objects.ContentCanvas = Instance.new("CanvasGroup", tab.Objects.ActualTab)
         tab.Objects.ContentCanvas.AnchorPoint = Vector2.new(0.5, 0.5)
         tab.Objects.ContentCanvas.BackgroundTransparency = 1
@@ -1747,47 +1747,6 @@ do
         tab.Objects.ContentCanvas.Size = UDim2.fromScale(1, 1)
         tab.Objects.ContentCanvas.ZIndex = 1
 
-        tab.Functions.Focus = function()
-            local maxZ = 0
-            local openCount = 0
-            for _, v in pairs(SpaceUI.Tabs.Tabs) do
-                if v.Opened and v.Objects and v.Objects.ActualTab then
-                    openCount += 1
-                    if v.Objects.ActualTab.ZIndex > maxZ then
-                        maxZ = v.Objects.ActualTab.ZIndex
-                    end
-                end
-            end
-            if openCount <= 1 or tab.Objects.ActualTab.ZIndex == maxZ then return end
-            tab.Objects.ActualTab.ZIndex = maxZ + 1
-            -- Xóa dim tab này
-            TweenService:Create(tab.Objects.ContentCanvas, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {GroupTransparency = 0}):Play()
-            -- Dim tất cả tab khác đang mở
-            for _, v in pairs(SpaceUI.Tabs.Tabs) do
-                if v ~= tab and v.Opened and v.Objects and v.Objects.ContentCanvas then
-                    TweenService:Create(v.Objects.ContentCanvas, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {GroupTransparency = 0.6}):Play()
-                end
-            end
-        end
-
-        tab.Objects.ActualTab.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                -- So sánh ZIndex của ActualTab trực tiếp thay vì dùng GetGuiObjectsAtPosition,
-                -- vì TabDragCanvas ZIndex=10000000 khiến topHit luôn là child của mọi tab
-                -- đang visible → Focus() bị gọi đồng thời → race condition dim lẫn nhau.
-                local maxZ = 0
-                for _, v in pairs(SpaceUI.Tabs.Tabs) do
-                    if v.Opened and v.Objects and v.Objects.ActualTab then
-                        if v.Objects.ActualTab.ZIndex > maxZ then
-                            maxZ = v.Objects.ActualTab.ZIndex
-                        end
-                    end
-                end
-                if tab.Opened and tab.Objects.ActualTab.ZIndex < maxZ then
-                    tab.Functions.Focus()
-                end
-            end
-        end)
         if not SpaceUI.Config.Game.Other.TabPos then 
             SpaceUI.Config.Game.Other.TabPos = {}
         end
@@ -1895,17 +1854,6 @@ do
         local InputStarting, FrameStarting = nil, nil
         table.insert(SpaceUI.Connections, tab.Objects.DragButton.InputBegan:Connect(function(input)
             if (input.UserInputType == Enum.UserInputType.MouseButton1) or (input.UserInputType == Enum.UserInputType.Touch) then
-                -- Chỉ Focus nếu tab này đang là top-most (tránh tab bị dim bên dưới
-                -- fires InputBegan trước rồi dim ngược tab đang active)
-                local maxZ = 0
-                for _, v in pairs(SpaceUI.Tabs.Tabs) do
-                    if v.Objects and v.Objects.ActualTab and v.Objects.ActualTab.Visible then
-                        if v.Objects.ActualTab.ZIndex > maxZ then maxZ = v.Objects.ActualTab.ZIndex end
-                    end
-                end
-                if tab.Objects.ActualTab.ZIndex >= maxZ then
-                    if tab.Functions.Focus then tab.Functions.Focus() end
-                end
                 tab.Data.Dragging, InputStarting, FrameStarting = true, input.Position, tab.Objects.ActualTab.Position
                 SpaceUI.CurrntInputChangeCallback = function(input)
                     if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then  
@@ -1971,17 +1919,6 @@ do
         table.insert(SpaceUI.Connections, TabResizeHandle.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or
                input.UserInputType == Enum.UserInputType.Touch then
-                -- Chỉ Focus nếu tab này là top-most (tránh resize handle của tab bị dim
-                -- fires InputBegan và dim ngược tab đang active)
-                local maxZ = 0
-                for _, v in pairs(SpaceUI.Tabs.Tabs) do
-                    if v.Objects and v.Objects.ActualTab and v.Objects.ActualTab.Visible then
-                        if v.Objects.ActualTab.ZIndex > maxZ then maxZ = v.Objects.ActualTab.ZIndex end
-                    end
-                end
-                if tab.Objects.ActualTab.ZIndex >= maxZ then
-                    if tab.Functions.Focus then tab.Functions.Focus() end
-                end
                 tab.Data.Resizing = true
                 tab.Data.ResizeLastPos = input.Position
                 SpaceUI.CurrntInputChangeCallback = function(inp)
@@ -2023,8 +1960,7 @@ do
         local TabConstraint = Instance.new("UISizeConstraint", tab.Objects.ActualTab)
         TabConstraint.MaxSize = Vector2.new(1000, 800)
 
-        -- Parent vào ActualTab (sibling của ContentCanvas), không phải vào trong ContentCanvas,
-        -- để tên tab KHÔNG bị dim theo GroupTransparency của content (đúng hành vi Leaflet)
+        -- Parent vào ActualTab (sibling của ContentCanvas), không phải vào trong ContentCanvas
         local TabHeader = Instance.new("TextLabel", tab.Objects.ActualTab)
         TabHeader.AnchorPoint = Vector2.new(0.5, 0)
         TabHeader.BackgroundTransparency = 1
@@ -2186,22 +2122,6 @@ do
                     table.clear(resotredback.backbuttons)
                     table.clear(resotredback.keybinds)
 
-                    -- Dim: tab này lên top, dim các tab khác đang mở
-                    -- Dùng v.Opened thay vì ActualTab.Visible vì tab hiện tại chưa Visible=true
-                    -- tại thời điểm này (set ở cuối ToggleTab), tránh openCount đếm sai
-                    local maxZ = 0
-                    for _, v in pairs(SpaceUI.Tabs.Tabs) do
-                        if v ~= tab and v.Opened and v.Objects and v.Objects.ActualTab then
-                            if v.Objects.ActualTab.ZIndex > maxZ then maxZ = v.Objects.ActualTab.ZIndex end
-                        end
-                    end
-                    tab.Objects.ActualTab.ZIndex = maxZ + 1
-                    tab.Objects.ContentCanvas.GroupTransparency = 0
-                    for _, v in pairs(SpaceUI.Tabs.Tabs) do
-                        if v ~= tab and v.Opened and v.Objects and v.Objects.ContentCanvas then
-                            TweenService:Create(v.Objects.ContentCanvas, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {GroupTransparency = 0.6}):Play()
-                        end
-                    end
                     if anim and SpaceUI.Config.UI.Anim then
                         tab.Objects.ActualTab.ImageTransparency = 1
                         TabScale.Scale = 1.2
@@ -2275,34 +2195,6 @@ do
                     SpaceUI.IsAllowedToHoverTabButton = false
                     CloseButton.Visible = false
                     tab.Objects.TabDragCanvas.Visible = false
-                    -- Reset dim của tab này
-                    tab.Objects.ContentCanvas.GroupTransparency = 0
-                    -- Sau khi đóng: xóa dim top tab còn lại
-                    task.spawn(function()
-                        task.wait(0.1)
-                        local topTab = nil
-                        local maxZ = 0
-                        local remaining = 0
-                        for _, v in pairs(SpaceUI.Tabs.Tabs) do
-                            if v ~= tab and v.Objects and v.Objects.ActualTab and v.Objects.ActualTab.Visible then
-                                remaining += 1
-                                if v.Objects.ActualTab.ZIndex > maxZ then
-                                    maxZ = v.Objects.ActualTab.ZIndex
-                                    topTab = v
-                                end
-                            end
-                        end
-                        if remaining <= 1 then
-                            for _, v in pairs(SpaceUI.Tabs.Tabs) do
-                                if v.Objects and v.Objects.ContentCanvas then
-                                    TweenService:Create(v.Objects.ContentCanvas, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {GroupTransparency = 0}):Play()
-                                end
-                            end
-                        elseif topTab and topTab.Objects.ContentCanvas then
-                            TweenService:Create(topTab.Objects.ContentCanvas, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {GroupTransparency = 0}):Play()
-                        end
-
-                    end)
                     for i,v in tab.Modules do
                         if v.Objects and v.Objects.BackButton and v.Objects.BackButton.Visible then 
                             v.Objects.BackButton.Visible = false
@@ -2409,10 +2301,6 @@ do
             TweenService:Create(tab.Objects.DashBoardButton, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(17,17,17)}):Play()
             local willOpen = not tab.Opened
             tab.Functions.ToggleTab(willOpen, true)
-            if willOpen and tab.Functions.Focus then
-                tab.Functions.Focus()
-            end
-
         end)
         table.insert(tab.Connections, dashboardbuttonclickcon)
         table.insert(SpaceUI.Connections, dashboardbuttonclickcon)
