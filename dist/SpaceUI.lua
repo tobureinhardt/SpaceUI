@@ -2212,8 +2212,7 @@ do
                     end
                     TabHeader.TextTransparency = 1
                     if anim and SpaceUI.Config.UI.Anim  then
-                        local closeTween = TweenService:Create(tab.Objects.ActualTab, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1})
-                        closeTween:Play()
+                        TweenService:Create(tab.Objects.ActualTab, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
                         TweenService:Create(TabScale, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {Scale = 1.2}):Play()
 
                         local flagged = false
@@ -2236,7 +2235,7 @@ do
                                     end
                                 else
                                     if v.Objects.ActualTab.Visible and v ~= tab then
-                                        TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
+                                        TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
                                         SpaceUI.Tabs.TabBackground.ZIndex = 1
                                         SpaceUI.IsAllowedToHoverTabButton = true
                                         flagged = true
@@ -2245,9 +2244,11 @@ do
                             end
                         end
 
-                        -- Chờ animation đóng (fade + scale) chạy xong thật sự rồi mới ẩn tab,
-                        -- nếu không thì ActualTab sẽ biến mất ngay và animation sẽ không kịp hiển thị.
-                        closeTween.Completed:Wait()
+                        -- task.wait co dinh khop dung duration tween (0.8s), giong het cach
+                        -- MainFrame/Dashboard dong muot (Assets.Main.ToggleVisibility) - khong
+                        -- dung Tween.Completed:Wait() vi event do co them 1 nhip delay nho
+                        -- (doi render step ke tiep) gay cam giac khung o frame cuoi.
+                        task.wait(0.8)
                         tab.Objects.ActualTab.Visible = false
                         tab.Objects.ScrollFrame.Visible = false
                     else
