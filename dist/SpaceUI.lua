@@ -4831,30 +4831,35 @@ do
             open.ZIndex = 1
             open.Parent = front
 
-            -- button.page.front.open.icon (ImageLabel) - icon "Exe 5" giữ nguyên
-            local openIcon = Instance.new("ImageLabel")
+            -- button.page.front.open.icon -> đổi từ ảnh logo "Exe 5" sang chữ "Space"
+            -- (TextLabel, font Gotham - sans hiện đại gần với SF Pro nhất trong Roblox),
+            -- căn giữa cả 2 chiều để không bị lệch/tràn ra ngoài khung như bản ảnh cũ.
+            local openIcon = Instance.new("TextLabel")
             openIcon.Name = "icon"
-            openIcon.Image = "rbxassetid://134689689501109"
-            openIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
-            openIcon.ImageTransparency = 0
-            openIcon.ScaleType = Enum.ScaleType.Fit
+            openIcon.BackgroundTransparency = 1
             openIcon.Active = false
             openIcon.AnchorPoint = Vector2.new(0.5, 0.5)
-            openIcon.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-            openIcon.BackgroundTransparency = 1
             openIcon.BorderColor3 = Color3.fromRGB(0, 0, 0)
             openIcon.BorderSizePixel = 0
             openIcon.Position = UDim2.new(0.5, 0, 0.5, 0)
             openIcon.Selectable = false
-            openIcon.Size = UDim2.new(1, 0, 0, 26)
+            openIcon.Size = UDim2.new(1, 0, 1, 0)
             openIcon.Visible = true
             openIcon.ZIndex = 1
+            openIcon.Font = Enum.Font.GothamMedium
+            openIcon.Text = "Space"
+            openIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
+            openIcon.TextScaled = false
+            openIcon.TextSize = 18
+            openIcon.TextXAlignment = Enum.TextXAlignment.Center
+            openIcon.TextYAlignment = Enum.TextYAlignment.Center
             openIcon.Parent = open
 
             local openIconScale = Instance.new("UIScale")
             openIconScale.Name = "scale"
             openIconScale.Scale = 1
             openIconScale.Parent = openIcon
+
 
             -- button.page.list (UIListLayout)
             local pageList = Instance.new("UIListLayout")
@@ -5447,7 +5452,7 @@ do
                     end)
                 end
 
-                task.wait(0.5)
+                task.wait(0.8)
                 SpaceUI.Background.Objects.MainFrame.Visible = false
             end
         end
