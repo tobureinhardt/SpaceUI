@@ -2129,7 +2129,6 @@ do
 
                     if anim and SpaceUI.Config.UI.Anim then
                         tab.Objects.ActualTab.ImageTransparency = 1
-                        tab.Objects.ContentCanvas.GroupTransparency = 1
                         TabScale.Scale = 1.2
 
                         local flagged = false
@@ -2161,7 +2160,6 @@ do
                             end
                         end
                         TweenService:Create(tab.Objects.ActualTab, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = SpaceUI.Config.UI.TabTransparency}):Play()
-                        TweenService:Create(tab.Objects.ContentCanvas, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {GroupTransparency = 0}):Play()
                         TweenService:Create(TabScale, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {Scale = 1}):Play()
                     else
                         local flagged = false
@@ -2194,7 +2192,6 @@ do
                         end
                         TabScale.Scale = 1
                         tab.Objects.ActualTab.ImageTransparency = SpaceUI.Config.UI.TabTransparency
-                        tab.Objects.ContentCanvas.GroupTransparency = 0
                     end
                 else
                     if not reopen then
@@ -2216,7 +2213,6 @@ do
                     TabHeader.TextTransparency = 1
                     if anim and SpaceUI.Config.UI.Anim  then
                         TweenService:Create(tab.Objects.ActualTab, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
-                        TweenService:Create(tab.Objects.ContentCanvas, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {GroupTransparency = 1}):Play()
                         TweenService:Create(TabScale, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {Scale = 1.2}):Play()
 
                         local flagged = false
@@ -2258,7 +2254,6 @@ do
                     else
                         TabScale.Scale = 1.2
                         tab.Objects.ActualTab.ImageTransparency = 1
-                        tab.Objects.ContentCanvas.GroupTransparency = 1
                         local flagged = false
                         for i,v in SpaceUI.Tabs.Tabs do
                             if v.Objects and v.Objects.ActualTab then
