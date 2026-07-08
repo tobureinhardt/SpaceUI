@@ -31,6 +31,7 @@ if not getgenv().SpaceUI then
                 TabTransparency = 0.07,
                 KeybindTransparency = 0.7,
                 KeybindColor = {value1 = 0, value2 = 0, value3 = 0},
+                UseAccessibilityButton = true, -- Mặc định dùng Accessibility Button; set false để dùng lại TopbarPlus (API cũ)
             },
             Game = {
                 Modules = {},
@@ -2096,14 +2097,18 @@ do
                     tab.Functions.CloseModuleSettings()
                 end
                 tab.Opened = visible
-                tab.Objects.ActualTab.Visible = visible
-                tab.Objects.ScrollFrame.Visible = visible
                 if visible then
+                    -- Mở tab: hiện ngay để animation (fade-in + scale) có thể nhìn thấy được
+                    tab.Objects.ActualTab.Visible = true
+                    tab.Objects.ScrollFrame.Visible = true
                     if not reopen then
                         if not SpaceUI.CurrentOpenTab then
                             SpaceUI.CurrentOpenTab = {tab}
                         else
                             table.insert(SpaceUI.CurrentOpenTab, tab)
+                        end
+                        if Assets.Main.TrackRecentTab then
+                            Assets.Main.TrackRecentTab(tab.Name)
                         end
                     end
 
@@ -2207,7 +2212,8 @@ do
                     end
                     TabHeader.TextTransparency = 1
                     if anim and SpaceUI.Config.UI.Anim  then
-                        TweenService:Create(tab.Objects.ActualTab, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
+                        local closeTween = TweenService:Create(tab.Objects.ActualTab, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1})
+                        closeTween:Play()
                         TweenService:Create(TabScale, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {Scale = 1.2}):Play()
 
                         local flagged = false
@@ -2239,7 +2245,11 @@ do
                             end
                         end
 
-                        task.wait(0.15)
+                        -- Chờ animation đóng (fade + scale) chạy xong thật sự rồi mới ẩn tab,
+                        -- nếu không thì ActualTab sẽ biến mất ngay và animation sẽ không kịp hiển thị.
+                        closeTween.Completed:Wait()
+                        tab.Objects.ActualTab.Visible = false
+                        tab.Objects.ScrollFrame.Visible = false
                     else
                         TabScale.Scale = 1.2
                         tab.Objects.ActualTab.ImageTransparency = 1
@@ -2263,7 +2273,7 @@ do
                                     end
                                 else
                                     if v.Objects.ActualTab.Visible and v ~= tab then
-                                        TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
+                                        TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
                                         SpaceUI.Tabs.TabBackground.ZIndex = 1
                                         SpaceUI.IsAllowedToHoverTabButton = true
                                         flagged = true
@@ -2271,6 +2281,9 @@ do
                                 end
                             end
                         end
+                        -- Không anim: ẩn ngay lập tức như hành vi cũ.
+                        tab.Objects.ActualTab.Visible = false
+                        tab.Objects.ScrollFrame.Visible = false
                     end
                     local cnt = 0 
                     for i,v in SpaceUI.CurrentOpenTab do
@@ -4578,41 +4591,520 @@ end
 
 do    
     Assets.Main.OnUninject = Instance.new("BindableEvent")
-    -- Custom Topbar Button
-    do
-        local Players = game:GetService("Players")
-        local LocalPlayer = Players.LocalPlayer
 
-        local success, Icon = pcall(function()
-            return loadstring(game:HttpGet("https://raw.githubusercontent.com/Therealtobu/Topbar-Plus-For-Executor/main/init.lua"))()
-        end)
-        
-        if success and Icon then
-            local success2, err = pcall(function()
-                local SpaceUIIcon = Icon.new()
-                    :setLabel("SpaceUI")
-                    :setRight()
-                    :bindEvent("selected", function()
-                        if SpaceUI.Background and SpaceUI.Background.Objects and SpaceUI.Background.Objects.MainFrame then
-                            if not SpaceUI.Background.Objects.MainFrame.Visible then
-                                Assets.Main.ToggleVisibility(true)
-                            end
-                        end
-                    end)
-                    :bindEvent("deselected", function()
-                        if SpaceUI.Background and SpaceUI.Background.Objects and SpaceUI.Background.Objects.MainFrame then
-                            if SpaceUI.Background.Objects.MainFrame.Visible then
-                                Assets.Main.ToggleVisibility(false)
-                            end
-                        end
-                    end)
-                SpaceUI.TopbarIcon = SpaceUIIcon
-            end)
-            if not success2 then
-                warn("SpaceUI Topbar Icon Error:", err)
+    -- Lưu lại tab vừa được mở (không phải reopen do toggle UI) để Accessibility Button
+    -- có thể hiện 3 icon truy cập nhanh dựa trên lịch sử mở tab gần nhất.
+    Assets.Main.TrackRecentTab = function(tabName)
+        if not SpaceUI.Config.Game.Other then SpaceUI.Config.Game.Other = {} end
+        local recent = SpaceUI.Config.Game.Other.RecentTabs
+        if not recent then
+            recent = {}
+            SpaceUI.Config.Game.Other.RecentTabs = recent
+        end
+        -- Bỏ bản ghi cũ của cùng tab (nếu có) để đẩy nó lên đầu danh sách
+        for i = #recent, 1, -1 do
+            if recent[i] == tabName then
+                table.remove(recent, i)
             end
-        else
-            warn("SpaceUI Failed to load TopbarPlus Library:", Icon)
+        end
+        table.insert(recent, 1, tabName)
+        while #recent > 3 do
+            table.remove(recent, #recent)
+        end
+        pcall(function()
+            Assets.Config.Save(SpaceUI.GameSave, SpaceUI.Config.Game)
+        end)
+    end
+
+    -- Trả về tối đa 3 đối tượng tab để hiện trên Accessibility Button:
+    -- ưu tiên lịch sử mở gần nhất, phần còn thiếu được lấp bằng tab ngẫu nhiên (không trùng).
+    Assets.Main.GetQuickAccessTabs = function()
+        local picked, seen = {}, {}
+
+        local recent = SpaceUI.Config.Game.Other and SpaceUI.Config.Game.Other.RecentTabs
+        if recent then
+            for _, tabName in recent do
+                local tab = SpaceUI.Tabs.Tabs[tabName]
+                if tab and not seen[tabName] then
+                    seen[tabName] = true
+                    table.insert(picked, tab)
+                    if #picked >= 3 then break end
+                end
+            end
+        end
+
+        if #picked < 3 then
+            local pool = {}
+            for tabName, tab in SpaceUI.Tabs.Tabs do
+                if not seen[tabName] then
+                    table.insert(pool, tab)
+                end
+            end
+            -- Xáo trộn ngẫu nhiên (Fisher-Yates) rồi lấy cho đủ 3
+            for i = #pool, 2, -1 do
+                local j = math.random(1, i)
+                pool[i], pool[j] = pool[j], pool[i]
+            end
+            for _, tab in pool do
+                table.insert(picked, tab)
+                if #picked >= 3 then break end
+            end
+        end
+
+        return picked
+    end
+
+    -- Đóng mọi tab đang mở, rồi mở đúng 1 tab mục tiêu (dùng bởi cả TopbarPlus và
+    -- Accessibility Button khi bấm vào 1 icon truy cập nhanh).
+    Assets.Main.OpenSingleTab = function(targetTab)
+        if not targetTab or not targetTab.Functions or not targetTab.Functions.ToggleTab then return end
+        if SpaceUI.CurrentOpenTab then
+            for i = #SpaceUI.CurrentOpenTab, 1, -1 do
+                local openTab = SpaceUI.CurrentOpenTab[i]
+                if openTab and openTab ~= targetTab and openTab.Functions and openTab.Functions.ToggleTab then
+                    openTab.Functions.ToggleTab(false, true)
+                end
+            end
+        end
+        targetTab.Functions.ToggleTab(true, true)
+    end
+
+    if SpaceUI.Config.UI.UseAccessibilityButton == false then
+        -- ============ TopbarPlus (API cũ) ============
+        do
+            local Players = game:GetService("Players")
+            local LocalPlayer = Players.LocalPlayer
+
+            local success, Icon = pcall(function()
+                return loadstring(game:HttpGet("https://raw.githubusercontent.com/Therealtobu/Topbar-Plus-For-Executor/main/init.lua"))()
+            end)
+
+            if success and Icon then
+                local success2, err = pcall(function()
+                    local SpaceUIIcon = Icon.new()
+                        :setLabel("SpaceUI")
+                        :setRight()
+                        :bindEvent("selected", function()
+                            if SpaceUI.Background and SpaceUI.Background.Objects and SpaceUI.Background.Objects.MainFrame then
+                                if not SpaceUI.Background.Objects.MainFrame.Visible then
+                                    Assets.Main.ToggleVisibility(true)
+                                end
+                            end
+                        end)
+                        :bindEvent("deselected", function()
+                            if SpaceUI.Background and SpaceUI.Background.Objects and SpaceUI.Background.Objects.MainFrame then
+                                if SpaceUI.Background.Objects.MainFrame.Visible then
+                                    Assets.Main.ToggleVisibility(false)
+                                end
+                            end
+                        end)
+                    SpaceUI.TopbarIcon = SpaceUIIcon
+                end)
+                if not success2 then
+                    warn("SpaceUI Topbar Icon Error:", err)
+                end
+            else
+                warn("SpaceUI Failed to load TopbarPlus Library:", Icon)
+            end
+        end
+
+    else
+        -- ============ Accessibility Button (port 1:1 từ Exe5.rbxmx) ============
+        -- Node tree, Size/Position/Color giữ nguyên y hệt file gốc.
+        -- Chỉ thay đổi: 3 nút "players/dashboard/recent" -> 3 icon tab SpaceUI
+        -- (mở gần nhất, random nếu thiếu). Icon "Exe 5" ở trạng thái đóng giữ nguyên
+        -- theo yêu cầu (asset rbxassetid://134689689501109), có thể tự đổi sau.
+        do
+            local UserInputService = game:GetService("UserInputService")
+            local TS = TweenService
+
+            local inst = TweenInfo.new(0.01, Enum.EasingStyle.Exponential)
+            local quick = TweenInfo.new(0.3, Enum.EasingStyle.Exponential)
+            local info = TweenInfo.new(0.5, Enum.EasingStyle.Exponential)
+
+            local AccessibilityGui = Instance.new("ScreenGui", Assets.Functions.gethui())
+            AccessibilityGui.Name = "SpaceUIAccessibility"
+            AccessibilityGui.ResetOnSpawn = false
+            AccessibilityGui.IgnoreGuiInset = true
+            AccessibilityGui.DisplayOrder = 10001
+            SpaceUI.AccessibilityGui = AccessibilityGui
+
+            -- accessibility_button (Frame)
+            local frame = Instance.new("Frame")
+            frame.Name = "accessibility_button"
+            frame.Active = false
+            frame.AnchorPoint = Vector2.new(0.5, 0)
+            frame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            frame.BackgroundTransparency = 1
+            frame.BorderColor3 = Color3.fromRGB(0, 0, 0)
+            frame.BorderSizePixel = 0
+            frame.ClipsDescendants = true
+            frame.Position = UDim2.new(0.5, 0, 0, 0)
+            frame.Selectable = false
+            frame.Size = UDim2.new(0, 300, 0, 70)
+            frame.Visible = true
+            frame.ZIndex = 1
+            frame.Parent = AccessibilityGui
+
+            -- button (ImageButton) - pill nền
+            local button = Instance.new("ImageButton")
+            button.Name = "button"
+            button.HoverImage = ""
+            button.Image = "rbxassetid://91331674599520"
+            button.ImageColor3 = Color3.fromRGB(255, 255, 255)
+            button.ImageTransparency = 0
+            button.PressedImage = ""
+            button.ScaleType = Enum.ScaleType.Slice
+            button.SliceCenter = Rect.new(511, 223, 512, 335)
+            button.AutoButtonColor = false
+            button.Selected = false
+            button.Active = true
+            button.AnchorPoint = Vector2.new(0.5, 0)
+            button.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            button.BackgroundTransparency = 1
+            button.BorderColor3 = Color3.fromRGB(0, 0, 0)
+            button.BorderSizePixel = 0
+            button.ClipsDescendants = false
+            button.Position = UDim2.new(0.5, 0, 0, 0)
+            button.Selectable = true
+            button.Size = UDim2.new(0, 190, 0, 40)
+            button.Visible = true
+            button.ZIndex = 1
+            button.Parent = frame
+
+            -- button.page (Frame)
+            local pageFrame = Instance.new("Frame")
+            pageFrame.Name = "page"
+            pageFrame.Active = false
+            pageFrame.AnchorPoint = Vector2.new(0.5, 0)
+            pageFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            pageFrame.BackgroundTransparency = 1
+            pageFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
+            pageFrame.BorderSizePixel = 0
+            pageFrame.ClipsDescendants = true
+            pageFrame.Position = UDim2.new(0.5, 0, 0, 0)
+            pageFrame.Selectable = false
+            pageFrame.Size = UDim2.new(1, -120, 1, -2)
+            pageFrame.Visible = true
+            pageFrame.ZIndex = 1
+            pageFrame.Parent = button
+
+            -- button.page.front (Frame)
+            local front = Instance.new("Frame")
+            front.Name = "front"
+            front.Active = false
+            front.AnchorPoint = Vector2.new(0.5, 0)
+            front.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            front.BackgroundTransparency = 1
+            front.BorderColor3 = Color3.fromRGB(0, 0, 0)
+            front.BorderSizePixel = 0
+            front.ClipsDescendants = true
+            front.LayoutOrder = 2
+            front.Position = UDim2.new(0.5, 0, 0, 0)
+            front.Selectable = false
+            front.Size = UDim2.new(1, 0, 1, 0)
+            front.Visible = true
+            front.ZIndex = 1
+            front.Parent = pageFrame
+
+            -- button.page.front.open (ImageButton)
+            local open = Instance.new("ImageButton")
+            open.Name = "open"
+            open.HoverImage = ""
+            open.Image = ""
+            open.ImageColor3 = Color3.fromRGB(255, 255, 255)
+            open.ImageTransparency = 0
+            open.PressedImage = ""
+            open.AutoButtonColor = true
+            open.Selected = false
+            open.Active = true
+            open.AnchorPoint = Vector2.new(0, 0)
+            open.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            open.BackgroundTransparency = 1
+            open.BorderColor3 = Color3.fromRGB(0, 0, 0)
+            open.BorderSizePixel = 0
+            open.ClipsDescendants = false
+            open.Position = UDim2.new(0, 0, 0, 0)
+            open.Selectable = true
+            open.Size = UDim2.new(0, 40, 0, 40)
+            open.Visible = true
+            open.ZIndex = 1
+            open.Parent = front
+
+            -- button.page.front.open.icon (ImageLabel) - icon "Exe 5" giữ nguyên
+            local openIcon = Instance.new("ImageLabel")
+            openIcon.Name = "icon"
+            openIcon.Image = "rbxassetid://134689689501109"
+            openIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
+            openIcon.ImageTransparency = 0
+            openIcon.ScaleType = Enum.ScaleType.Fit
+            openIcon.Active = false
+            openIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+            openIcon.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            openIcon.BackgroundTransparency = 1
+            openIcon.BorderColor3 = Color3.fromRGB(0, 0, 0)
+            openIcon.BorderSizePixel = 0
+            openIcon.Position = UDim2.new(0.5, 0, 0.5, 0)
+            openIcon.Selectable = false
+            openIcon.Size = UDim2.new(1, 0, 0, 26)
+            openIcon.Visible = true
+            openIcon.ZIndex = 1
+            openIcon.Parent = open
+
+            local openIconScale = Instance.new("UIScale")
+            openIconScale.Name = "scale"
+            openIconScale.Scale = 1
+            openIconScale.Parent = openIcon
+
+            -- button.page.list (UIListLayout)
+            local pageList = Instance.new("UIListLayout")
+            pageList.Name = "list"
+            pageList.Padding = UDim.new(0, 0)
+            pageList.FillDirection = Enum.FillDirection.Vertical
+            pageList.HorizontalAlignment = Enum.HorizontalAlignment.Left
+            pageList.SortOrder = Enum.SortOrder.LayoutOrder
+            pageList.VerticalAlignment = Enum.VerticalAlignment.Top
+            pageList.Parent = front
+
+            -- button.page.page (UIPageLayout)
+            local pageLayout = Instance.new("UIPageLayout")
+            pageLayout.Name = "page"
+            pageLayout.Animated = true
+            pageLayout.Circular = false
+            pageLayout.EasingDirection = Enum.EasingDirection.Out
+            pageLayout.EasingStyle = Enum.EasingStyle.Exponential
+            pageLayout.GamepadInputEnabled = false
+            pageLayout.Padding = UDim.new(0, 2)
+            pageLayout.ScrollWheelInputEnabled = false
+            pageLayout.TouchInputEnabled = false
+            pageLayout.TweenTime = 0.5
+            pageLayout.FillDirection = Enum.FillDirection.Vertical
+            pageLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+            pageLayout.SortOrder = Enum.SortOrder.LayoutOrder
+            pageLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+            pageLayout.Parent = pageFrame
+
+            -- button.page.options (Frame)
+            local options = Instance.new("Frame")
+            options.Name = "options"
+            options.Active = false
+            options.AnchorPoint = Vector2.new(0.5, 0)
+            options.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            options.BackgroundTransparency = 1
+            options.BorderColor3 = Color3.fromRGB(0, 0, 0)
+            options.BorderSizePixel = 0
+            options.ClipsDescendants = true
+            options.LayoutOrder = 1
+            options.Position = UDim2.new(0.5, 0, 0, 0)
+            options.Selectable = false
+            options.Size = UDim2.new(1, 0, 1, 0)
+            options.Visible = true
+            options.ZIndex = 1
+            options.Parent = pageFrame
+
+            -- 3 nút truy cập nhanh (thay players/dashboard/recent) - dùng chung 1 template
+            -- vì cả 3 node gốc có property giống hệt nhau (chỉ khác icon/asset).
+            local quickTabs = {}
+            local function buildQuickTabButton(name, layoutOrder)
+                local btn = Instance.new("ImageButton")
+                btn.Name = name
+                btn.HoverImage = ""
+                btn.Image = ""
+                btn.ImageColor3 = Color3.fromRGB(255, 255, 255)
+                btn.ImageTransparency = 0
+                btn.PressedImage = ""
+                btn.AutoButtonColor = true
+                btn.Selected = false
+                btn.Active = true
+                btn.AnchorPoint = Vector2.new(0, 0)
+                btn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                btn.BackgroundTransparency = 1
+                btn.BorderColor3 = Color3.fromRGB(0, 0, 0)
+                btn.BorderSizePixel = 0
+                btn.ClipsDescendants = false
+                btn.LayoutOrder = layoutOrder
+                btn.Position = UDim2.new(0, 0, 0, 0)
+                btn.Selectable = true
+                btn.Size = UDim2.new(0, 40, 0, 40)
+                btn.Visible = true
+                btn.ZIndex = 1
+                btn.Parent = options
+
+                local icon = Instance.new("ImageLabel")
+                icon.Name = "icon"
+                icon.Image = ""
+                icon.ImageColor3 = Color3.fromRGB(255, 255, 255)
+                icon.ImageTransparency = 0
+                icon.Active = false
+                icon.AnchorPoint = Vector2.new(0.5, 0.5)
+                icon.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                icon.BackgroundTransparency = 1
+                icon.BorderColor3 = Color3.fromRGB(0, 0, 0)
+                icon.BorderSizePixel = 0
+                icon.Position = UDim2.new(0.5, 0, 0.5, 0)
+                icon.Selectable = false
+                icon.Size = UDim2.new(0, 18, 0, 18)
+                icon.Visible = true
+                icon.ZIndex = 1
+                icon.Parent = btn
+
+                local iconScale = Instance.new("UIScale")
+                iconScale.Name = "scale"
+                iconScale.Scale = 1
+                iconScale.Parent = icon
+
+                table.insert(quickTabs, {Button = btn, Icon = icon, Scale = iconScale, Tab = nil})
+                return btn, icon
+            end
+
+            buildQuickTabButton("quick_tab_1", 0)
+            buildQuickTabButton("quick_tab_2", 0)
+            buildQuickTabButton("quick_tab_3", 0)
+
+            -- button.page.options.list (UIListLayout)
+            local optionsList = Instance.new("UIListLayout")
+            optionsList.Name = "list"
+            optionsList.Padding = UDim.new(0, 10)
+            optionsList.FillDirection = Enum.FillDirection.Horizontal
+            optionsList.HorizontalAlignment = Enum.HorizontalAlignment.Left
+            optionsList.SortOrder = Enum.SortOrder.LayoutOrder
+            optionsList.VerticalAlignment = Enum.VerticalAlignment.Top
+            optionsList.Parent = options
+
+            -- button.scale (UIScale)
+            local buttonScale = Instance.new("UIScale")
+            buttonScale.Name = "scale"
+            buttonScale.Scale = 1
+            buttonScale.Parent = button
+
+            -- cover (ImageLabel) - overlay flash khi bấm ra ngoài
+            local cover = Instance.new("ImageLabel")
+            cover.Name = "cover"
+            cover.Image = "rbxassetid://91331674599520"
+            cover.ImageColor3 = Color3.fromRGB(255, 255, 255)
+            cover.ImageTransparency = 1
+            cover.ScaleType = Enum.ScaleType.Slice
+            cover.SliceCenter = Rect.new(512, 223, 512, 335)
+            cover.Active = false
+            cover.AnchorPoint = Vector2.new(0.5, 0)
+            cover.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            cover.BackgroundTransparency = 1
+            cover.BorderColor3 = Color3.fromRGB(0, 0, 0)
+            cover.BorderSizePixel = 0
+            cover.Position = UDim2.new(0.5, 0, 0, 0)
+            cover.Selectable = true
+            cover.Size = UDim2.new(1, 0, 1, 0)
+            cover.Visible = true
+            cover.ZIndex = 100
+            cover.Parent = frame
+
+            -- ================= Logic (port từ accessibility_handler LocalScript gốc) =================
+            -- Toàn bộ logic hover/click/tween dưới đây giữ nguyên hành vi gốc, chỉ thay
+            -- main_module:Go_To(...) bằng Assets.Main.OpenSingleTab (mở 1 trong 3 tab gần nhất).
+
+            local on_frame = false
+
+            local function refreshQuickTabIcons()
+                local tabs = Assets.Main.GetQuickAccessTabs()
+                for i, entry in quickTabs do
+                    local tab = tabs[i]
+                    entry.Tab = tab
+                    entry.Icon.Image = tab and tab.Icon or ""
+                    entry.Button.Visible = tab ~= nil
+                end
+            end
+
+            local function accessibility(state)
+                if state then
+                    refreshQuickTabIcons()
+                    pageLayout:JumpTo(options)
+
+                    TS:Create(button, info, {Size = UDim2.fromOffset(270, 40)}):Play()
+                    TS:Create(button, info, {ImageTransparency = 0}):Play()
+                    TS:Create(buttonScale, info, {Scale = 1.2}):Play()
+
+                    task.spawn(function()
+                        for _, entry in quickTabs do
+                            TS:Create(entry.Icon, inst, {ImageTransparency = 1}):Play()
+                            TS:Create(entry.Scale, inst, {Scale = 0}):Play()
+                        end
+
+                        task.wait()
+
+                        for i, entry in quickTabs do
+                            TS:Create(entry.Icon, quick, {ImageTransparency = 0}):Play()
+                            TS:Create(entry.Scale, quick, {Scale = 1}):Play()
+                            task.wait(0.1)
+                        end
+                    end)
+                else
+                    pageLayout:JumpTo(front)
+                    TS:Create(button, info, {Size = UDim2.fromOffset(190, 40)}):Play()
+                end
+            end
+
+            pageLayout:JumpTo(front)
+
+            table.insert(SpaceUI.Connections, open.MouseButton1Click:Connect(function()
+                accessibility(true)
+            end))
+
+            for _, entry in quickTabs do
+                table.insert(SpaceUI.Connections, entry.Button.MouseButton1Click:Connect(function()
+                    accessibility(false)
+                    if not entry.Tab then return end
+                    if SpaceUI.Background and SpaceUI.Background.Objects and SpaceUI.Background.Objects.MainFrame then
+                        if not SpaceUI.Background.Objects.MainFrame.Visible then
+                            Assets.Main.ToggleVisibility(true)
+                        end
+                    end
+                    Assets.Main.OpenSingleTab(entry.Tab)
+                end))
+            end
+
+            table.insert(SpaceUI.Connections, frame.MouseEnter:Connect(function()
+                on_frame = true
+                if not UserInputService.TouchEnabled then
+                    accessibility(true)
+                end
+            end))
+
+            table.insert(SpaceUI.Connections, frame.MouseLeave:Connect(function()
+                on_frame = false
+                if not UserInputService.TouchEnabled then
+                    accessibility(false)
+                end
+            end))
+
+            table.insert(SpaceUI.Connections, UserInputService.InputBegan:Connect(function()
+                if not on_frame then
+                    accessibility(false)
+                    TS:Create(button, info, {ImageTransparency = 0.8}):Play()
+                    TS:Create(buttonScale, info, {Scale = 0.7}):Play()
+                end
+            end))
+
+            for _, entry in quickTabs do
+                table.insert(SpaceUI.Connections, entry.Button.MouseEnter:Connect(function()
+                    TS:Create(entry.Icon, quick, {ImageColor3 = Color3.fromRGB(255, 214, 10)}):Play()
+                    TS:Create(entry.Scale, quick, {Scale = 1.4}):Play()
+                end))
+                table.insert(SpaceUI.Connections, entry.Button.MouseButton1Down:Connect(function()
+                    TS:Create(entry.Scale, quick, {Scale = 0.7}):Play()
+                end))
+                table.insert(SpaceUI.Connections, entry.Button.InputEnded:Connect(function()
+                    TS:Create(entry.Icon, quick, {ImageColor3 = Color3.fromRGB(255, 255, 255)}):Play()
+                    TS:Create(entry.Scale, quick, {Scale = 1}):Play()
+                end))
+            end
+
+            SpaceUI.AccessibilityButton = {
+                Frame = frame,
+                Button = button,
+                Options = options,
+                QuickTabs = quickTabs,
+                Refresh = refreshQuickTabIcons,
+            }
         end
     end
 
@@ -4623,6 +5115,7 @@ do
         SpaceUI.Notifications.Objects.NotificationGui:Destroy()
         SpaceUI.ArrayList.Objects.ArrayGui:Destroy()
         if SpaceUI.TopbarIcon then SpaceUI.TopbarIcon:Destroy() end
+        if SpaceUI.AccessibilityGui then SpaceUI.AccessibilityGui:Destroy() end
 
         if SpaceUI.Mobile then
             for i,v in SpaceUI.Background.MobileButtons.Buttons do
@@ -4739,6 +5232,8 @@ do
                 Assets.Config.Save(SpaceUI.GameSave, SpaceUI.Config.Game)
             end})
             MainSettings.Functions.NewButton({Name = "Reset UI Config", Last = true, Callback = function()
+                local keepAccessibilityChoice = SpaceUI.Config.UI.UseAccessibilityButton
+                if keepAccessibilityChoice == nil then keepAccessibilityChoice = true end
                 SpaceUI.Config.UI = {
                     Position = {X = 0.5, Y = 0.5},
                     Size = {X = 0.37294304370880129, Y = 0.683131217956543},
@@ -4752,6 +5247,7 @@ do
                     TabTransparency = 0.07,
                     KeybindTransparency = 0.7,
                     KeybindColor = {value1 = 0, value2 = 0, value3 = 0},
+                    UseAccessibilityButton = keepAccessibilityChoice,
                 }
                 Assets.Config.Save("UI", SpaceUI.Config.UI)
             end})
