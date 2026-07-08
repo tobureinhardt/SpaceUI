@@ -47,7 +47,7 @@ if not getgenv().SpaceUI then
         },
         Mobile = (game:GetService("UserInputService").TouchEnabled and not game:GetService("UserInputService").MouseEnabled),
         Pages = {},
-        Tabs = { Tabs = {}, TabBackground = nil, FocusedTab = nil, ActiveTabs = {} },
+        Tabs = { Tabs = {}, TabBackground = nil },
         ArrayList = { Objects = {}, Loaded = false },
         Background = nil,
         Pageselector = nil,
@@ -62,51 +62,6 @@ if not getgenv().SpaceUI then
     }
 end
 local SpaceUI = getgenv().SpaceUI
-
--- ── Leaflet-style Tab Focus Engine (ported từ EXE6 Leaflet.lua) ──────────────
--- Thay cho việc dựa vào thứ tự sibling lúc Instance.new (tab tạo trước luôn nằm
--- dưới), engine này set ZIndex động: tab đang focus = 2, các tab khác = 1.
--- Bấm vào bất kỳ đâu trong 1 tab (không chỉ thanh Drag) sẽ đưa tab đó lên trên.
-do
-    SpaceUI.Tabs.ActiveTabs = SpaceUI.Tabs.ActiveTabs or {}
-
-    function SpaceUI.Tabs.CaptureFocus(tab)
-        if not tab or not tab.Objects or not tab.Objects.ActualTab then return end
-        if SpaceUI.Tabs.FocusedTab == tab then return end
-
-        SpaceUI.Tabs.FocusedTab = tab
-        tab.Objects.ActualTab.ZIndex = 2
-
-        for i, v in SpaceUI.Tabs.ActiveTabs do
-            if v ~= tab then
-                SpaceUI.Tabs.RemoveFocus(v)
-            end
-        end
-    end
-
-    function SpaceUI.Tabs.RemoveFocus(tab)
-        if not tab or not tab.Objects or not tab.Objects.ActualTab then return end
-        if SpaceUI.Tabs.FocusedTab == tab then
-            SpaceUI.Tabs.FocusedTab = nil
-        end
-        tab.Objects.ActualTab.ZIndex = 1
-    end
-
-    function SpaceUI.Tabs.ActivateTab(tab)
-        if table.find(SpaceUI.Tabs.ActiveTabs, tab) then return end
-        table.insert(SpaceUI.Tabs.ActiveTabs, tab)
-    end
-
-    function SpaceUI.Tabs.DeactivateTab(tab)
-        local pos = table.find(SpaceUI.Tabs.ActiveTabs, tab)
-        if not pos then return end
-        if SpaceUI.Tabs.FocusedTab == tab then
-            SpaceUI.Tabs.RemoveFocus(tab)
-        end
-        table.remove(SpaceUI.Tabs.ActiveTabs, pos)
-    end
-end
-
 local safe_cloneref = function(ref: Instance) return ref end
 pcall(function()
     if getgenv and getgenv().cloneref then
@@ -1784,18 +1739,6 @@ do
         tab.Objects.ActualTab.SliceScale = 0.1
         tab.Objects.ActualTab.AutoButtonColor = false
         tab.Objects.ActualTab.Visible = false
-        tab.Objects.ActualTab.ZIndex = 1
-
-        SpaceUI.Tabs.ActivateTab(tab)
-
-        -- Bấm vào bất kỳ đâu trong tab (kể cả content, không chỉ thanh Drag) sẽ
-        -- đưa tab này lên trên các tab khác (Leaflet focus engine).
-        table.insert(SpaceUI.Connections, tab.Objects.ActualTab.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 or
-               input.UserInputType == Enum.UserInputType.Touch then
-                SpaceUI.Tabs.CaptureFocus(tab)
-            end
-        end))
 
         -- CanvasGroup bao toàn bộ content của tab
         tab.Objects.ContentCanvas = Instance.new("CanvasGroup", tab.Objects.ActualTab)
@@ -1912,7 +1855,6 @@ do
         local InputStarting, FrameStarting = nil, nil
         table.insert(SpaceUI.Connections, tab.Objects.DragButton.InputBegan:Connect(function(input)
             if (input.UserInputType == Enum.UserInputType.MouseButton1) or (input.UserInputType == Enum.UserInputType.Touch) then
-                SpaceUI.Tabs.CaptureFocus(tab)
                 tab.Data.Dragging, InputStarting, FrameStarting = true, input.Position, tab.Objects.ActualTab.Position
                 SpaceUI.CurrntInputChangeCallback = function(input)
                     if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then  
@@ -2159,7 +2101,6 @@ do
                     -- Mở tab: hiện ngay để animation (fade-in + scale) có thể nhìn thấy được
                     tab.Objects.ActualTab.Visible = true
                     tab.Objects.ScrollFrame.Visible = true
-                    SpaceUI.Tabs.CaptureFocus(tab)
                     if not reopen then
                         if not SpaceUI.CurrentOpenTab then
                             SpaceUI.CurrentOpenTab = {tab}
@@ -2256,9 +2197,6 @@ do
                     if not reopen then
                         table.remove(SpaceUI.CurrentOpenTab, table.find(SpaceUI.CurrentOpenTab, tab))
                     end
-                    if SpaceUI.Tabs.FocusedTab == tab then
-                        SpaceUI.Tabs.RemoveFocus(tab)
-                    end
                     SpaceUI.IsAllowedToHoverTabButton = false
                     CloseButton.Visible = false
                     tab.Objects.TabDragCanvas.Visible = false
@@ -2274,16 +2212,8 @@ do
                     end
                     TabHeader.TextTransparency = 1
                     if anim and SpaceUI.Config.UI.Anim  then
-                        -- Gom tat ca tween vao 1 bang va Play() lien tiep ngay tu dau,
-                        -- giong het pattern cua Assets.Main.ToggleVisibility. Truoc day
-                        -- tween cua TabBackground (trong vong for ben duoi) bi Play() tre
-                        -- hon vai frame so voi 2 tween dau, nhung task.wait(0.8) lai tinh
-                        -- tu dau block => tween tre bi cat ngang giua chung, gay khung o
-                        -- frame cuoi. Dung dem Completed cho tat ca tween se chinh xac
-                        -- bat ke tween nao Play() tre hay som.
-                        local closeTabTweens = {}
-                        table.insert(closeTabTweens, TweenService:Create(tab.Objects.ActualTab, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}))
-                        table.insert(closeTabTweens, TweenService:Create(TabScale, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {Scale = 1.2}))
+                        TweenService:Create(tab.Objects.ActualTab, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
+                        TweenService:Create(TabScale, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {Scale = 1.2}):Play()
 
                         local flagged = false
                         for i,v in SpaceUI.Tabs.Tabs do
@@ -2293,7 +2223,7 @@ do
                                 if TabPos.X.Scale > 0.9 or 0 > TabPos.X.Scale or TabPos.Y.Scale >= 0.95 or 0 > TabPos.Y.Scale then
                                     if not flagged then
                                         local t = TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1})
-                                        table.insert(closeTabTweens, t)
+                                        t:Play()
                                         task.spawn(function()
                                             t.Completed:Wait()
                                             task.wait(0.1)
@@ -2305,7 +2235,7 @@ do
                                     end
                                 else
                                     if v.Objects.ActualTab.Visible and v ~= tab then
-                                        table.insert(closeTabTweens, TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}))
+                                        TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
                                         SpaceUI.Tabs.TabBackground.ZIndex = 1
                                         SpaceUI.IsAllowedToHoverTabButton = true
                                         flagged = true
@@ -2314,16 +2244,11 @@ do
                             end
                         end
 
-                        local closeTabTweensCompleted = 0
-                        local closeTabTweensTotal = #closeTabTweens
-                        for i,v in closeTabTweens do
-                            v:Play()
-                            v.Completed:Connect(function()
-                                closeTabTweensCompleted += 1
-                            end)
-                        end
-                        repeat task.wait() until closeTabTweensCompleted >= closeTabTweensTotal
-
+                        -- task.wait co dinh khop dung duration tween (0.8s), giong het cach
+                        -- MainFrame/Dashboard dong muot (Assets.Main.ToggleVisibility) - khong
+                        -- dung Tween.Completed:Wait() vi event do co them 1 nhip delay nho
+                        -- (doi render step ke tiep) gay cam giac khung o frame cuoi.
+                        task.wait(0.8)
                         tab.Objects.ActualTab.Visible = false
                         tab.Objects.ScrollFrame.Visible = false
                     else
