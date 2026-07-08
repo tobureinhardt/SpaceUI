@@ -2212,7 +2212,8 @@ do
                     end
                     TabHeader.TextTransparency = 1
                     if anim and SpaceUI.Config.UI.Anim  then
-                        TweenService:Create(tab.Objects.ActualTab, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
+                        local closeTween = TweenService:Create(tab.Objects.ActualTab, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1})
+                        closeTween:Play()
                         TweenService:Create(TabScale, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {Scale = 1.2}):Play()
 
                         local flagged = false
@@ -2235,7 +2236,7 @@ do
                                     end
                                 else
                                     if v.Objects.ActualTab.Visible and v ~= tab then
-                                        TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
+                                        TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
                                         SpaceUI.Tabs.TabBackground.ZIndex = 1
                                         SpaceUI.IsAllowedToHoverTabButton = true
                                         flagged = true
@@ -2244,11 +2245,9 @@ do
                             end
                         end
 
-                        -- task.wait co dinh khop dung duration tween (0.8s), giong het cach
-                        -- MainFrame/Dashboard dong muot (Assets.Main.ToggleVisibility) - khong
-                        -- dung Tween.Completed:Wait() vi event do co them 1 nhip delay nho
-                        -- (doi render step ke tiep) gay cam giac khung o frame cuoi.
-                        task.wait(0.8)
+                        -- Chờ animation đóng (fade + scale) chạy xong thật sự rồi mới ẩn tab,
+                        -- nếu không thì ActualTab sẽ biến mất ngay và animation sẽ không kịp hiển thị.
+                        closeTween.Completed:Wait()
                         tab.Objects.ActualTab.Visible = false
                         tab.Objects.ScrollFrame.Visible = false
                     else
@@ -4619,8 +4618,7 @@ do
 
     -- Trả về tối đa 3 đối tượng tab để hiện trên Accessibility Button:
     -- ưu tiên lịch sử mở gần nhất, phần còn thiếu được lấp bằng tab ngẫu nhiên (không trùng).
-    Assets.Main.GetQuickAccessTabs = function(count)
-        count = count or 3
+    Assets.Main.GetQuickAccessTabs = function()
         local picked, seen = {}, {}
 
         local recent = SpaceUI.Config.Game.Other and SpaceUI.Config.Game.Other.RecentTabs
@@ -4630,26 +4628,26 @@ do
                 if tab and not seen[tabName] then
                     seen[tabName] = true
                     table.insert(picked, tab)
-                    if #picked >= count then break end
+                    if #picked >= 3 then break end
                 end
             end
         end
 
-        if #picked < count then
+        if #picked < 3 then
             local pool = {}
             for tabName, tab in SpaceUI.Tabs.Tabs do
                 if not seen[tabName] then
                     table.insert(pool, tab)
                 end
             end
-            -- Xáo trộn ngẫu nhiên (Fisher-Yates) rồi lấy cho đủ số lượng cần
+            -- Xáo trộn ngẫu nhiên (Fisher-Yates) rồi lấy cho đủ 3
             for i = #pool, 2, -1 do
                 local j = math.random(1, i)
                 pool[i], pool[j] = pool[j], pool[i]
             end
             for _, tab in pool do
                 table.insert(picked, tab)
-                if #picked >= count then break end
+                if #picked >= 3 then break end
             end
         end
 
@@ -4810,8 +4808,6 @@ do
             front.Parent = pageFrame
 
             -- button.page.front.open (ImageButton)
-            -- Căn giữa theo "front" (thay vì neo trái như rbxmx gốc) vì giờ bên trong
-            -- là chữ "Space" (TextLabel) chứ không phải ảnh logo có padding riêng.
             local open = Instance.new("ImageButton")
             open.Name = "open"
             open.HoverImage = ""
@@ -4822,41 +4818,37 @@ do
             open.AutoButtonColor = true
             open.Selected = false
             open.Active = true
-            open.AnchorPoint = Vector2.new(0.5, 0.5)
+            open.AnchorPoint = Vector2.new(0, 0)
             open.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
             open.BackgroundTransparency = 1
             open.BorderColor3 = Color3.fromRGB(0, 0, 0)
             open.BorderSizePixel = 0
             open.ClipsDescendants = false
-            open.Position = UDim2.new(0.5, 0, 0.5, 0)
+            open.Position = UDim2.new(0, 0, 0, 0)
             open.Selectable = true
             open.Size = UDim2.new(0, 40, 0, 40)
             open.Visible = true
             open.ZIndex = 1
             open.Parent = front
 
-            -- button.page.front.open.icon -> đổi từ ảnh logo "Exe 5" sang chữ "Space"
-            -- (TextLabel, font Gotham - sans hiện đại gần với SF Pro nhất trong Roblox),
-            -- căn giữa cả 2 chiều để không bị lệch/tràn ra ngoài khung như bản ảnh cũ.
-            local openIcon = Instance.new("TextLabel")
+            -- button.page.front.open.icon (ImageLabel) - icon "Exe 5" giữ nguyên
+            local openIcon = Instance.new("ImageLabel")
             openIcon.Name = "icon"
-            openIcon.BackgroundTransparency = 1
+            openIcon.Image = "rbxassetid://134689689501109"
+            openIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
+            openIcon.ImageTransparency = 0
+            openIcon.ScaleType = Enum.ScaleType.Fit
             openIcon.Active = false
             openIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+            openIcon.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            openIcon.BackgroundTransparency = 1
             openIcon.BorderColor3 = Color3.fromRGB(0, 0, 0)
             openIcon.BorderSizePixel = 0
             openIcon.Position = UDim2.new(0.5, 0, 0.5, 0)
             openIcon.Selectable = false
-            openIcon.Size = UDim2.new(1, 0, 1, 0)
+            openIcon.Size = UDim2.new(1, 0, 0, 26)
             openIcon.Visible = true
             openIcon.ZIndex = 1
-            openIcon.Font = Enum.Font.GothamMedium
-            openIcon.Text = "Space"
-            openIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
-            openIcon.TextScaled = false
-            openIcon.TextSize = 18
-            openIcon.TextXAlignment = Enum.TextXAlignment.Center
-            openIcon.TextYAlignment = Enum.TextYAlignment.Center
             openIcon.Parent = open
 
             local openIconScale = Instance.new("UIScale")
@@ -4864,17 +4856,14 @@ do
             openIconScale.Scale = 1
             openIconScale.Parent = openIcon
 
-
             -- button.page.list (UIListLayout)
-            -- HorizontalAlignment = Center để "open" (chứa chữ "Space") được căn giữa
-            -- theo chiều ngang của "front", thay vì bị đẩy về mép trái.
             local pageList = Instance.new("UIListLayout")
             pageList.Name = "list"
             pageList.Padding = UDim.new(0, 0)
             pageList.FillDirection = Enum.FillDirection.Vertical
-            pageList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+            pageList.HorizontalAlignment = Enum.HorizontalAlignment.Left
             pageList.SortOrder = Enum.SortOrder.LayoutOrder
-            pageList.VerticalAlignment = Enum.VerticalAlignment.Center
+            pageList.VerticalAlignment = Enum.VerticalAlignment.Top
             pageList.Parent = front
 
             -- button.page.page (UIPageLayout)
@@ -4964,7 +4953,7 @@ do
                 iconScale.Scale = 1
                 iconScale.Parent = icon
 
-                table.insert(quickTabs, {Button = btn, Icon = icon, Scale = iconScale, Tab = nil, IsDashboard = false})
+                table.insert(quickTabs, {Button = btn, Icon = icon, Scale = iconScale, Tab = nil})
                 return btn, icon
             end
 
@@ -5016,22 +5005,12 @@ do
             local on_frame = false
 
             local function refreshQuickTabIcons()
-                local tabs = Assets.Main.GetQuickAccessTabs(2)
+                local tabs = Assets.Main.GetQuickAccessTabs()
                 for i, entry in quickTabs do
-                    if i == 2 then
-                        -- Icon giữa cố định: mở thẳng UI chính (Dashboard), không phải tab động.
-                        entry.Tab = nil
-                        entry.IsDashboard = true
-                        entry.Icon.Image = "rbxassetid://11295288868"
-                        entry.Button.Visible = true
-                    else
-                        local slot = (i == 1) and 1 or 2
-                        local tab = tabs[slot]
-                        entry.Tab = tab
-                        entry.IsDashboard = false
-                        entry.Icon.Image = tab and tab.Icon or ""
-                        entry.Button.Visible = tab ~= nil
-                    end
+                    local tab = tabs[i]
+                    entry.Tab = tab
+                    entry.Icon.Image = tab and tab.Icon or ""
+                    entry.Button.Visible = tab ~= nil
                 end
             end
 
@@ -5073,14 +5052,6 @@ do
             for _, entry in quickTabs do
                 table.insert(SpaceUI.Connections, entry.Button.MouseButton1Click:Connect(function()
                     accessibility(false)
-                    if entry.IsDashboard then
-                        if SpaceUI.Background and SpaceUI.Background.Objects and SpaceUI.Background.Objects.MainFrame then
-                            if not SpaceUI.Background.Objects.MainFrame.Visible then
-                                Assets.Main.ToggleVisibility(true)
-                            end
-                        end
-                        return
-                    end
                     if not entry.Tab then return end
                     if SpaceUI.Background and SpaceUI.Background.Objects and SpaceUI.Background.Objects.MainFrame then
                         if not SpaceUI.Background.Objects.MainFrame.Visible then
@@ -5476,7 +5447,7 @@ do
                     end)
                 end
 
-                task.wait(0.8)
+                task.wait(0.5)
                 SpaceUI.Background.Objects.MainFrame.Visible = false
             end
         end
