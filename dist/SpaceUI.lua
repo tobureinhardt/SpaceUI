@@ -20,7 +20,7 @@ if not getgenv().SpaceUI then
         Config = {
             UI = {
                 Position = {X = 0.5, Y = 0.5},
-                Size = {X = 0.373, Y = 0.683},
+                Size = {X = 0.403, Y = 0.738},
                 FullScreen = false,
                 ToggleKeyCode = "LeftAlt",
                 Scale = 1,
@@ -2212,8 +2212,9 @@ do
                     end
                     TabHeader.TextTransparency = 1
                     if anim and SpaceUI.Config.UI.Anim  then
-                        TweenService:Create(tab.Objects.ActualTab, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
-                        TweenService:Create(TabScale, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {Scale = 1.2}):Play()
+                        local closeTweens = {}
+                        table.insert(closeTweens, TweenService:Create(tab.Objects.ActualTab, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}))
+                        table.insert(closeTweens, TweenService:Create(TabScale, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {Scale = 1.2}))
 
                         local flagged = false
                         for i,v in SpaceUI.Tabs.Tabs do
@@ -2244,13 +2245,20 @@ do
                             end
                         end
 
-                        -- task.wait co dinh khop dung duration tween (0.8s), giong het cach
-                        -- MainFrame/Dashboard dong muot (Assets.Main.ToggleVisibility) - khong
-                        -- dung Tween.Completed:Wait() vi event do co them 1 nhip delay nho
-                        -- (doi render step ke tiep) gay cam giac khung o frame cuoi.
-                        task.wait(0.8)
-                        tab.Objects.ActualTab.Visible = false
-                        tab.Objects.ScrollFrame.Visible = false
+                        -- Giong het co che cua Dashboard (Assets.Main.ToggleVisibility): play song song
+                        -- va dem so tween da Completed, an ActualTab ngay khi tween cuoi cung thuc su
+                        -- xong - khong dung task.wait co dinh nen khong bi khung/dung hinh o frame cuoi.
+                        local completedCloseTweens = 0
+                        for i,v in closeTweens do
+                            v:Play()
+                            v.Completed:Connect(function()
+                                completedCloseTweens += 1
+                                if completedCloseTweens == #closeTweens then
+                                    tab.Objects.ActualTab.Visible = false
+                                    tab.Objects.ScrollFrame.Visible = false
+                                end
+                            end)
+                        end
                     else
                         TabScale.Scale = 1.2
                         tab.Objects.ActualTab.ImageTransparency = 1
