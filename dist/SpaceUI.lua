@@ -20,7 +20,7 @@ if not getgenv().SpaceUI then
         Config = {
             UI = {
                 Position = {X = 0.5, Y = 0.5},
-                Size = {X = 0.403, Y = 0.738},
+                Size = {X = 0.373, Y = 0.683},
                 FullScreen = false,
                 ToggleKeyCode = "LeftAlt",
                 Scale = 1,
@@ -2212,9 +2212,10 @@ do
                     end
                     TabHeader.TextTransparency = 1
                     if anim and SpaceUI.Config.UI.Anim  then
-                        local closeTweens = {}
-                        table.insert(closeTweens, TweenService:Create(tab.Objects.ActualTab, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}))
-                        table.insert(closeTweens, TweenService:Create(TabScale, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {Scale = 1.2}))
+                        local closeTweens = {
+                            TweenService:Create(tab.Objects.ActualTab, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}),
+                            TweenService:Create(TabScale, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {Scale = 1.2})
+                        }
 
                         local flagged = false
                         for i,v in SpaceUI.Tabs.Tabs do
@@ -2245,19 +2246,22 @@ do
                             end
                         end
 
-                        -- Play song song ca 2 tween (fade + scale). Cho chung hoan tat trong 1
-                        -- task.spawn RIENG (khong block luong ToggleTab chinh, giong nhu code goc
-                        -- khong bi treo cho cnt/TabBackground ben duoi), roi moi an ActualTab.
+                        -- Copy dung y het pattern cua Dashboard (Assets.Main.ToggleVisibility):
+                        -- Play() song song ca 2 tween, dem tung Completed, an ngay lap tuc
+                        -- (cung frame) khi tween cuoi cung THUC SU hoan tat - khong dung
+                        -- task.wait vi task.wait luon resume tre hon it nhat 1 frame so voi
+                        -- luc tween thuc su xong, gay cam giac dung hinh 1 nhip roi moi tat.
+                        local completedCloseTweens = 0
                         for i,v in closeTweens do
                             v:Play()
+                            v.Completed:Connect(function()
+                                completedCloseTweens += 1
+                                if completedCloseTweens == #closeTweens then
+                                    tab.Objects.ActualTab.Visible = false
+                                    tab.Objects.ScrollFrame.Visible = false
+                                end
+                            end)
                         end
-                        task.spawn(function()
-                            for i,v in closeTweens do
-                                v.Completed:Wait()
-                            end
-                            tab.Objects.ActualTab.Visible = false
-                            tab.Objects.ScrollFrame.Visible = false
-                        end)
                     else
                         TabScale.Scale = 1.2
                         tab.Objects.ActualTab.ImageTransparency = 1
