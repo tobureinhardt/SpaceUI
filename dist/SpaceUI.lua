@@ -2212,10 +2212,8 @@ do
                     end
                     TabHeader.TextTransparency = 1
                     if anim and SpaceUI.Config.UI.Anim  then
-                        local closeTweens = {
-                            TweenService:Create(tab.Objects.ActualTab, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}),
-                            TweenService:Create(TabScale, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {Scale = 1.2})
-                        }
+                        TweenService:Create(tab.Objects.ActualTab, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
+                        TweenService:Create(TabScale, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {Scale = 1.2}):Play()
 
                         local flagged = false
                         for i,v in SpaceUI.Tabs.Tabs do
@@ -2246,22 +2244,13 @@ do
                             end
                         end
 
-                        -- Copy dung y het pattern cua Dashboard (Assets.Main.ToggleVisibility):
-                        -- Play() song song ca 2 tween, dem tung Completed, an ngay lap tuc
-                        -- (cung frame) khi tween cuoi cung THUC SU hoan tat - khong dung
-                        -- task.wait vi task.wait luon resume tre hon it nhat 1 frame so voi
-                        -- luc tween thuc su xong, gay cam giac dung hinh 1 nhip roi moi tat.
-                        local completedCloseTweens = 0
-                        for i,v in closeTweens do
-                            v:Play()
-                            v.Completed:Connect(function()
-                                completedCloseTweens += 1
-                                if completedCloseTweens == #closeTweens then
-                                    tab.Objects.ActualTab.Visible = false
-                                    tab.Objects.ScrollFrame.Visible = false
-                                end
-                            end)
-                        end
+                        -- Khop dung ty le nhu file goc Exe5.rbxmx (module:exe_admin_panel):
+                        -- tween dai 0.8s nhung an sau 0.5s - luc do transparency/scale da gan
+                        -- xong nen mat khong kip thay khung dung hinh o cuoi, khac voi truoc day
+                        -- doi du 0.8s (dung bang duration) nen bi dung 1 nhip truoc khi tat.
+                        task.wait(0.5)
+                        tab.Objects.ActualTab.Visible = false
+                        tab.Objects.ScrollFrame.Visible = false
                     else
                         TabScale.Scale = 1.2
                         tab.Objects.ActualTab.ImageTransparency = 1
