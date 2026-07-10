@@ -2129,6 +2129,7 @@ do
 
                     if anim and SpaceUI.Config.UI.Anim then
                         tab.Objects.ActualTab.ImageTransparency = 1
+                        tab.Objects.ContentCanvas.GroupTransparency = 1
                         TabScale.Scale = 1.2
 
                         local flagged = false
@@ -2160,6 +2161,7 @@ do
                             end
                         end
                         TweenService:Create(tab.Objects.ActualTab, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = SpaceUI.Config.UI.TabTransparency}):Play()
+                        TweenService:Create(tab.Objects.ContentCanvas, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {GroupTransparency = 0}):Play()
                         TweenService:Create(TabScale, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {Scale = 1}):Play()
                     else
                         local flagged = false
@@ -2212,8 +2214,10 @@ do
                     end
                     TabHeader.TextTransparency = 1
                     if anim and SpaceUI.Config.UI.Anim  then
-                        TweenService:Create(tab.Objects.ActualTab, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
-                        TweenService:Create(TabScale, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {Scale = 1.2}):Play()
+                        local info = TweenInfo.new(.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
+                        TweenService:Create(tab.Objects.ActualTab, info, {ImageTransparency = 1}):Play()
+                        TweenService:Create(tab.Objects.ContentCanvas, info, {GroupTransparency = 1}):Play()
+                        TweenService:Create(TabScale, info, {Scale = 1.2}):Play()
 
                         local flagged = false
                         for i,v in SpaceUI.Tabs.Tabs do
@@ -2244,11 +2248,13 @@ do
                             end
                         end
 
-                        -- Khop dung ty le nhu file goc Exe5.rbxmx (module:exe_admin_panel):
-                        -- tween dai 0.8s nhung an sau 0.5s - luc do transparency/scale da gan
-                        -- xong nen mat khong kip thay khung dung hinh o cuoi, khac voi truoc day
-                        -- doi du 0.8s (dung bang duration) nen bi dung 1 nhip truoc khi tat.
-                        task.wait(0.5)
+                        -- Port dung cau truc rbxmx: file goc (exe_main_module.lua) luon tween
+                        -- GroupTransparency cua CAC CanvasGroup con (dashboard_frame, main_frame,
+                        -- credits_frame, window_controls) song song voi frame cha. ContentCanvas
+                        -- la CanvasGroup con tuong duong trong SpaceUI (dong 1744) nhung truoc day
+                        -- chua bao gio duoc tween - do la ly do noi dung tab dung nguyen ro net
+                        -- roi cat phut, thay vi mo dan giong file goc. task.wait giu nguyen 0.8s.
+                        task.wait(0.8)
                         tab.Objects.ActualTab.Visible = false
                         tab.Objects.ScrollFrame.Visible = false
                     else
