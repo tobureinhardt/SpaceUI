@@ -2245,20 +2245,19 @@ do
                             end
                         end
 
-                        -- Giong het co che cua Dashboard (Assets.Main.ToggleVisibility): play song song
-                        -- va dem so tween da Completed, an ActualTab ngay khi tween cuoi cung thuc su
-                        -- xong - khong dung task.wait co dinh nen khong bi khung/dung hinh o frame cuoi.
-                        local completedCloseTweens = 0
+                        -- Play song song ca 2 tween (fade + scale). Cho chung hoan tat trong 1
+                        -- task.spawn RIENG (khong block luong ToggleTab chinh, giong nhu code goc
+                        -- khong bi treo cho cnt/TabBackground ben duoi), roi moi an ActualTab.
                         for i,v in closeTweens do
                             v:Play()
-                            v.Completed:Connect(function()
-                                completedCloseTweens += 1
-                                if completedCloseTweens == #closeTweens then
-                                    tab.Objects.ActualTab.Visible = false
-                                    tab.Objects.ScrollFrame.Visible = false
-                                end
-                            end)
                         end
+                        task.spawn(function()
+                            for i,v in closeTweens do
+                                v.Completed:Wait()
+                            end
+                            tab.Objects.ActualTab.Visible = false
+                            tab.Objects.ScrollFrame.Visible = false
+                        end)
                     else
                         TabScale.Scale = 1.2
                         tab.Objects.ActualTab.ImageTransparency = 1
