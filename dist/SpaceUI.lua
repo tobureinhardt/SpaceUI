@@ -74,6 +74,7 @@ do
         if not tab or not tab.Objects or not tab.Objects.ActualTab then return end
         if SpaceUI.Tabs.FocusedTab == tab then return end
 
+        print("[LeafletDebug] CaptureFocus ->", tab.Name, "ZIndex before:", tab.Objects.ActualTab.ZIndex, "Transparency:", tab.Objects.ActualTab.ImageTransparency)
         SpaceUI.Tabs.FocusedTab = tab
         tab.Objects.ActualTab.ZIndex = 2
 
@@ -86,6 +87,7 @@ do
 
     function SpaceUI.Tabs.RemoveFocus(tab)
         if not tab or not tab.Objects or not tab.Objects.ActualTab then return end
+        print("[LeafletDebug] RemoveFocus ->", tab.Name, "ZIndex before:", tab.Objects.ActualTab.ZIndex, "Transparency:", tab.Objects.ActualTab.ImageTransparency)
         if SpaceUI.Tabs.FocusedTab == tab then
             SpaceUI.Tabs.FocusedTab = nil
         end
@@ -1882,10 +1884,12 @@ do
                             local TabPos = Tab.Position
                             if TabPos.X.Scale > 0.9 or 0 > TabPos.X.Scale or TabPos.Y.Scale >= 0.95 or 0 > TabPos.Y.Scale then
                                 if not flagged then
+                                    print("[LeafletDebug] Drag edge-dim branch, source tab:", tab.Name, "loop tab:", v.Name, "loopZ:", v.Objects.ActualTab.ZIndex, "loopTransp:", v.Objects.ActualTab.ImageTransparency)
                                     TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
                                 end
                             else
                                 if v.Objects.ActualTab.Visible then
+                                    print("[LeafletDebug] Drag normal-dim branch, source tab:", tab.Name, "loop tab:", v.Name, "loopZ:", v.Objects.ActualTab.ZIndex, "loopTransp:", v.Objects.ActualTab.ImageTransparency)
                                     TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
                                     flagged = true
                                 end
