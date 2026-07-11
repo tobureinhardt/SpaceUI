@@ -1787,6 +1787,14 @@ do
         tab.Objects.ActualTab.Visible = false
         tab.Objects.ActualTab.ZIndex = 1
 
+        do
+            local tabNameForDebug = tab.Name
+            table.insert(SpaceUI.Connections, tab.Objects.ActualTab:GetPropertyChangedSignal("ImageTransparency"):Connect(function()
+                print("[TranspTrace]", tabNameForDebug, "-> ImageTransparency changed to", tab.Objects.ActualTab.ImageTransparency)
+                print(debug.traceback())
+            end))
+        end
+
         SpaceUI.Tabs.ActivateTab(tab)
 
         -- Bấm vào bất kỳ đâu trong tab (kể cả content, không chỉ thanh Drag) sẽ
