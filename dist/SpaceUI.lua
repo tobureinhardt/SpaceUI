@@ -2172,48 +2172,19 @@ do
                         tab.Objects.ContentCanvas.GroupTransparency = 1
                         TabScale.Scale = 1.2
 
-                        local flagged = false
-                        for i,v in SpaceUI.Tabs.Tabs do
-                            if v.Objects and v.Objects.ActualTab then
-                                local Tab = v.Objects.ActualTab
-                                local TabPos = Tab.Position
-                                if TabPos.X.Scale > 0.9 or 0 > TabPos.X.Scale or TabPos.Y.Scale >= 0.95 or 0 > TabPos.Y.Scale then
-                                    if not flagged then
-                                    TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
-                                        SpaceUI.IsAllowedToHoverTabButton = false
-                                    end
-                                else
-                                    if v.Objects.ActualTab.Visible and v ~= tab or v == tab then
-                                        TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
-                                        SpaceUI.IsAllowedToHoverTabButton = true
-                                        flagged = true
-                                    end
-                                end
-                            end
+                        if SpaceUI.Tabs.TabBackground.ImageTransparency < 1 then
+                            TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
                         end
+                        SpaceUI.IsAllowedToHoverTabButton = true
+
                         TweenService:Create(tab.Objects.ActualTab, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = SpaceUI.Config.UI.TabTransparency}):Play()
                         TweenService:Create(tab.Objects.ContentCanvas, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {GroupTransparency = 0}):Play()
                         TweenService:Create(TabScale, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {Scale = 1}):Play()
                     else
-                        local flagged = false
-                        for i,v in SpaceUI.Tabs.Tabs do
-                            if v.Objects and v.Objects.ActualTab then
-                                local Tab = v.Objects.ActualTab
-                                local TabPos = Tab.Position
-                                if TabPos.X.Scale > 0.9 or 0 > TabPos.X.Scale or TabPos.Y.Scale >= 0.95 or 0 > TabPos.Y.Scale then
-                                    if not flagged then
-                                    TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
-                                        SpaceUI.IsAllowedToHoverTabButton = false
-                                    end
-                                else
-                                    if v.Objects.ActualTab.Visible and v ~= tab or v == tab then
-                                        TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
-                                        SpaceUI.IsAllowedToHoverTabButton = true
-                                        flagged = true
-                                    end
-                                end
-                            end
+                        if SpaceUI.Tabs.TabBackground.ImageTransparency < 1 then
+                            TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
                         end
+                        SpaceUI.IsAllowedToHoverTabButton = true
                         TabScale.Scale = 1
                         tab.Objects.ActualTab.ImageTransparency = SpaceUI.Config.UI.TabTransparency
                     end
@@ -2244,25 +2215,10 @@ do
                         TweenService:Create(tab.Objects.ContentCanvas, info, {GroupTransparency = 1}):Play()
                         TweenService:Create(TabScale, info, {Scale = 1.2}):Play()
 
-                        local flagged = false
-                        for i,v in SpaceUI.Tabs.Tabs do
-                            if v.Objects and v.Objects.ActualTab then
-                                local Tab = v.Objects.ActualTab
-                                local TabPos = Tab.Position
-                                if TabPos.X.Scale > 0.9 or 0 > TabPos.X.Scale or TabPos.Y.Scale >= 0.95 or 0 > TabPos.Y.Scale then
-                                    if not flagged then
-                                    TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
-                                        SpaceUI.IsAllowedToHoverTabButton = false
-                                    end
-                                else
-                                    if v.Objects.ActualTab.Visible and v ~= tab then
-                                        TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
-                                        SpaceUI.IsAllowedToHoverTabButton = true
-                                        flagged = true
-                                    end
-                                end
-                            end
+                        if SpaceUI.Tabs.TabBackground.ImageTransparency < 1 then
+                            TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
                         end
+                        SpaceUI.IsAllowedToHoverTabButton = true
 
                         -- Port dung cau truc rbxmx: file goc (exe_main_module.lua) luon tween
                         -- GroupTransparency cua CAC CanvasGroup con (dashboard_frame, main_frame,
@@ -2276,25 +2232,10 @@ do
                     else
                         TabScale.Scale = 1.2
                         tab.Objects.ActualTab.ImageTransparency = 1
-                        local flagged = false
-                        for i,v in SpaceUI.Tabs.Tabs do
-                            if v.Objects and v.Objects.ActualTab then
-                                local Tab = v.Objects.ActualTab
-                                local TabPos = Tab.Position
-                                if TabPos.X.Scale > 0.9 or 0 > TabPos.X.Scale or TabPos.Y.Scale >= 0.95 or 0 > TabPos.Y.Scale then
-                                    if not flagged then
-                                    TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
-                                        SpaceUI.IsAllowedToHoverTabButton = false
-                                    end
-                                else
-                                    if v.Objects.ActualTab.Visible and v ~= tab then
-                                        TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
-                                        SpaceUI.IsAllowedToHoverTabButton = true
-                                        flagged = true
-                                    end
-                                end
-                            end
+                        if SpaceUI.Tabs.TabBackground.ImageTransparency < 1 then
+                            TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
                         end
+                        SpaceUI.IsAllowedToHoverTabButton = true
                         -- Không anim: ẩn ngay lập tức như hành vi cũ.
                         tab.Objects.ActualTab.Visible = false
                         tab.Objects.ScrollFrame.Visible = false
