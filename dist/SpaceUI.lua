@@ -74,7 +74,6 @@ do
         if not tab or not tab.Objects or not tab.Objects.ActualTab then return end
         if SpaceUI.Tabs.FocusedTab == tab then return end
 
-        print("[LeafletDebug] CaptureFocus ->", tab.Name, "ZIndex before:", tab.Objects.ActualTab.ZIndex, "Transparency:", tab.Objects.ActualTab.ImageTransparency)
         SpaceUI.Tabs.FocusedTab = tab
         tab.Objects.ActualTab.ZIndex = 2
 
@@ -87,7 +86,6 @@ do
 
     function SpaceUI.Tabs.RemoveFocus(tab)
         if not tab or not tab.Objects or not tab.Objects.ActualTab then return end
-        print("[LeafletDebug] RemoveFocus ->", tab.Name, "ZIndex before:", tab.Objects.ActualTab.ZIndex, "Transparency:", tab.Objects.ActualTab.ImageTransparency)
         if SpaceUI.Tabs.FocusedTab == tab then
             SpaceUI.Tabs.FocusedTab = nil
         end
@@ -1877,26 +1875,7 @@ do
                     local newY = frameStart.Y.Scale + (Delta.Y / Viewport.Y)
         
                     tab.Objects.ActualTab.Position = UDim2.fromScale(newX, newY)
-                    local flagged = false
-                    for i,v in SpaceUI.Tabs.Tabs do
-                        if v.Objects and v.Objects.ActualTab then
-                            local Tab = v.Objects.ActualTab
-                            local TabPos = Tab.Position
-                            if TabPos.X.Scale > 0.9 or 0 > TabPos.X.Scale or TabPos.Y.Scale >= 0.95 or 0 > TabPos.Y.Scale then
-                                if not flagged then
-                                    print("[LeafletDebug] Drag edge-dim branch, source tab:", tab.Name, "loop tab:", v.Name, "loopZ:", v.Objects.ActualTab.ZIndex, "loopTransp:", v.Objects.ActualTab.ImageTransparency)
-                                    TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
-                                end
-                            else
-                                if v.Objects.ActualTab.Visible then
-                                    print("[LeafletDebug] Drag normal-dim branch, source tab:", tab.Name, "loop tab:", v.Name, "loopZ:", v.Objects.ActualTab.ZIndex, "loopTransp:", v.Objects.ActualTab.ImageTransparency)
-                                    TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
-                                    flagged = true
-                                end
-                            end
-                        end
-                    end
-    
+
                     if not SpaceUI.Config.Game.Other.TabPos then
                         SpaceUI.Config.Game.Other.TabPos = {}
                     end
@@ -1909,6 +1888,12 @@ do
         table.insert(SpaceUI.Connections, tab.Objects.DragButton.InputBegan:Connect(function(input)
             if (input.UserInputType == Enum.UserInputType.MouseButton1) or (input.UserInputType == Enum.UserInputType.Touch) then
                 SpaceUI.Tabs.CaptureFocus(tab)
+                -- Ẩn TabBackground một lần duy nhất lúc bắt đầu kéo (không cần chạy mỗi
+                -- frame di chuyển chuột như code cũ — điều đó khiến TweenService nhận
+                -- hàng chục tween chồng nhau mỗi giây và không bao giờ hội tụ, gây kẹt dim).
+                if SpaceUI.Tabs.TabBackground.ImageTransparency < 1 then
+                    TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
+                end
                 tab.Data.Dragging, InputStarting, FrameStarting = true, input.Position, tab.Objects.ActualTab.Position
                 SpaceUI.CurrntInputChangeCallback = function(input)
                     if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then  
