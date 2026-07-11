@@ -1670,7 +1670,7 @@ do
             Connections = {},
             Modules = {},
             Functions = {}, 
-            Data = {Dragging = false, SettingsOpen = false}
+            Data = {Dragging = false, SettingsOpen = false, ToggleAnimating = false}
         }
 
         if not tab.Dashboard then return end
@@ -1786,14 +1786,6 @@ do
         tab.Objects.ActualTab.AutoButtonColor = false
         tab.Objects.ActualTab.Visible = false
         tab.Objects.ActualTab.ZIndex = 1
-
-        do
-            local tabNameForDebug = tab.Name
-            table.insert(SpaceUI.Connections, tab.Objects.ActualTab:GetPropertyChangedSignal("ImageTransparency"):Connect(function()
-                print("[TranspTrace]", tabNameForDebug, "-> ImageTransparency changed to", tab.Objects.ActualTab.ImageTransparency)
-                print(debug.traceback())
-            end))
-        end
 
         SpaceUI.Tabs.ActivateTab(tab)
 
@@ -2136,6 +2128,12 @@ do
 
         local resotredback = {backbuttons = {}, keybinds = {}}
         tab.Functions.ToggleTab = function(visible, anim, reopen)
+            -- Debounce: nếu tab đang giữa animation mở/đóng (0.8s), bỏ qua lời gọi
+            -- trùng lặp. Thiếu chốt này khiến 2 animation chạy chồng nhau tranh chấp
+            -- ContentCanvas.GroupTransparency / ActualTab.ImageTransparency theo 2
+            -- hướng ngược nhau, khiến nó kẹt dim mãi cho tới khi tab mất focus.
+            if tab.Data.ToggleAnimating and not reopen then return end
+            tab.Data.ToggleAnimating = true
             task.spawn(function()
                 -- Nếu Module Settings đang bị kẹt mở (vd: tab bị đóng/dim trước khi bấm Back),
                 -- force-close nó về trạng thái bình thường trước khi tiếp tục, để tránh
@@ -2188,6 +2186,7 @@ do
                         TweenService:Create(tab.Objects.ActualTab, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = SpaceUI.Config.UI.TabTransparency}):Play()
                         TweenService:Create(tab.Objects.ContentCanvas, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {GroupTransparency = 0}):Play()
                         TweenService:Create(TabScale, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {Scale = 1}):Play()
+                        task.wait(0.8)
                     else
                         if SpaceUI.Tabs.TabBackground.ImageTransparency < 1 then
                             TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
@@ -2256,6 +2255,7 @@ do
                         SpaceUI.Tabs.TabBackground.Visible = false
                     end
                 end
+                tab.Data.ToggleAnimating = false
             end)
         end
 
