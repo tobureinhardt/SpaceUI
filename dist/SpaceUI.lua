@@ -47,7 +47,7 @@ if not getgenv().SpaceUI then
         },
         Mobile = (game:GetService("UserInputService").TouchEnabled and not game:GetService("UserInputService").MouseEnabled),
         Pages = {},
-        Tabs = { Tabs = {}, TabBackground = nil },
+        Tabs = { Tabs = {}, TabBackground = nil, FocusedTab = nil, ActiveTabs = {} },
         ArrayList = { Objects = {}, Loaded = false },
         Background = nil,
         Pageselector = nil,
@@ -62,6 +62,51 @@ if not getgenv().SpaceUI then
     }
 end
 local SpaceUI = getgenv().SpaceUI
+
+-- ── Leaflet-style Tab Focus Engine (ported từ EXE6 Leaflet.lua) ──────────────
+-- Thay cho việc dựa vào thứ tự sibling lúc Instance.new (tab tạo trước luôn nằm
+-- dưới), engine này set ZIndex động: tab đang focus = 2, các tab khác = 1.
+-- Bấm vào bất kỳ đâu trong 1 tab (không chỉ thanh Drag) sẽ đưa tab đó lên trên.
+do
+    SpaceUI.Tabs.ActiveTabs = SpaceUI.Tabs.ActiveTabs or {}
+
+    function SpaceUI.Tabs.CaptureFocus(tab)
+        if not tab or not tab.Objects or not tab.Objects.ActualTab then return end
+        if SpaceUI.Tabs.FocusedTab == tab then return end
+
+        SpaceUI.Tabs.FocusedTab = tab
+        tab.Objects.ActualTab.ZIndex = 2
+
+        for i, v in SpaceUI.Tabs.ActiveTabs do
+            if v ~= tab then
+                SpaceUI.Tabs.RemoveFocus(v)
+            end
+        end
+    end
+
+    function SpaceUI.Tabs.RemoveFocus(tab)
+        if not tab or not tab.Objects or not tab.Objects.ActualTab then return end
+        if SpaceUI.Tabs.FocusedTab == tab then
+            SpaceUI.Tabs.FocusedTab = nil
+        end
+        tab.Objects.ActualTab.ZIndex = 1
+    end
+
+    function SpaceUI.Tabs.ActivateTab(tab)
+        if table.find(SpaceUI.Tabs.ActiveTabs, tab) then return end
+        table.insert(SpaceUI.Tabs.ActiveTabs, tab)
+    end
+
+    function SpaceUI.Tabs.DeactivateTab(tab)
+        local pos = table.find(SpaceUI.Tabs.ActiveTabs, tab)
+        if not pos then return end
+        if SpaceUI.Tabs.FocusedTab == tab then
+            SpaceUI.Tabs.RemoveFocus(tab)
+        end
+        table.remove(SpaceUI.Tabs.ActiveTabs, pos)
+    end
+end
+
 local safe_cloneref = function(ref: Instance) return ref end
 pcall(function()
     if getgenv and getgenv().cloneref then
@@ -1724,6 +1769,7 @@ do
             SpaceUI.Tabs.TabBackground.Visible = false
             SpaceUI.Tabs.TabBackground.Active = false
             SpaceUI.Tabs.TabBackground.AutoButtonColor = false
+            SpaceUI.Tabs.TabBackground.ZIndex = 1
         end
 
         tab.Objects.ActualTab = Instance.new("ImageButton", SpaceUI.Tabs.TabBackground)
@@ -1739,6 +1785,18 @@ do
         tab.Objects.ActualTab.SliceScale = 0.1
         tab.Objects.ActualTab.AutoButtonColor = false
         tab.Objects.ActualTab.Visible = false
+        tab.Objects.ActualTab.ZIndex = 1
+
+        SpaceUI.Tabs.ActivateTab(tab)
+
+        -- Bấm vào bất kỳ đâu trong tab (kể cả content, không chỉ thanh Drag) sẽ
+        -- đưa tab này lên trên các tab khác (Leaflet focus engine).
+        table.insert(SpaceUI.Connections, tab.Objects.ActualTab.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or
+               input.UserInputType == Enum.UserInputType.Touch then
+                SpaceUI.Tabs.CaptureFocus(tab)
+            end
+        end))
 
         -- CanvasGroup bao toàn bộ content của tab
         tab.Objects.ContentCanvas = Instance.new("CanvasGroup", tab.Objects.ActualTab)
@@ -1824,20 +1882,11 @@ do
                             local TabPos = Tab.Position
                             if TabPos.X.Scale > 0.9 or 0 > TabPos.X.Scale or TabPos.Y.Scale >= 0.95 or 0 > TabPos.Y.Scale then
                                 if not flagged then
-                                    local t = TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1})
-                                    t:Play()
-                                    task.spawn(function()
-                                        t.Completed:Wait()
-                                        task.wait(0.1)
-                                        if not flagged and SpaceUI.Tabs.TabBackground.ZIndex ~= -100 then
-                                            SpaceUI.Tabs.TabBackground.ZIndex = -100
-                                        end
-                                    end)
+                                    TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
                                 end
                             else
                                 if v.Objects.ActualTab.Visible then
                                     TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
-                                    SpaceUI.Tabs.TabBackground.ZIndex = 1
                                     flagged = true
                                 end
                             end
@@ -1855,6 +1904,7 @@ do
         local InputStarting, FrameStarting = nil, nil
         table.insert(SpaceUI.Connections, tab.Objects.DragButton.InputBegan:Connect(function(input)
             if (input.UserInputType == Enum.UserInputType.MouseButton1) or (input.UserInputType == Enum.UserInputType.Touch) then
+                SpaceUI.Tabs.CaptureFocus(tab)
                 tab.Data.Dragging, InputStarting, FrameStarting = true, input.Position, tab.Objects.ActualTab.Position
                 SpaceUI.CurrntInputChangeCallback = function(input)
                     if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then  
@@ -2101,6 +2151,7 @@ do
                     -- Mở tab: hiện ngay để animation (fade-in + scale) có thể nhìn thấy được
                     tab.Objects.ActualTab.Visible = true
                     tab.Objects.ScrollFrame.Visible = true
+                    SpaceUI.Tabs.CaptureFocus(tab)
                     if not reopen then
                         if not SpaceUI.CurrentOpenTab then
                             SpaceUI.CurrentOpenTab = {tab}
@@ -2139,20 +2190,11 @@ do
                                 local TabPos = Tab.Position
                                 if TabPos.X.Scale > 0.9 or 0 > TabPos.X.Scale or TabPos.Y.Scale >= 0.95 or 0 > TabPos.Y.Scale then
                                     if not flagged then
-                                        local t = TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1})
-                                        t:Play()
-                                        task.spawn(function()
-                                            t.Completed:Wait()
-                                            task.wait(0.1)
-                                            if not flagged and SpaceUI.Tabs.TabBackground.ZIndex ~= -100 then
-                                                SpaceUI.Tabs.TabBackground.ZIndex = -100
-                                            end
-                                        end)
+                                    TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
                                         SpaceUI.IsAllowedToHoverTabButton = false
                                     end
                                 else
                                     if v.Objects.ActualTab.Visible and v ~= tab or v == tab then
-                                        SpaceUI.Tabs.TabBackground.ZIndex = 1
                                         TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
                                         SpaceUI.IsAllowedToHoverTabButton = true
                                         flagged = true
@@ -2171,20 +2213,11 @@ do
                                 local TabPos = Tab.Position
                                 if TabPos.X.Scale > 0.9 or 0 > TabPos.X.Scale or TabPos.Y.Scale >= 0.95 or 0 > TabPos.Y.Scale then
                                     if not flagged then
-                                        local t = TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1})
-                                        t:Play()
-                                        task.spawn(function()
-                                            t.Completed:Wait()
-                                            task.wait(0.1)
-                                            if not flagged and SpaceUI.Tabs.TabBackground.ZIndex ~= -100 then
-                                                SpaceUI.Tabs.TabBackground.ZIndex = -100
-                                            end
-                                        end)
+                                    TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
                                         SpaceUI.IsAllowedToHoverTabButton = false
                                     end
                                 else
                                     if v.Objects.ActualTab.Visible and v ~= tab or v == tab then
-                                        SpaceUI.Tabs.TabBackground.ZIndex = 1
                                         TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
                                         SpaceUI.IsAllowedToHoverTabButton = true
                                         flagged = true
@@ -2198,6 +2231,9 @@ do
                 else
                     if not reopen then
                         table.remove(SpaceUI.CurrentOpenTab, table.find(SpaceUI.CurrentOpenTab, tab))
+                    end
+                    if SpaceUI.Tabs.FocusedTab == tab then
+                        SpaceUI.Tabs.RemoveFocus(tab)
                     end
                     SpaceUI.IsAllowedToHoverTabButton = false
                     CloseButton.Visible = false
@@ -2226,21 +2262,12 @@ do
                                 local TabPos = Tab.Position
                                 if TabPos.X.Scale > 0.9 or 0 > TabPos.X.Scale or TabPos.Y.Scale >= 0.95 or 0 > TabPos.Y.Scale then
                                     if not flagged then
-                                        local t = TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1})
-                                        t:Play()
-                                        task.spawn(function()
-                                            t.Completed:Wait()
-                                            task.wait(0.1)
-                                            if not flagged and SpaceUI.Tabs.TabBackground.ZIndex ~= -100 then
-                                                SpaceUI.Tabs.TabBackground.ZIndex = -100
-                                            end
-                                        end)
+                                    TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
                                         SpaceUI.IsAllowedToHoverTabButton = false
                                     end
                                 else
                                     if v.Objects.ActualTab.Visible and v ~= tab then
                                         TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
-                                        SpaceUI.Tabs.TabBackground.ZIndex = 1
                                         SpaceUI.IsAllowedToHoverTabButton = true
                                         flagged = true
                                     end
@@ -2267,21 +2294,12 @@ do
                                 local TabPos = Tab.Position
                                 if TabPos.X.Scale > 0.9 or 0 > TabPos.X.Scale or TabPos.Y.Scale >= 0.95 or 0 > TabPos.Y.Scale then
                                     if not flagged then
-                                        local t = TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1})
-                                        t:Play()
-                                        task.spawn(function()
-                                            t.Completed:Wait()
-                                            task.wait(0.1)
-                                            if not flagged and SpaceUI.Tabs.TabBackground.ZIndex ~= -100 then
-                                                SpaceUI.Tabs.TabBackground.ZIndex = -100
-                                            end
-                                        end)
+                                    TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
                                         SpaceUI.IsAllowedToHoverTabButton = false
                                     end
                                 else
                                     if v.Objects.ActualTab.Visible and v ~= tab then
                                         TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
-                                        SpaceUI.Tabs.TabBackground.ZIndex = 1
                                         SpaceUI.IsAllowedToHoverTabButton = true
                                         flagged = true
                                     end
