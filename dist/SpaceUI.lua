@@ -76,6 +76,9 @@ do
 
         SpaceUI.Tabs.FocusedTab = tab
         tab.Objects.ActualTab.ZIndex = 2
+        if tab.Objects.TabPrism then
+            game:GetService("TweenService"):Create(tab.Objects.TabPrism, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
+        end
 
         for i, v in SpaceUI.Tabs.ActiveTabs do
             if v ~= tab then
@@ -90,6 +93,9 @@ do
             SpaceUI.Tabs.FocusedTab = nil
         end
         tab.Objects.ActualTab.ZIndex = 1
+        if tab.Objects.TabPrism then
+            game:GetService("TweenService"):Create(tab.Objects.TabPrism, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 0.8}):Play()
+        end
     end
 
     function SpaceUI.Tabs.ActivateTab(tab)
@@ -1819,7 +1825,8 @@ do
             end
         end
 
-        local TabPrism = Instance.new("ImageLabel", tab.Objects.ContentCanvas)
+        tab.Objects.TabPrism = Instance.new("ImageLabel", tab.Objects.ContentCanvas)
+        local TabPrism = tab.Objects.TabPrism
         TabPrism.AnchorPoint = Vector2.new(0.5, 0.5)
         TabPrism.BackgroundTransparency = 1
         TabPrism.Position = UDim2.fromScale(0.5, 0.5)
@@ -1827,7 +1834,7 @@ do
         TabPrism.ZIndex = 1000
         TabPrism.Image = "rbxassetid://16255699706"
         TabPrism.ImageColor3 = Color3.fromRGB(143, 143, 143)
-        TabPrism.ImageTransparency = 0.8
+        TabPrism.ImageTransparency = 1 -- Tab mới tạo sẽ được CaptureFocus ngay sau đó nên bắt đầu ẩn
         TabPrism.ScaleType = Enum.ScaleType.Crop
         Instance.new("UICorner", TabPrism).CornerRadius = UDim.new(0, 27)
         local PrismStroke = Instance.new("UIStroke", TabPrism)
