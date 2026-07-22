@@ -1779,7 +1779,7 @@ do
         tab.Objects.ActualTab.Size = UDim2.fromScale(0.8 * SpaceUI.Config.UI.Size.X, 0.8 * SpaceUI.Config.UI.Size.Y)
         tab.Objects.ActualTab.Image = "rbxassetid://16286719854"
         tab.Objects.ActualTab.ImageColor3 = Color3.fromRGB(SpaceUI.Config.UI.TabColor.value1, SpaceUI.Config.UI.TabColor.value2, SpaceUI.Config.UI.TabColor.value3)
-        tab.Objects.ActualTab.ImageTransparency = SpaceUI.Config.UI.TabTransparency
+        tab.Objects.ActualTab.ImageTransparency = 0
         tab.Objects.ActualTab.ScaleType = Enum.ScaleType.Slice
         tab.Objects.ActualTab.SliceCenter = Rect.new(512, 512, 512, 512)
         tab.Objects.ActualTab.SliceScale = 0.1
@@ -1818,6 +1818,22 @@ do
                 tab.Objects.ActualTab.Position = UDim2.fromScale(tab.Objects.ActualTab.Position.X.Scale, pos.Y)
             end
         end
+
+        local TabPrism = Instance.new("ImageLabel", tab.Objects.ContentCanvas)
+        TabPrism.AnchorPoint = Vector2.new(0.5, 0.5)
+        TabPrism.BackgroundTransparency = 1
+        TabPrism.Position = UDim2.fromScale(0.5, 0.5)
+        TabPrism.Size = UDim2.new(1, 20, 1, 20)
+        TabPrism.ZIndex = 1000
+        TabPrism.Image = "rbxassetid://16255699706"
+        TabPrism.ImageColor3 = Color3.fromRGB(143, 143, 143)
+        TabPrism.ImageTransparency = 0.8
+        TabPrism.ScaleType = Enum.ScaleType.Crop
+        Instance.new("UICorner", TabPrism).CornerRadius = UDim.new(0, 27)
+        local PrismStroke = Instance.new("UIStroke", TabPrism)
+        PrismStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+        PrismStroke.Color = Color3.fromRGB(255, 255, 255)
+        PrismStroke.Transparency = 0.85
 
         tab.Objects.TabDragCanvas = Instance.new("CanvasGroup", tab.Objects.ActualTab)
         tab.Objects.TabDragCanvas.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -2167,7 +2183,7 @@ do
                         end
                         SpaceUI.IsAllowedToHoverTabButton = true
 
-                        TweenService:Create(tab.Objects.ActualTab, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = SpaceUI.Config.UI.TabTransparency}):Play()
+                        TweenService:Create(tab.Objects.ActualTab, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 0}):Play()
                         TweenService:Create(tab.Objects.ContentCanvas, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {GroupTransparency = 0}):Play()
                         TweenService:Create(TabScale, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {Scale = 1}):Play()
                         task.wait(0.8)
@@ -2177,7 +2193,7 @@ do
                         end
                         SpaceUI.IsAllowedToHoverTabButton = true
                         TabScale.Scale = 1
-                        tab.Objects.ActualTab.ImageTransparency = SpaceUI.Config.UI.TabTransparency
+                        tab.Objects.ActualTab.ImageTransparency = 0
                     end
                 else
                     if not reopen then
@@ -5250,9 +5266,7 @@ do
             ThemeSettings.Functions.NewButton({Name = "TabTransparency", Textbox = true, Flag = "TabTransparency", Default = "0.1", Callback = function(self, value)
                 if tonumber(value) then
                     SpaceUI.Config.UI.TabTransparency = tonumber(value)
-                    for i,v in SpaceUI.Tabs.Tabs do
-                        v.Objects.ActualTab.ImageTransparency = SpaceUI.Config.UI.TabTransparency
-                    end
+                    -- Dim theo TabTransparency đã bị vô hiệu hóa, chỉ còn ZIndex điều khiển focus
                     Assets.Config.Save("UI", SpaceUI.Config.UI)
                 end
             end})
