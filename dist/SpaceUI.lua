@@ -76,7 +76,6 @@ do
 
         SpaceUI.Tabs.FocusedTab = tab
         tab.Objects.ActualTab.ZIndex = 2
-        game:GetService("TweenService"):Create(tab.Objects.ActualTab, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 0}):Play()
 
         for i, v in SpaceUI.Tabs.ActiveTabs do
             if v ~= tab then
@@ -91,7 +90,6 @@ do
             SpaceUI.Tabs.FocusedTab = nil
         end
         tab.Objects.ActualTab.ZIndex = 1
-        game:GetService("TweenService"):Create(tab.Objects.ActualTab, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = SpaceUI.Config.UI.TabTransparency}):Play()
     end
 
     function SpaceUI.Tabs.ActivateTab(tab)
@@ -2169,7 +2167,7 @@ do
                         end
                         SpaceUI.IsAllowedToHoverTabButton = true
 
-                        TweenService:Create(tab.Objects.ActualTab, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 0}):Play()
+                        TweenService:Create(tab.Objects.ActualTab, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = SpaceUI.Config.UI.TabTransparency}):Play()
                         TweenService:Create(tab.Objects.ContentCanvas, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {GroupTransparency = 0}):Play()
                         TweenService:Create(TabScale, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {Scale = 1}):Play()
                         task.wait(0.8)
@@ -2179,7 +2177,7 @@ do
                         end
                         SpaceUI.IsAllowedToHoverTabButton = true
                         TabScale.Scale = 1
-                        tab.Objects.ActualTab.ImageTransparency = 0
+                        tab.Objects.ActualTab.ImageTransparency = SpaceUI.Config.UI.TabTransparency
                     end
                 else
                     if not reopen then
