@@ -1819,6 +1819,22 @@ do
             end
         end
 
+        local TabPrism = Instance.new("ImageLabel", tab.Objects.ContentCanvas)
+        TabPrism.AnchorPoint = Vector2.new(0.5, 0.5)
+        TabPrism.BackgroundTransparency = 1
+        TabPrism.Position = UDim2.fromScale(0.5, 0.5)
+        TabPrism.Size = UDim2.new(1, 20, 1, 20)
+        TabPrism.ZIndex = 1000
+        TabPrism.Image = "rbxassetid://16255699706"
+        TabPrism.ImageColor3 = Color3.fromRGB(143, 143, 143)
+        TabPrism.ImageTransparency = 0.8
+        TabPrism.ScaleType = Enum.ScaleType.Crop
+        Instance.new("UICorner", TabPrism).CornerRadius = UDim.new(0, 27)
+        local PrismStroke = Instance.new("UIStroke", TabPrism)
+        PrismStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+        PrismStroke.Color = Color3.fromRGB(255, 255, 255)
+        PrismStroke.Transparency = 0.85
+
         tab.Objects.TabDragCanvas = Instance.new("CanvasGroup", tab.Objects.ActualTab)
         tab.Objects.TabDragCanvas.AnchorPoint = Vector2.new(0.5, 0.5)
         tab.Objects.TabDragCanvas.BackgroundTransparency = 1
