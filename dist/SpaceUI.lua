@@ -28,7 +28,7 @@ if not getgenv().SpaceUI then
                 Anim = true,
                 ArrayList = false,
                 TabColor = {value1 = 40, value2 = 40, value3 = 40},
-                TabTransparency = 0.07,
+                TabTransparency = 0,
                 KeybindTransparency = 0.7,
                 KeybindColor = {value1 = 0, value2 = 0, value3 = 0},
                 UseAccessibilityButton = true, -- Mặc định dùng Accessibility Button; set false để dùng lại TopbarPlus (API cũ)
@@ -1779,7 +1779,7 @@ do
         tab.Objects.ActualTab.Size = UDim2.fromScale(0.8 * SpaceUI.Config.UI.Size.X, 0.8 * SpaceUI.Config.UI.Size.Y)
         tab.Objects.ActualTab.Image = "rbxassetid://16286719854"
         tab.Objects.ActualTab.ImageColor3 = Color3.fromRGB(SpaceUI.Config.UI.TabColor.value1, SpaceUI.Config.UI.TabColor.value2, SpaceUI.Config.UI.TabColor.value3)
-        tab.Objects.ActualTab.ImageTransparency = 0
+        tab.Objects.ActualTab.ImageTransparency = SpaceUI.Config.UI.TabTransparency
         tab.Objects.ActualTab.ScaleType = Enum.ScaleType.Slice
         tab.Objects.ActualTab.SliceCenter = Rect.new(512, 512, 512, 512)
         tab.Objects.ActualTab.SliceScale = 0.1
@@ -2183,7 +2183,7 @@ do
                         end
                         SpaceUI.IsAllowedToHoverTabButton = true
 
-                        TweenService:Create(tab.Objects.ActualTab, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 0}):Play()
+                        TweenService:Create(tab.Objects.ActualTab, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = SpaceUI.Config.UI.TabTransparency}):Play()
                         TweenService:Create(tab.Objects.ContentCanvas, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {GroupTransparency = 0}):Play()
                         TweenService:Create(TabScale, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {Scale = 1}):Play()
                         task.wait(0.8)
@@ -2193,7 +2193,7 @@ do
                         end
                         SpaceUI.IsAllowedToHoverTabButton = true
                         TabScale.Scale = 1
-                        tab.Objects.ActualTab.ImageTransparency = 0
+                        tab.Objects.ActualTab.ImageTransparency = SpaceUI.Config.UI.TabTransparency
                     end
                 else
                     if not reopen then
@@ -5266,7 +5266,9 @@ do
             ThemeSettings.Functions.NewButton({Name = "TabTransparency", Textbox = true, Flag = "TabTransparency", Default = "0.1", Callback = function(self, value)
                 if tonumber(value) then
                     SpaceUI.Config.UI.TabTransparency = tonumber(value)
-                    -- Dim theo TabTransparency đã bị vô hiệu hóa, chỉ còn ZIndex điều khiển focus
+                    for i,v in SpaceUI.Tabs.Tabs do
+                        v.Objects.ActualTab.ImageTransparency = SpaceUI.Config.UI.TabTransparency
+                    end
                     Assets.Config.Save("UI", SpaceUI.Config.UI)
                 end
             end})
