@@ -1776,7 +1776,7 @@ do
         tab.Objects.ActualTab.AnchorPoint = Vector2.new(0.5, 0.5)
         tab.Objects.ActualTab.BackgroundTransparency = 1
         tab.Objects.ActualTab.Position = UDim2.fromScale(0.5, 0.5)
-        tab.Objects.ActualTab.Size = UDim2.fromScale(0.8 * SpaceUI.Config.UI.Size.X, 0.8 * SpaceUI.Config.UI.Size.Y)
+        tab.Objects.ActualTab.Size = UDim2.fromScale(0.8, 0.8)
         tab.Objects.ActualTab.Image = "rbxassetid://16286719854"
         tab.Objects.ActualTab.ImageColor3 = Color3.fromRGB(SpaceUI.Config.UI.TabColor.value1, SpaceUI.Config.UI.TabColor.value2, SpaceUI.Config.UI.TabColor.value3)
         tab.Objects.ActualTab.ImageTransparency = SpaceUI.Config.UI.TabTransparency
