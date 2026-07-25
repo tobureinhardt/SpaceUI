@@ -70,11 +70,6 @@ local SpaceUI = getgenv().SpaceUI
 do
     SpaceUI.Tabs.ActiveTabs = SpaceUI.Tabs.ActiveTabs or {}
 
-    -- Fire mỗi khi SpaceUI.CurrentOpenTab thêm/bớt phần tử (xem 2 điểm gọi
-    -- :Fire() bên trong nhánh visible/not-visible của ToggleTab). Nút
-    -- Accessibility và App Switcher lắng nghe event này để tự cập nhật.
-    SpaceUI.Tabs.OpenTabCountChanged = SpaceUI.Tabs.OpenTabCountChanged or Instance.new("BindableEvent")
-
     -- TweenService lấy độc lập tại đây: khối do...end này đứng trước dòng khai
     -- báo `local TweenService` ở phần đầu file, nên biến đó chưa nằm trong scope
     -- local của khối này (dù runtime đã có giá trị, Lua vẫn coi nó là global và
@@ -2295,7 +2290,6 @@ do
                         if Assets.Main.TrackRecentTab then
                             Assets.Main.TrackRecentTab(tab.Name)
                         end
-                        SpaceUI.Tabs.OpenTabCountChanged:Fire(#SpaceUI.CurrentOpenTab)
                     end
 
                     SpaceUI.Tabs.TabBackground.Visible = true
@@ -2344,7 +2338,6 @@ do
                 else
                     if not reopen then
                         table.remove(SpaceUI.CurrentOpenTab, table.find(SpaceUI.CurrentOpenTab, tab))
-                        SpaceUI.Tabs.OpenTabCountChanged:Fire(#SpaceUI.CurrentOpenTab)
                     end
                     if SpaceUI.Tabs.FocusedTab == tab then
                         SpaceUI.Tabs.RemoveFocus(tab)
@@ -5009,29 +5002,6 @@ do
             openIconScale.Scale = 1
             openIconScale.Parent = openIcon
 
-            -- Fade chữ "Space" <-> "Options" theo số tab đang mở (2+ = Options,
-            -- Peek/switcher khả dụng; < 2 = Space, tính năng multitask ẩn).
-            local switcherTextService = game:GetService("TweenService")
-            local currentOpenLabel = "Space"
-            local function applyOpenIconLabel(labelText)
-                if currentOpenLabel == labelText then return end
-                currentOpenLabel = labelText
-                local fadeOut = switcherTextService:Create(openIcon, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {TextTransparency = 1})
-                fadeOut:Play()
-                fadeOut.Completed:Connect(function()
-                    if currentOpenLabel ~= labelText then return end
-                    openIcon.Text = labelText
-                    switcherTextService:Create(openIcon, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
-                end)
-            end
-            local function refreshOpenIconLabel()
-                local openCount = SpaceUI.CurrentOpenTab and #SpaceUI.CurrentOpenTab or 0
-                applyOpenIconLabel(openCount >= 2 and "Options" or "Space")
-            end
-            refreshOpenIconLabel()
-            table.insert(SpaceUI.Connections, SpaceUI.Tabs.OpenTabCountChanged.Event:Connect(refreshOpenIconLabel))
-            table.insert(SpaceUI.Connections, SpaceUI.Tabs.OpenTabCountChanged.Event:Connect(refreshQuickTabIcons))
-
 
             -- button.page.list (UIListLayout)
             -- HorizontalAlignment = Center để "open" (chứa chữ "Space") được căn giữa
@@ -5185,31 +5155,18 @@ do
 
             local function refreshQuickTabIcons()
                 local tabs = Assets.Main.GetQuickAccessTabs(2)
-                local openCount = SpaceUI.CurrentOpenTab and #SpaceUI.CurrentOpenTab or 0
                 for i, entry in quickTabs do
                     if i == 2 then
-                        if openCount >= 2 then
-                            -- 2+ tab mở: nút giữa = Peek, mở App Switcher. Icon
-                            -- placeholder - thay ID ảnh thật vào đây khi có.
-                            entry.Tab = nil
-                            entry.IsDashboard = false
-                            entry.IsPeek = true
-                            entry.Icon.Image = "rbxassetid://11295288868"
-                            entry.Button.Visible = true
-                        else
-                            -- Dưới 2 tab: giữ nguyên hành vi cũ - icon Dashboard cố định.
-                            entry.Tab = nil
-                            entry.IsDashboard = true
-                            entry.IsPeek = false
-                            entry.Icon.Image = "rbxassetid://11295288868"
-                            entry.Button.Visible = true
-                        end
+                        -- Icon giữa cố định: mở thẳng UI chính (Dashboard), không phải tab động.
+                        entry.Tab = nil
+                        entry.IsDashboard = true
+                        entry.Icon.Image = "rbxassetid://11295288868"
+                        entry.Button.Visible = true
                     else
                         local slot = (i == 1) and 1 or 2
                         local tab = tabs[slot]
                         entry.Tab = tab
                         entry.IsDashboard = false
-                        entry.IsPeek = false
                         entry.Icon.Image = tab and tab.Icon or ""
                         entry.Button.Visible = tab ~= nil
                     end
@@ -5254,15 +5211,6 @@ do
             for _, entry in quickTabs do
                 table.insert(SpaceUI.Connections, entry.Button.MouseButton1Click:Connect(function()
                     accessibility(false)
-                    if entry.IsPeek then
-                        if SpaceUI.Background and SpaceUI.Background.Objects and SpaceUI.Background.Objects.MainFrame then
-                            if not SpaceUI.Background.Objects.MainFrame.Visible then
-                                Assets.Main.ToggleVisibility(true)
-                            end
-                        end
-                        Assets.Main.OpenAppSwitcher()
-                        return
-                    end
                     if entry.IsDashboard then
                         if SpaceUI.Background and SpaceUI.Background.Objects and SpaceUI.Background.Objects.MainFrame then
                             if not SpaceUI.Background.Objects.MainFrame.Visible then
@@ -5326,235 +5274,6 @@ do
             }
         end
     end
-
-    -- ================= App Switcher (iPad-style multitasking) =================
-    -- Overlay dim toàn màn hình + grid các thẻ preview khi bấm nút "Peek". Mỗi thẻ
-    -- là bản Clone() của ContentCanvas tab đó tại đúng thời điểm mở switcher (xem
-    -- ghi chú tại chỗ Clone bên dưới) - chỉ để XEM, không tương tác được vì Clone()
-    -- không copy được các Connection sự kiện đã bind trong code. Bấm cả thẻ (không
-    -- phải nút con bên trong nó) sẽ đóng switcher và focus tab gốc lên full-size.
-    Assets.Main.BuildAppSwitcher = function()
-        if SpaceUI.AppSwitcher then return end
-
-        local switcherGui = Instance.new("ScreenGui", Assets.Functions.gethui())
-        switcherGui.Name = "SpaceUIAppSwitcher"
-        switcherGui.ResetOnSpawn = false
-        switcherGui.IgnoreGuiInset = true
-        switcherGui.DisplayOrder = 10000
-        switcherGui.Enabled = false
-
-        local dim = Instance.new("Frame", switcherGui)
-        dim.Name = "dim"
-        dim.Size = UDim2.fromScale(1, 1)
-        dim.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-        dim.BackgroundTransparency = 1
-        dim.BorderSizePixel = 0
-        dim.ZIndex = 1
-        dim.Active = true
-
-        local grid = Instance.new("Frame", switcherGui)
-        grid.Name = "grid"
-        grid.AnchorPoint = Vector2.new(0.5, 0.5)
-        grid.Position = UDim2.fromScale(0.5, 0.5)
-        grid.Size = UDim2.fromScale(0.9, 0.8)
-        grid.BackgroundTransparency = 1
-        grid.ZIndex = 2
-
-        local gridLayout = Instance.new("UIGridLayout", grid)
-        gridLayout.SortOrder = Enum.SortOrder.LayoutOrder
-        gridLayout.CellPadding = UDim2.fromOffset(24, 24)
-        gridLayout.FillDirectionMaxCells = 0
-
-        SpaceUI.AppSwitcher = {
-            Gui = switcherGui,
-            Dim = dim,
-            Grid = grid,
-            GridLayout = gridLayout,
-            Tiles = {},
-            Open = false,
-        }
-    end
-
-    -- Tính số cột grid theo tổng số thẻ (tab đang mở + Dashboard), để layout không
-    -- quá thưa (ít thẻ, cột to) hay quá chật (nhiều thẻ, cột nhỏ). Ngưỡng tham
-    -- khảo cách chia cột phổ biến của App Switcher trên tablet.
-    local function computeSwitcherColumns(count)
-        if count <= 2 then return 2 end
-        if count <= 4 then return 2 end
-        if count <= 6 then return 3 end
-        if count <= 9 then return 3 end
-        return 4
-    end
-
-    local function clearSwitcherTiles()
-        if not SpaceUI.AppSwitcher then return end
-        for _, tile in SpaceUI.AppSwitcher.Tiles do
-            tile.Frame:Destroy()
-        end
-        table.clear(SpaceUI.AppSwitcher.Tiles)
-    end
-
-    -- Tạo 1 thẻ preview cho 1 tab đang mở. `sourceCanvas` là ContentCanvas thật của
-    -- tab đó; `label` là tên hiển thị; `onSelect` chạy khi thẻ được bấm.
-    local function buildSwitcherTile(sourceCanvas, label, layoutOrder, onSelect)
-        local switcher = SpaceUI.AppSwitcher
-
-        local tileButton = Instance.new("TextButton", switcher.Grid)
-        tileButton.Name = "tile"
-        tileButton.Text = ""
-        tileButton.AutoButtonColor = false
-        tileButton.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-        tileButton.BackgroundTransparency = 0.1
-        tileButton.BorderSizePixel = 0
-        tileButton.LayoutOrder = layoutOrder
-        tileButton.ClipsDescendants = true
-        tileButton.ZIndex = 2
-        Instance.new("UICorner", tileButton).CornerRadius = UDim.new(0, 18)
-        local tileStroke = Instance.new("UIStroke", tileButton)
-        tileStroke.Color = Color3.fromRGB(255, 255, 255)
-        tileStroke.Transparency = 0.85
-
-        -- Preview: Clone() nguyên vẹn ContentCanvas thật tại thời điểm mở switcher,
-        -- co lại vừa khung thẻ bằng UIScale. Vô hiệu hoá mọi Script/LocalScript bên
-        -- trong bản clone để không chạy lại logic gốc (chỉ dùng để xem).
-        local previewHolder = Instance.new("Frame", tileButton)
-        previewHolder.Name = "previewHolder"
-        previewHolder.AnchorPoint = Vector2.new(0.5, 0.5)
-        previewHolder.Position = UDim2.fromScale(0.5, 0.5)
-        previewHolder.Size = UDim2.fromScale(1, 1)
-        previewHolder.BackgroundTransparency = 1
-        previewHolder.ClipsDescendants = true
-        previewHolder.ZIndex = 2
-
-        if sourceCanvas then
-            local clonedCanvas = sourceCanvas:Clone()
-            clonedCanvas.Name = "previewClone"
-            pcall(function() clonedCanvas.GroupTransparency = 0 end)
-            for _, descendant in clonedCanvas:GetDescendants() do
-                if descendant:IsA("Script") or descendant:IsA("LocalScript") then
-                    descendant.Enabled = false
-                elseif descendant:IsA("GuiButton") then
-                    descendant.Active = false
-                    descendant.AutoButtonColor = false
-                elseif descendant:IsA("TextBox") then
-                    descendant.TextEditable = false
-                end
-            end
-            clonedCanvas.Size = UDim2.fromScale(1, 1)
-            clonedCanvas.Position = UDim2.fromScale(0.5, 0.5)
-            clonedCanvas.AnchorPoint = Vector2.new(0.5, 0.5)
-            clonedCanvas.Parent = previewHolder
-        end
-
-        local labelBg = Instance.new("Frame", tileButton)
-        labelBg.Name = "labelBg"
-        labelBg.AnchorPoint = Vector2.new(0, 1)
-        labelBg.Position = UDim2.new(0, 0, 1, 0)
-        labelBg.Size = UDim2.new(1, 0, 0, 44)
-        labelBg.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-        labelBg.BackgroundTransparency = 0.3
-        labelBg.BorderSizePixel = 0
-        labelBg.ZIndex = 3
-
-        local labelText = Instance.new("TextLabel", labelBg)
-        labelText.Name = "labelText"
-        labelText.Size = UDim2.fromScale(1, 1)
-        labelText.BackgroundTransparency = 1
-        labelText.Font = Enum.Font.GothamMedium
-        labelText.Text = label
-        labelText.TextColor3 = Color3.fromRGB(255, 255, 255)
-        labelText.TextSize = 18
-        labelText.ZIndex = 3
-
-        table.insert(SpaceUI.AppSwitcher.Tiles, {Frame = tileButton})
-
-        table.insert(SpaceUI.Connections, tileButton.MouseButton1Click:Connect(function()
-            onSelect()
-        end))
-    end
-
-    -- Dựng lại toàn bộ grid từ danh sách tab đang mở + Dashboard, mỗi lần switcher
-    -- được mở (không cache, vì danh sách tab mở có thể đổi giữa 2 lần mở switcher).
-    local function populateAppSwitcher()
-        clearSwitcherTiles()
-
-        local totalCount = (SpaceUI.CurrentOpenTab and #SpaceUI.CurrentOpenTab or 0) + 1
-        SpaceUI.AppSwitcher.GridLayout.CellSize = UDim2.fromScale(1 / computeSwitcherColumns(totalCount) - 0.02, 0.42)
-
-        buildSwitcherTile(
-            SpaceUI.Background.Objects.MainFrame,
-            "Dashboard",
-            0,
-            function()
-                Assets.Main.CloseAppSwitcher()
-                if not SpaceUI.Background.Objects.MainFrame.Visible then
-                    Assets.Main.ToggleVisibility(true)
-                end
-            end
-        )
-
-        if SpaceUI.CurrentOpenTab then
-            for i, tab in SpaceUI.CurrentOpenTab do
-                buildSwitcherTile(
-                    tab.Objects.ContentCanvas,
-                    tab.Name,
-                    i,
-                    function()
-                        Assets.Main.CloseAppSwitcher()
-                        if not SpaceUI.Background.Objects.MainFrame.Visible then
-                            Assets.Main.ToggleVisibility(true)
-                        end
-                        Assets.Main.OpenSingleTab(tab)
-                    end
-                )
-            end
-        end
-    end
-
-    Assets.Main.OpenAppSwitcher = function()
-        Assets.Main.BuildAppSwitcher()
-        local switcher = SpaceUI.AppSwitcher
-        if switcher.Open then return end
-        switcher.Open = true
-
-        populateAppSwitcher()
-
-        switcher.Gui.Enabled = true
-        switcher.Dim.BackgroundTransparency = 1
-        switcher.Grid.GroupTransparency = 1
-        for _, tile in switcher.Tiles do
-            tile.Frame.Size = UDim2.fromScale(0, 0)
-        end
-
-        TweenService:Create(switcher.Dim, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 0.5}):Play()
-        for _, tile in switcher.Tiles do
-            TweenService:Create(tile.Frame, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.fromScale(1, 1)}):Play()
-        end
-    end
-
-    Assets.Main.CloseAppSwitcher = function()
-        local switcher = SpaceUI.AppSwitcher
-        if not switcher or not switcher.Open then return end
-        switcher.Open = false
-
-        local closeInfo = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-        TweenService:Create(switcher.Dim, closeInfo, {BackgroundTransparency = 1}):Play()
-        for _, tile in switcher.Tiles do
-            TweenService:Create(tile.Frame, closeInfo, {Size = UDim2.fromScale(0, 0)}):Play()
-        end
-
-        task.delay(0.25, function()
-            if switcher.Gui then
-                switcher.Gui.Enabled = false
-            end
-        end)
-    end
-
-    table.insert(SpaceUI.Connections, SpaceUI.Tabs.OpenTabCountChanged.Event:Connect(function()
-        if SpaceUI.AppSwitcher and SpaceUI.AppSwitcher.Open and (not SpaceUI.CurrentOpenTab or #SpaceUI.CurrentOpenTab < 2) then
-            Assets.Main.CloseAppSwitcher()
-        end
-    end))
 
     Assets.Main.Uninject = function()
         Assets.Main.OnUninject:Fire(true)
