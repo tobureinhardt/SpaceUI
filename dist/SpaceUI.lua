@@ -2233,7 +2233,7 @@ do
                     if anim and SpaceUI.Config.UI.Anim  then
                         local info = TweenInfo.new(.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
                         local fadeOutActualTab = TweenService:Create(tab.Objects.ActualTab, info, {ImageTransparency = 1})
-                        local fadeOutContent = TweenService:Create(tab.Objects.ContentCanvas, info, {GroupTransparency = 1})
+                        local fadeOutContent = TweenService:Create(tab.Objects.ContentCanvas, TweenInfo.new(.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {GroupTransparency = 1})
                         local scaleOutTween = TweenService:Create(TabScale, info, {Scale = 1.2})
                         table.insert(activeFadeTweens, fadeOutActualTab)
                         table.insert(activeFadeTweens, fadeOutContent)
@@ -3002,6 +3002,7 @@ do
                 ConstructionData.Objects.MainInstance.Size = UDim2.new(1, 0, 0, ConstructionData.YSize)
                 ConstructionData.Objects.MainInstance.ImageTransparency = 1
                 ConstructionData.Objects.MainInstance.Visible = false
+                ConstructionData.Objects.MainInstance.ZIndex = 2
                 Instance.new("UICorner", ConstructionData.Objects.MainInstance).CornerRadius = UDim.new(0, 10)
                 
                 if ConstructionData.NeedsLayout then
@@ -3038,6 +3039,7 @@ do
                 SettingDetails.BackgroundTransparency = 1
                 SettingDetails.Size = UDim2.new(0.63, 0, 0, 35)
                 SettingDetails.LayoutOrder = 1
+                SettingDetails.ZIndex = 2
 
                 local SettingNameText = Instance.new("TextLabel", SettingDetails)
                 SettingNameText.BackgroundTransparency = 1
@@ -4002,6 +4004,7 @@ do
                 SectionData.Objects.MainInstance.TextTransparency = 0.1
                 SectionData.Objects.MainInstance.TextXAlignment = Enum.TextXAlignment.Left
                 SectionData.Objects.MainInstance.Visible = false
+                SectionData.Objects.MainInstance.ZIndex = 2
 
                 ModuleData.Settings[SectionData.Flag] = SectionData
                 return SectionData
