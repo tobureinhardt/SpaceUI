@@ -1008,6 +1008,14 @@ do
                         TweenService:Create(ActualIconScale, TweenInfo.new(0.15), {Scale = 1.2}):Play()
                         TweenService:Create(buttondata.Objects.Selection, TweenInfo.new(0.15), {ImageTransparency = 0.8}):Play()
                     end))
+
+                    -- Hover-press: scale xuống lúc giữ chuột, trước khi Callbacks.Clicked chạy
+                    -- (port từ window_handler bản gốc: controls.resize.MouseButton1Down)
+                    table.insert(SpaceUI.Connections, buttondata.Objects.Button.MouseButton1Down:Connect(function()
+                        TweenService:Create(ActualIconScale, TweenInfo.new(0.15), {Scale = 0.5}):Play()
+
+                        TweenService:Create(buttondata.Objects.Selection, TweenInfo.new(0.15), {ImageTransparency = 0.9}):Play()
+                    end))
     
                     table.insert(SpaceUI.Connections, buttondata.Objects.Button.MouseLeave:Connect(function()
                         TweenService:Create(ActualIconScale, TweenInfo.new(0.15), {Scale = 1}):Play()
@@ -1901,6 +1909,10 @@ do
 
 
         -- ── Tab Resize Handle (góc bottom-right) ─────────────────────────────
+        -- Animation hover/press ported nguyên bản từ window_handler (Exe5 rbxmx):
+        -- icon.scale + selection.scale, dùng chung info = TweenInfo.new(0.4, Exponential)
+        local ResizeInfo = TweenInfo.new(0.4, Enum.EasingStyle.Exponential)
+
         local TabResizeHandle = Instance.new("ImageButton", tab.Objects.TabDragCanvas)
         TabResizeHandle.Name = "ResizeHandle"
         TabResizeHandle.AnchorPoint = Vector2.new(1, 1)
@@ -1914,11 +1926,53 @@ do
         TabResizeHandle.ImageTransparency = 0.5
         TabResizeHandle.ScaleType = Enum.ScaleType.Fit
 
+        local TabResizeHandleScale = Instance.new("UIScale", TabResizeHandle)
+        TabResizeHandleScale.Name = "scale"
+        TabResizeHandleScale.Scale = 1
+
+        -- selection: glow/highlight phía sau icon, ẩn mặc định (ImageTransparency = 1)
+        local TabResizeSelection = Instance.new("ImageLabel", TabResizeHandle)
+        TabResizeSelection.Name = "selection"
+        TabResizeSelection.AnchorPoint = Vector2.new(0.5, 0.5)
+        TabResizeSelection.Position = UDim2.fromScale(0.5, 0.5)
+        TabResizeSelection.Size = UDim2.fromScale(1, 1)
+        TabResizeSelection.BackgroundTransparency = 1
+        TabResizeSelection.ZIndex = TabResizeHandle.ZIndex - 1
+        TabResizeSelection.Image = "rbxassetid://11295287825"
+        TabResizeSelection.ImageColor3 = Color3.fromRGB(255, 255, 255)
+        TabResizeSelection.ImageTransparency = 1
+        TabResizeSelection.ScaleType = Enum.ScaleType.Fit
+
+        local TabResizeSelectionScale = Instance.new("UIScale", TabResizeSelection)
+        TabResizeSelectionScale.Name = "scale"
+        TabResizeSelectionScale.Scale = 0.5
+
         table.insert(SpaceUI.Connections, TabResizeHandle.MouseEnter:Connect(function()
-            TweenService:Create(TabResizeHandle, TweenInfo.new(0.15), {ImageTransparency = 0.1}):Play()
+            if not tab.Data.Resizing then
+                TabResizeSelection.ImageTransparency = 1
+                TabResizeSelectionScale.Scale = 0.5
+
+                TweenService:Create(TabResizeHandleScale, ResizeInfo, {Scale = 1.2}):Play()
+
+                TweenService:Create(TabResizeSelection, ResizeInfo, {ImageTransparency = 0.8}):Play()
+                TweenService:Create(TabResizeSelectionScale, ResizeInfo, {Scale = 1}):Play()
+            end
         end))
+
+        table.insert(SpaceUI.Connections, TabResizeHandle.MouseButton1Down:Connect(function()
+            TweenService:Create(TabResizeHandleScale, ResizeInfo, {Scale = 0.5}):Play()
+
+            TweenService:Create(TabResizeSelection, ResizeInfo, {ImageTransparency = 0.9}):Play()
+            TweenService:Create(TabResizeSelectionScale, ResizeInfo, {Scale = 0.8}):Play()
+        end))
+
         table.insert(SpaceUI.Connections, TabResizeHandle.MouseLeave:Connect(function()
-            TweenService:Create(TabResizeHandle, TweenInfo.new(0.15), {ImageTransparency = 0.5}):Play()
+            if not tab.Data.Resizing then
+                TweenService:Create(TabResizeHandleScale, ResizeInfo, {Scale = 1}):Play()
+
+                TweenService:Create(TabResizeSelection, ResizeInfo, {ImageTransparency = 1}):Play()
+                TweenService:Create(TabResizeSelectionScale, ResizeInfo, {Scale = 0.5}):Play()
+            end
         end))
 
         tab.Data.Resizing = false
@@ -1960,6 +2014,11 @@ do
                         SpaceUI.CurrntInputChangeCallback = function() end
                         Assets.Config.Save(SpaceUI.GameSave, SpaceUI.Config.Game)
                         SpaceUI.InputEndFunc = nil
+
+                        -- Reset animation handle về trạng thái gốc (tương đương stop() bản gốc)
+                        TweenService:Create(TabResizeHandleScale, ResizeInfo, {Scale = 1}):Play()
+                        TweenService:Create(TabResizeSelection, ResizeInfo, {ImageTransparency = 1}):Play()
+                        TweenService:Create(TabResizeSelectionScale, ResizeInfo, {Scale = 0.5}):Play()
                     end
                 end
             end
