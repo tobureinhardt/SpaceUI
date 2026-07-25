@@ -2066,6 +2066,7 @@ do
         SearchBarDepth.ImageColor3 = Color3.fromRGB(255, 255, 255)
         SearchBarDepth.ScaleType = Enum.ScaleType.Slice
         SearchBarDepth.SliceCenter = Rect.new(206, 206, 206, 206)
+        SearchBarDepth.ZIndex = 2
 
         local MainSearchBarTextBox = Instance.new("TextBox", SearchBar)
         MainSearchBarTextBox.BackgroundTransparency = 1
@@ -2091,6 +2092,7 @@ do
         SearchBarIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
         SearchBarIcon.ImageTransparency = 0.5
         SearchBarIcon.ScaleType = Enum.ScaleType.Fit
+        SearchBarIcon.ZIndex = 2
 
         local SearchBarClear = Instance.new("ImageButton", SearchBar)
         SearchBarClear.AnchorPoint = Vector2.new(1, 0.5)
@@ -2409,6 +2411,7 @@ do
             ModuleIcon.Image = ModuleData.Icon
             ModuleIcon.ImageColor3 = Color3.fromRGB(255,255,255)
             ModuleIcon.ScaleType = Enum.ScaleType.Fit
+            ModuleIcon.ZIndex = 2
 
             local ModuleDetails = Instance.new("Frame", ModuleData.Objects.Module)
             ModuleDetails.BackgroundTransparency = 1
@@ -2535,6 +2538,7 @@ do
             SettingsButtonIcon.ImageColor3 = Color3.fromRGB(255,255,255)
             SettingsButtonIcon.ImageTransparency = 0.5
             SettingsButtonIcon.ScaleType = Enum.ScaleType.Fit
+            SettingsButtonIcon.ZIndex = 2
 
             local Backbutton = Instance.new("ImageButton", tab.Objects.ContentCanvas)
             Backbutton.BackgroundColor3 = Color3.fromRGB(SpaceUI.Config.UI.TabColor.value1 + 20, SpaceUI.Config.UI.TabColor.value2 + 20, SpaceUI.Config.UI.TabColor.value3 + 20)
