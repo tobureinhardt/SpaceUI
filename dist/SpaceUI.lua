@@ -4418,7 +4418,6 @@ do
         end
         
         local SettingsScroll = Instance.new("ScrollingFrame", Settings.Objects.ActualPage)
-        SettingsScroll.ZIndex = 2
         SettingsScroll.AnchorPoint = Vector2.new(0.5, 1)
         SettingsScroll.BackgroundTransparency = 1
         SettingsScroll.Position = UDim2.new(0.5, 0, 1, 20)
@@ -4446,7 +4445,6 @@ do
             }
 
             local Section = Instance.new("Frame", SettingsScroll)
-            Section.ZIndex = 2
             Section.AnchorPoint = Vector2.new(0.5, 0)
             Section.AutomaticSize = Enum.AutomaticSize.Y
             Section.BackgroundTransparency = 1
@@ -4457,7 +4455,6 @@ do
             SectionList.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
             local SectionText = Instance.new("TextLabel", Section)
-            SectionText.ZIndex = 2
             SectionText.BackgroundTransparency = 1
             SectionText.Size = UDim2.new(1, -40, 0, 20)
             SectionText.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular)
@@ -4484,7 +4481,6 @@ do
                 }
 
                 ButtonData.Objects.MainButton = Instance.new("ImageButton", Section)
-                ButtonData.Objects.MainButton.ZIndex = 2
                 ButtonData.Objects.MainButton.BackgroundTransparency = 1
                 ButtonData.Objects.MainButton.Size = UDim2.new(1, 0, 0, 45)
                 ButtonData.Objects.MainButton.AutoButtonColor = false
@@ -4512,7 +4508,6 @@ do
                 ButtonPadding.PaddingRight = UDim.new(0, 20)
 
                 ButtonData.Objects.MainButtonText = Instance.new("TextLabel", ButtonData.Objects.MainButton)
-                ButtonData.Objects.MainButtonText.ZIndex = 2
                 ButtonData.Objects.MainButtonText.AnchorPoint = Vector2.new(0, 0.5)
                 ButtonData.Objects.MainButtonText.BackgroundTransparency = 1
                 ButtonData.Objects.MainButtonText.Position = UDim2.fromScale(0, 0.5)
@@ -4528,7 +4523,6 @@ do
                 local EnabledCheckMark
                 if ButtonData.Toggle then
                     EnabledCheckMark = Instance.new("ImageLabel", ButtonData.Objects.MainButton)
-                    EnabledCheckMark.ZIndex = 2
                     EnabledCheckMark.AnchorPoint = Vector2.new(1, 0.5)
                     EnabledCheckMark.BackgroundTransparency = 1
                     EnabledCheckMark.Position = UDim2.fromScale(1, 0.5)
