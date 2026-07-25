@@ -612,6 +612,7 @@ do
         InitInfo.Objects.MainScreenGuiScale.Scale = SpaceUI.Config.UI.Scale
             
         InitInfo.Objects.MainFrame = Instance.new("ImageButton", InitInfo.Objects.MainScreenGui)
+        InitInfo.Objects.MainFrame.ZIndex = 2
         InitInfo.Objects.MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
         InitInfo.Objects.MainFrame.AutoButtonColor = false
         InitInfo.Objects.MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
@@ -629,6 +630,7 @@ do
         table.insert(SpaceUI.Corners, mainframecorner)
     
         InitInfo.Objects.PageHolder = Instance.new("Frame", InitInfo.Objects.MainFrame)
+        InitInfo.Objects.PageHolder.ZIndex = 2
         InitInfo.Objects.PageHolder.BackgroundTransparency = 1
         InitInfo.Objects.PageHolder.AnchorPoint = Vector2.new(0.5, 0.5)
         InitInfo.Objects.PageHolder.Size = UDim2.fromScale(1, 1)
@@ -842,6 +844,7 @@ do
         end))
     
         InitInfo.Objects.NavigationButtons = Instance.new("Frame", InitInfo.Objects.MainFrame)
+        InitInfo.Objects.NavigationButtons.ZIndex = 2
         InitInfo.Objects.NavigationButtons.BackgroundTransparency = 1
         InitInfo.Objects.NavigationButtons.Position = UDim2.fromScale(0.025, 0.091)
         InitInfo.Objects.NavigationButtons.Size = UDim2.fromScale(0.074, 0.058)
@@ -858,6 +861,7 @@ do
         InitInfo.Objects.WindowControls.ZIndex = 2
     
         local MainControlsWindow = Instance.new("Frame", InitInfo.Objects.WindowControls)
+        MainControlsWindow.ZIndex = 2
         MainControlsWindow.AnchorPoint = Vector2.new(1, 1)
         MainControlsWindow.BackgroundTransparency = 1
         MainControlsWindow.Position = UDim2.fromScale(1, 1)
@@ -878,6 +882,7 @@ do
             }
     
             buttondata.Button = Instance.new("ImageButton", InitInfo.Objects.NavigationButtons)
+            buttondata.Button.ZIndex = 2
             buttondata.Button.AutoButtonColor = false
             buttondata.Button.BackgroundTransparency = 0.9
             buttondata.Button.Size = UDim2.fromOffset(40, 40)
@@ -889,6 +894,7 @@ do
             hovergradient.Enabled = false
     
             local iconimage = Instance.new("ImageLabel", buttondata.Button)
+            iconimage.ZIndex = 2
             iconimage.AnchorPoint = Vector2.new(0.5, 0.5)
             iconimage.BackgroundTransparency = 1
             iconimage.BorderSizePixel = 0
@@ -972,6 +978,7 @@ do
                 buttondata.Objects.Button.ZIndex = 10
         
                 buttondata.Objects.ActualIcon = Instance.new("ImageLabel", buttondata.Objects.Button)
+                buttondata.Objects.ActualIcon.ZIndex = 2
                 buttondata.Objects.ActualIcon.AnchorPoint = Vector2.new(0.5, 0.5)
                 buttondata.Objects.ActualIcon.BackgroundTransparency = 1
                 buttondata.Objects.ActualIcon.BorderSizePixel = 0
@@ -983,6 +990,7 @@ do
                 local ActualIconScale = Instance.new("UIScale", buttondata.Objects.ActualIcon)
         
                 buttondata.Objects.Selection = Instance.new("ImageLabel", buttondata.Objects.Button)
+                buttondata.Objects.Selection.ZIndex = 2
                 buttondata.Objects.Selection.AnchorPoint = Vector2.new(0.5, 0.5)
                 buttondata.Objects.Selection.BackgroundTransparency = 1
                 buttondata.Objects.Selection.BorderSizePixel = 0
@@ -1477,6 +1485,7 @@ do
         MainPageselectorMenu.ZIndex = 40
         
         local PageselectorShadow = Instance.new("ImageLabel", MainPageselectorMenu)
+        PageselectorShadow.ZIndex = 2
         PageselectorShadow.AnchorPoint = Vector2.new(0.5, 0.5)
         PageselectorShadow.BackgroundTransparency = 1
         PageselectorShadow.Position = UDim2.fromScale(0.5, 0.5)
@@ -1568,6 +1577,7 @@ do
         local PageSelectorButtonIconScale = Instance.new("UIScale", PageselectorButtonIcon) 
     
         PageData.Objects.ActualPage = Instance.new("CanvasGroup", SpaceUI.Background.Objects.PageHolder)
+        PageData.Objects.ActualPage.ZIndex = 2
         PageData.Objects.ActualPage.AnchorPoint = Vector2.new(0.5, 1)
         PageData.Objects.ActualPage.BackgroundTransparency = 1
         PageData.Objects.ActualPage.Position = UDim2.fromScale(0.5, 1)
@@ -1598,6 +1608,7 @@ do
         Header.TextXAlignment = Enum.TextXAlignment.Center
     
         local MainFrameScrollPage = Instance.new("ScrollingFrame", PageData.Objects.ActualPage)
+        MainFrameScrollPage.ZIndex = 2
         MainFrameScrollPage.AnchorPoint = Vector2.new(0.5, 1)
         MainFrameScrollPage.BackgroundTransparency = 1
         MainFrameScrollPage.Position = UDim2.new(0.5, 0, 1, 30)
@@ -1675,6 +1686,7 @@ do
 
         if not tab.Dashboard then return end
         tab.Objects.DashBoardButton = Instance.new("TextButton", tab.Dashboard.Objects.ActualPage:FindFirstChildWhichIsA("ScrollingFrame"))
+        tab.Objects.DashBoardButton.ZIndex = 2
         tab.Objects.DashBoardButton.AnchorPoint = Vector2.new(0.5, 0)
         tab.Objects.DashBoardButton.AutoButtonColor = false
         tab.Objects.DashBoardButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
@@ -1704,6 +1716,7 @@ do
         strokegradient.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 1, 0), NumberSequenceKeypoint.new(0.5, 0, 0), NumberSequenceKeypoint.new(1, 1, 0)})
 
         local ButtonArrow = Instance.new("ImageLabel", tab.Objects.DashBoardButton)
+        ButtonArrow.ZIndex = 2
         ButtonArrow.AnchorPoint = Vector2.new(1, 0.5)
         ButtonArrow.BackgroundTransparency = 1
         ButtonArrow.Position = UDim2.fromScale(1, 0.5)
@@ -1714,6 +1727,7 @@ do
         ButtonArrow.ScaleType = Enum.ScaleType.Fit
 
         local UserIcon = Instance.new("ImageLabel", tab.Objects.DashBoardButton)
+        UserIcon.ZIndex = 2
         UserIcon.AnchorPoint = Vector2.new(0, 0.5)
         UserIcon.BackgroundTransparency = 1
         UserIcon.BorderSizePixel = 0
@@ -1729,6 +1743,7 @@ do
             tab.Objects.DashBoardButton.Size = UDim2.new(1, 0, 0, 60)
         else
             local tabinfolabel = Instance.new("TextLabel", tab.Objects.DashBoardButton)
+            tabinfolabel.ZIndex = 2
             tabinfolabel.AnchorPoint = Vector2.new(0.5, 1)
             tabinfolabel.BackgroundTransparency = 1
             tabinfolabel.Position = UDim2.fromScale(0.5, 1)
@@ -1743,6 +1758,7 @@ do
             Instance.new("UIPadding", tabinfolabel).PaddingLeft = UDim.new(0, 20)
 
             local tabinfoicon = Instance.new("ImageLabel", tabinfolabel)
+            tabinfoicon.ZIndex = 2
             tabinfoicon.AnchorPoint = Vector2.new(0, 0.5)
             tabinfoicon.BackgroundTransparency = 1
             tabinfoicon.Position = UDim2.new(0, -20, 0.5, 0)
@@ -2104,6 +2120,7 @@ do
         SearchBarClear.ZIndex = 2
 
         local SearchBarClearIcon = Instance.new("ImageLabel", SearchBarClear)
+        SearchBarClearIcon.ZIndex = 2
         SearchBarClearIcon.AnchorPoint = Vector2.new(0.5, 0.5)
         SearchBarClearIcon.BackgroundTransparency = 1
         SearchBarClearIcon.Position = UDim2.fromScale(0.5, 0.5)
@@ -2415,6 +2432,7 @@ do
             ModuleIcon.ZIndex = 2
 
             local ModuleDetails = Instance.new("Frame", ModuleData.Objects.Module)
+            ModuleDetails.ZIndex = 2
             ModuleDetails.BackgroundTransparency = 1
             ModuleDetails.Position = UDim2.fromOffset(40, 2)
             ModuleDetails.Size = UDim2.new(1, -40, 0, 40)
@@ -2464,6 +2482,7 @@ do
             KeybindInfoIcon.ZIndex = 2
 
             local Requirements = Instance.new("Frame", ModuleData.Objects.Module)
+            Requirements.ZIndex = 2
             Requirements.AnchorPoint = Vector2.new(0.5, 0)
             Requirements.BackgroundTransparency = 1
             Requirements.BorderSizePixel = 0
@@ -2499,6 +2518,7 @@ do
             ToggleButtonEnabledIcon.ImageRectSize = Vector2.new(24, 24)
 
             local DescriptionText = Instance.new("TextLabel", Requirements)
+            DescriptionText.ZIndex = 2
             DescriptionText.BackgroundTransparency = 1
             DescriptionText.LayoutOrder = 100
             DescriptionText.Size = UDim2.new(1, 0, 0, 20)
@@ -3042,6 +3062,7 @@ do
                 SettingDetails.ZIndex = 2
 
                 local SettingNameText = Instance.new("TextLabel", SettingDetails)
+                SettingNameText.ZIndex = 2
                 SettingNameText.BackgroundTransparency = 1
                 SettingNameText.Size = UDim2.new(0.997, 0, 0, 15)
                 SettingNameText.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Medium)
@@ -3054,6 +3075,7 @@ do
                 SettingNameText.TextYAlignment = Enum.TextYAlignment.Bottom
 
                 local ToolTip = Instance.new("TextLabel", SettingDetails)
+                ToolTip.ZIndex = 2
                 ToolTip.AnchorPoint = Vector2.new(0, 1)
                 ToolTip.BackgroundTransparency = 1
                 ToolTip.Position = UDim2.new(0, 20, 1, 0)
@@ -3066,6 +3088,7 @@ do
                 ToolTip.TextXAlignment = Enum.TextXAlignment.Left
 
                 local ToolTipIcon = Instance.new("ImageLabel", SettingDetails)
+                ToolTipIcon.ZIndex = 2
                 ToolTipIcon.BackgroundTransparency = 1
                 ToolTipIcon.Position = UDim2.fromScale(-0.004, 0.571)
                 ToolTipIcon.Size = UDim2.fromOffset(15, 15)
@@ -3126,6 +3149,7 @@ do
                 TextBoxData.Objects.MainInstance.AutomaticSize = Enum.AutomaticSize.Y
 
                 local ActualTextBoxBox = Instance.new("Frame", TextBoxData.Objects.MainInstance)
+                ActualTextBoxBox.ZIndex = 2
                 ActualTextBoxBox.AnchorPoint = Vector2.new(1,0.5)
                 ActualTextBoxBox.BackgroundColor3 = Color3.fromRGB(65, 65, 65)
                 ActualTextBoxBox.BackgroundTransparency = 0.6
@@ -3144,6 +3168,7 @@ do
                 BoxPadding.PaddingTop = UDim.new(0, 12)
 
                 local ActualTextBox = Instance.new("TextBox", ActualTextBoxBox)
+                ActualTextBox.ZIndex = 2
                 ActualTextBox.BackgroundTransparency = 1
                 ActualTextBox.BorderSizePixel = 0
                 ActualTextBox.Position = UDim2.fromScale(0, 0)
@@ -3241,6 +3266,7 @@ do
                 MiniToggleData.Functions.EditToolTip = MiniToggleData.Construction.Functions.EditToolTip
 
                 local ToggleBox = Instance.new("Frame", MiniToggleData.Objects.MainInstance)
+                ToggleBox.ZIndex = 2
                 ToggleBox.AnchorPoint = Vector2.new(1, 0.5)
                 ToggleBox.BackgroundColor3 = Color3.fromRGB(65, 65, 65)
                 ToggleBox.BackgroundTransparency = 0.4
@@ -3249,6 +3275,7 @@ do
                 Instance.new("UICorner", ToggleBox).CornerRadius = UDim.new(0, 15)
                 
                 local ToggleCircle = Instance.new("Frame", ToggleBox)
+                ToggleCircle.ZIndex = 2
                 ToggleCircle.AnchorPoint = Vector2.new(0, 0.5)
                 ToggleCircle.BackgroundColor3 = Color3.fromRGB(34, 34, 34)
                 ToggleCircle.Position = UDim2.fromScale(0.05, 0.5)
@@ -4418,6 +4445,7 @@ do
         end
         
         local SettingsScroll = Instance.new("ScrollingFrame", Settings.Objects.ActualPage)
+        SettingsScroll.ZIndex = 2
         SettingsScroll.AnchorPoint = Vector2.new(0.5, 1)
         SettingsScroll.BackgroundTransparency = 1
         SettingsScroll.Position = UDim2.new(0.5, 0, 1, 20)
@@ -4445,6 +4473,7 @@ do
             }
 
             local Section = Instance.new("Frame", SettingsScroll)
+            Section.ZIndex = 2
             Section.AnchorPoint = Vector2.new(0.5, 0)
             Section.AutomaticSize = Enum.AutomaticSize.Y
             Section.BackgroundTransparency = 1
@@ -4455,6 +4484,7 @@ do
             SectionList.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
             local SectionText = Instance.new("TextLabel", Section)
+            SectionText.ZIndex = 2
             SectionText.BackgroundTransparency = 1
             SectionText.Size = UDim2.new(1, -40, 0, 20)
             SectionText.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular)
@@ -4481,6 +4511,7 @@ do
                 }
 
                 ButtonData.Objects.MainButton = Instance.new("ImageButton", Section)
+                ButtonData.Objects.MainButton.ZIndex = 2
                 ButtonData.Objects.MainButton.BackgroundTransparency = 1
                 ButtonData.Objects.MainButton.Size = UDim2.new(1, 0, 0, 45)
                 ButtonData.Objects.MainButton.AutoButtonColor = false
@@ -4508,6 +4539,7 @@ do
                 ButtonPadding.PaddingRight = UDim.new(0, 20)
 
                 ButtonData.Objects.MainButtonText = Instance.new("TextLabel", ButtonData.Objects.MainButton)
+                ButtonData.Objects.MainButtonText.ZIndex = 2
                 ButtonData.Objects.MainButtonText.AnchorPoint = Vector2.new(0, 0.5)
                 ButtonData.Objects.MainButtonText.BackgroundTransparency = 1
                 ButtonData.Objects.MainButtonText.Position = UDim2.fromScale(0, 0.5)
@@ -4523,6 +4555,7 @@ do
                 local EnabledCheckMark
                 if ButtonData.Toggle then
                     EnabledCheckMark = Instance.new("ImageLabel", ButtonData.Objects.MainButton)
+                    EnabledCheckMark.ZIndex = 2
                     EnabledCheckMark.AnchorPoint = Vector2.new(1, 0.5)
                     EnabledCheckMark.BackgroundTransparency = 1
                     EnabledCheckMark.Position = UDim2.fromScale(1, 0.5)
