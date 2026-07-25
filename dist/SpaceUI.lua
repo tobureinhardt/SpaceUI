@@ -1824,40 +1824,43 @@ do
         tab.Objects.ActualTab.Visible = false
         tab.Objects.ActualTab.ZIndex = 1
 
-        -- Shadow bao ngoài, chỉ hiện khi tab được focus (xem CaptureFocus/RemoveFocus).
-        -- QUAN TRỌNG: parent là TabBackground, KHÔNG phải ActualTab - vì ActualTab có
-        -- ClipsDescendants=true ở một số thời điểm (đóng dropdown...), sẽ cắt cụt phần
-        -- shadow lan ra ngoài biên tab. TabBackground không bị Clip nên shadow luôn
-        -- hiện đủ. Vì không còn là con của ActualTab, Position/Size/ZIndex phải tự bám
-        -- theo ActualTab bằng tay qua GetPropertyChangedSignal.
-        tab.Objects.TabFocusShadow = Instance.new("ImageLabel", SpaceUI.Tabs.TabBackground)
+        -- Viền glow cố định quanh mọi tab, luôn hiện bất kể focus/unfocus (nguyên bản
+        -- gốc bị mất trong quá trình sửa ZIndex trước đó - khôi phục y hệt).
+        local TabPrism = Instance.new("ImageLabel", tab.Objects.ActualTab)
+        TabPrism.AnchorPoint = Vector2.new(0.5, 0.5)
+        TabPrism.BackgroundTransparency = 1
+        TabPrism.Position = UDim2.fromScale(0.5, 0.5)
+        TabPrism.Size = UDim2.new(1, 20, 1, 20)
+        TabPrism.ZIndex = 1000
+        TabPrism.Image = "rbxassetid://16255699706"
+        TabPrism.ImageColor3 = Color3.fromRGB(143, 143, 143)
+        TabPrism.ImageTransparency = 0.8
+        TabPrism.ScaleType = Enum.ScaleType.Crop
+        Instance.new("UICorner", TabPrism).CornerRadius = UDim.new(0, 27)
+        local PrismStroke = Instance.new("UIStroke", TabPrism)
+        PrismStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+        PrismStroke.Color = Color3.fromRGB(255, 255, 255)
+        PrismStroke.Transparency = 0.85
+
+        -- Shadow chỉ hiện khi tab được focus (xem CaptureFocus/RemoveFocus). Copy y
+        -- hệt property của DropShadow gốc (InitInfo.Objects.DropShadow) - chỉ khác
+        -- ImageTransparency mặc định (ẩn) vì cái này cần tween ẩn/hiện theo focus.
+        -- Là con trực tiếp của ActualTab để tự động bám Position/Size/Visible theo
+        -- tab mà không cần tự bind qua GetPropertyChangedSignal (cách cũ gây lệch vị
+        -- trí ngay từ lần mở đầu tiên).
+        tab.Objects.TabFocusShadow = Instance.new("ImageLabel", tab.Objects.ActualTab)
         tab.Objects.TabFocusShadow.Name = "TabFocusShadow"
         tab.Objects.TabFocusShadow.AnchorPoint = Vector2.new(0.5, 0.5)
         tab.Objects.TabFocusShadow.BackgroundTransparency = 1
         tab.Objects.TabFocusShadow.BorderSizePixel = 0
-        tab.Objects.TabFocusShadow.Position = tab.Objects.ActualTab.Position
-        tab.Objects.TabFocusShadow.Size = tab.Objects.ActualTab.Size + UDim2.new(0, 120, 0, 120)
-        tab.Objects.TabFocusShadow.ZIndex = math.max(tab.Objects.ActualTab.ZIndex - 1, 0)
+        tab.Objects.TabFocusShadow.Position = UDim2.fromScale(0.5, 0.5)
+        tab.Objects.TabFocusShadow.Size = UDim2.new(1, 88, 1, 88)
+        tab.Objects.TabFocusShadow.ZIndex = -10
         tab.Objects.TabFocusShadow.Image = "rbxassetid://16286730454"
         tab.Objects.TabFocusShadow.ScaleType = Enum.ScaleType.Slice
         tab.Objects.TabFocusShadow.SliceCenter = Rect.new(512, 512, 512, 512)
         tab.Objects.TabFocusShadow.SliceScale = 0.19
-        tab.Objects.TabFocusShadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
         tab.Objects.TabFocusShadow.ImageTransparency = 1
-        tab.Objects.TabFocusShadow.Visible = false
-
-        table.insert(SpaceUI.Connections, tab.Objects.ActualTab:GetPropertyChangedSignal("Position"):Connect(function()
-            tab.Objects.TabFocusShadow.Position = tab.Objects.ActualTab.Position
-        end))
-        table.insert(SpaceUI.Connections, tab.Objects.ActualTab:GetPropertyChangedSignal("Size"):Connect(function()
-            tab.Objects.TabFocusShadow.Size = tab.Objects.ActualTab.Size + UDim2.new(0, 120, 0, 120)
-        end))
-        table.insert(SpaceUI.Connections, tab.Objects.ActualTab:GetPropertyChangedSignal("ZIndex"):Connect(function()
-            tab.Objects.TabFocusShadow.ZIndex = math.max(tab.Objects.ActualTab.ZIndex - 1, 0)
-        end))
-        table.insert(SpaceUI.Connections, tab.Objects.ActualTab:GetPropertyChangedSignal("Visible"):Connect(function()
-            tab.Objects.TabFocusShadow.Visible = tab.Objects.ActualTab.Visible
-        end))
 
         SpaceUI.Tabs.ActivateTab(tab)
 
