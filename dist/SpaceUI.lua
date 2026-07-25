@@ -102,7 +102,7 @@ do
         SpaceUI.Tabs.FocusedTab = tab
         tab.Objects.ActualTab.ZIndex = 2
         -- Tab được focus: đục đúng theo config gốc (không solid), shadow hiện ra.
-        playFocusTween(tab, SpaceUI.Config.UI.TabTransparency, 0.4)
+        playFocusTween(tab, SpaceUI.Config.UI.TabTransparency, 0.1)
 
         for i, v in SpaceUI.Tabs.ActiveTabs do
             if v ~= tab then
@@ -1825,21 +1825,39 @@ do
         tab.Objects.ActualTab.ZIndex = 1
 
         -- Shadow bao ngoài, chỉ hiện khi tab được focus (xem CaptureFocus/RemoveFocus).
-        -- Con của ActualTab nên tự bám theo Position/Size của tab; ZIndex rất thấp để
-        -- luôn nằm dưới mọi nội dung của CHÍNH tab này (không ảnh hưởng ZIndex so
-        -- sánh giữa các tab khác nhau, vì đó chỉ so ActualTab với ActualTab).
-        tab.Objects.TabFocusShadow = Instance.new("ImageLabel", tab.Objects.ActualTab)
+        -- QUAN TRỌNG: parent là TabBackground, KHÔNG phải ActualTab - vì ActualTab có
+        -- ClipsDescendants=true ở một số thời điểm (đóng dropdown...), sẽ cắt cụt phần
+        -- shadow lan ra ngoài biên tab. TabBackground không bị Clip nên shadow luôn
+        -- hiện đủ. Vì không còn là con của ActualTab, Position/Size/ZIndex phải tự bám
+        -- theo ActualTab bằng tay qua GetPropertyChangedSignal.
+        tab.Objects.TabFocusShadow = Instance.new("ImageLabel", SpaceUI.Tabs.TabBackground)
         tab.Objects.TabFocusShadow.Name = "TabFocusShadow"
         tab.Objects.TabFocusShadow.AnchorPoint = Vector2.new(0.5, 0.5)
         tab.Objects.TabFocusShadow.BackgroundTransparency = 1
         tab.Objects.TabFocusShadow.BorderSizePixel = 0
-        tab.Objects.TabFocusShadow.Position = UDim2.fromScale(0.5, 0.5)
-        tab.Objects.TabFocusShadow.Size = UDim2.new(1, 88, 1, 88)
-        tab.Objects.TabFocusShadow.ZIndex = -1000
+        tab.Objects.TabFocusShadow.Position = tab.Objects.ActualTab.Position
+        tab.Objects.TabFocusShadow.Size = tab.Objects.ActualTab.Size + UDim2.new(0, 120, 0, 120)
+        tab.Objects.TabFocusShadow.ZIndex = math.max(tab.Objects.ActualTab.ZIndex - 1, 0)
         tab.Objects.TabFocusShadow.Image = "rbxassetid://16286730454"
         tab.Objects.TabFocusShadow.ScaleType = Enum.ScaleType.Slice
         tab.Objects.TabFocusShadow.SliceCenter = Rect.new(512, 512, 512, 512)
+        tab.Objects.TabFocusShadow.SliceScale = 0.19
+        tab.Objects.TabFocusShadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
         tab.Objects.TabFocusShadow.ImageTransparency = 1
+        tab.Objects.TabFocusShadow.Visible = false
+
+        table.insert(SpaceUI.Connections, tab.Objects.ActualTab:GetPropertyChangedSignal("Position"):Connect(function()
+            tab.Objects.TabFocusShadow.Position = tab.Objects.ActualTab.Position
+        end))
+        table.insert(SpaceUI.Connections, tab.Objects.ActualTab:GetPropertyChangedSignal("Size"):Connect(function()
+            tab.Objects.TabFocusShadow.Size = tab.Objects.ActualTab.Size + UDim2.new(0, 120, 0, 120)
+        end))
+        table.insert(SpaceUI.Connections, tab.Objects.ActualTab:GetPropertyChangedSignal("ZIndex"):Connect(function()
+            tab.Objects.TabFocusShadow.ZIndex = math.max(tab.Objects.ActualTab.ZIndex - 1, 0)
+        end))
+        table.insert(SpaceUI.Connections, tab.Objects.ActualTab:GetPropertyChangedSignal("Visible"):Connect(function()
+            tab.Objects.TabFocusShadow.Visible = tab.Objects.ActualTab.Visible
+        end))
 
         SpaceUI.Tabs.ActivateTab(tab)
 
