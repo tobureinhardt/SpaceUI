@@ -3042,6 +3042,7 @@ do
                 SettingDetails.ZIndex = 2
 
                 local SettingNameText = Instance.new("TextLabel", SettingDetails)
+                SettingNameText.ZIndex = 2
                 SettingNameText.BackgroundTransparency = 1
                 SettingNameText.Size = UDim2.new(0.997, 0, 0, 15)
                 SettingNameText.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Medium)
@@ -3054,6 +3055,7 @@ do
                 SettingNameText.TextYAlignment = Enum.TextYAlignment.Bottom
 
                 local ToolTip = Instance.new("TextLabel", SettingDetails)
+                ToolTip.ZIndex = 2
                 ToolTip.AnchorPoint = Vector2.new(0, 1)
                 ToolTip.BackgroundTransparency = 1
                 ToolTip.Position = UDim2.new(0, 20, 1, 0)
@@ -3066,6 +3068,7 @@ do
                 ToolTip.TextXAlignment = Enum.TextXAlignment.Left
 
                 local ToolTipIcon = Instance.new("ImageLabel", SettingDetails)
+                ToolTipIcon.ZIndex = 2
                 ToolTipIcon.BackgroundTransparency = 1
                 ToolTipIcon.Position = UDim2.fromScale(-0.004, 0.571)
                 ToolTipIcon.Size = UDim2.fromOffset(15, 15)
@@ -3126,6 +3129,7 @@ do
                 TextBoxData.Objects.MainInstance.AutomaticSize = Enum.AutomaticSize.Y
 
                 local ActualTextBoxBox = Instance.new("Frame", TextBoxData.Objects.MainInstance)
+                ActualTextBoxBox.ZIndex = 2
                 ActualTextBoxBox.AnchorPoint = Vector2.new(1,0.5)
                 ActualTextBoxBox.BackgroundColor3 = Color3.fromRGB(65, 65, 65)
                 ActualTextBoxBox.BackgroundTransparency = 0.6
@@ -3144,6 +3148,7 @@ do
                 BoxPadding.PaddingTop = UDim.new(0, 12)
 
                 local ActualTextBox = Instance.new("TextBox", ActualTextBoxBox)
+                ActualTextBox.ZIndex = 2
                 ActualTextBox.BackgroundTransparency = 1
                 ActualTextBox.BorderSizePixel = 0
                 ActualTextBox.Position = UDim2.fromScale(0, 0)
@@ -3241,6 +3246,7 @@ do
                 MiniToggleData.Functions.EditToolTip = MiniToggleData.Construction.Functions.EditToolTip
 
                 local ToggleBox = Instance.new("Frame", MiniToggleData.Objects.MainInstance)
+                ToggleBox.ZIndex = 2
                 ToggleBox.AnchorPoint = Vector2.new(1, 0.5)
                 ToggleBox.BackgroundColor3 = Color3.fromRGB(65, 65, 65)
                 ToggleBox.BackgroundTransparency = 0.4
@@ -3249,6 +3255,7 @@ do
                 Instance.new("UICorner", ToggleBox).CornerRadius = UDim.new(0, 15)
                 
                 local ToggleCircle = Instance.new("Frame", ToggleBox)
+                ToggleCircle.ZIndex = 2
                 ToggleCircle.AnchorPoint = Vector2.new(0, 0.5)
                 ToggleCircle.BackgroundColor3 = Color3.fromRGB(34, 34, 34)
                 ToggleCircle.Position = UDim2.fromScale(0.05, 0.5)
