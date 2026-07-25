@@ -1819,23 +1819,8 @@ do
             end
         end
 
-        local TabPrism = Instance.new("ImageLabel", tab.Objects.ActualTab)
-        TabPrism.AnchorPoint = Vector2.new(0.5, 0.5)
-        TabPrism.BackgroundTransparency = 1
-        TabPrism.Position = UDim2.fromScale(0.5, 0.5)
-        TabPrism.Size = UDim2.new(1, 20, 1, 20)
-        TabPrism.ZIndex = 1000
-        TabPrism.Image = "rbxassetid://16255699706"
-        TabPrism.ImageColor3 = Color3.fromRGB(143, 143, 143)
-        TabPrism.ImageTransparency = 0.8
-        TabPrism.ScaleType = Enum.ScaleType.Crop
-        Instance.new("UICorner", TabPrism).CornerRadius = UDim.new(0, 27)
-        local PrismStroke = Instance.new("UIStroke", TabPrism)
-        PrismStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-        PrismStroke.Color = Color3.fromRGB(255, 255, 255)
-        PrismStroke.Transparency = 0.85
-
         tab.Objects.TabDragCanvas = Instance.new("CanvasGroup", tab.Objects.ActualTab)
+        tab.Objects.TabDragCanvas.Active = false
         tab.Objects.TabDragCanvas.AnchorPoint = Vector2.new(0.5, 0.5)
         tab.Objects.TabDragCanvas.BackgroundTransparency = 1
         tab.Objects.TabDragCanvas.Position = UDim2.fromScale(0.5, 0.5)
@@ -2056,6 +2041,7 @@ do
         ScrollFramePad.PaddingRight = UDim.new(0, 15)
 
         local SearchBar = Instance.new("Frame", tab.Objects.ScrollFrame)
+        SearchBar.ZIndex = 2
         SearchBar.AnchorPoint = Vector2.new(0.5, 0)
         SearchBar.BackgroundTransparency = 0.7
         SearchBar.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
@@ -2094,6 +2080,7 @@ do
         MainSearchBarTextBox.TextXAlignment = Enum.TextXAlignment.Left
         MainSearchBarTextBox.Text = ""
         MainSearchBarTextBox.ClearTextOnFocus = false
+        MainSearchBarTextBox.ZIndex = 2
 
         local SearchBarIcon = Instance.new("ImageLabel", SearchBar)
         SearchBarIcon.AnchorPoint = Vector2.new(0, 0.5)
@@ -2111,6 +2098,7 @@ do
         SearchBarClear.Position = UDim2.fromScale(1, 0.5)
         SearchBarClear.Size = UDim2.fromOffset(40, 40)
         SearchBarClear.AutoButtonColor = false
+        SearchBarClear.ZIndex = 2
 
         local SearchBarClearIcon = Instance.new("ImageLabel", SearchBarClear)
         SearchBarClearIcon.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -2127,11 +2115,29 @@ do
 
 
         local resotredback = {backbuttons = {}, keybinds = {}}
+        local activeFadeTweens = {}
+        local function cancelActiveFadeTweens()
+            -- reopen = true (gọi từ Assets.Main.ToggleVisibility khi bật/tắt cả UI)
+            -- cố tình bỏ qua debounce ToggleAnimating bên dưới, nên 2 lần gọi
+            -- ToggleTab có thể chồng lên nhau và tạo 2 tween chạy song song trên
+            -- cùng 1 property (GroupTransparency / ImageTransparency) theo 2 hướng
+            -- ngược nhau -> TweenService chốt giá trị cuối cùng nhận được, khiến
+            -- tab kẹt lại ở giữa khoảng mờ (nhìn như bị "dim") thay vì tới đích 0
+            -- hoặc 1. Huỷ tween cũ trước khi phát tween mới để luôn chỉ có 1 tween
+            -- sở hữu mỗi property tại một thời điểm.
+            for i = #activeFadeTweens, 1, -1 do
+                activeFadeTweens[i]:Cancel()
+                table.remove(activeFadeTweens, i)
+            end
+        end
+
         tab.Functions.ToggleTab = function(visible, anim, reopen)
             -- Debounce: nếu tab đang giữa animation mở/đóng (0.8s), bỏ qua lời gọi
             -- trùng lặp. Thiếu chốt này khiến 2 animation chạy chồng nhau tranh chấp
-            -- ActualTab.ImageTransparency theo 2 hướng ngược nhau.
+            -- ContentCanvas.GroupTransparency / ActualTab.ImageTransparency theo 2
+            -- hướng ngược nhau, khiến nó kẹt dim mãi cho tới khi tab mất focus.
             if tab.Data.ToggleAnimating and not reopen then return end
+            cancelActiveFadeTweens()
             tab.Data.ToggleAnimating = true
             task.spawn(function()
                 -- Nếu Module Settings đang bị kẹt mở (vd: tab bị đóng/dim trước khi bấm Back),
@@ -2174,6 +2180,7 @@ do
 
                     if anim and SpaceUI.Config.UI.Anim then
                         tab.Objects.ActualTab.ImageTransparency = 1
+                        tab.Objects.ContentCanvas.GroupTransparency = 1
                         TabScale.Scale = 1.2
 
                         if SpaceUI.Tabs.TabBackground.ImageTransparency < 1 then
@@ -2181,8 +2188,15 @@ do
                         end
                         SpaceUI.IsAllowedToHoverTabButton = true
 
-                        TweenService:Create(tab.Objects.ActualTab, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = SpaceUI.Config.UI.TabTransparency}):Play()
-                        TweenService:Create(TabScale, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {Scale = 1}):Play()
+                        local fadeInActualTab = TweenService:Create(tab.Objects.ActualTab, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = SpaceUI.Config.UI.TabTransparency})
+                        local fadeInContent = TweenService:Create(tab.Objects.ContentCanvas, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {GroupTransparency = 0})
+                        local scaleInTween = TweenService:Create(TabScale, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {Scale = 1})
+                        table.insert(activeFadeTweens, fadeInActualTab)
+                        table.insert(activeFadeTweens, fadeInContent)
+                        table.insert(activeFadeTweens, scaleInTween)
+                        fadeInActualTab:Play()
+                        fadeInContent:Play()
+                        scaleInTween:Play()
                         task.wait(0.8)
                     else
                         if SpaceUI.Tabs.TabBackground.ImageTransparency < 1 then
@@ -2215,14 +2229,27 @@ do
                     TabHeader.TextTransparency = 1
                     if anim and SpaceUI.Config.UI.Anim  then
                         local info = TweenInfo.new(.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
-                        TweenService:Create(tab.Objects.ActualTab, info, {ImageTransparency = 1}):Play()
-                        TweenService:Create(TabScale, info, {Scale = 1.2}):Play()
+                        local fadeOutActualTab = TweenService:Create(tab.Objects.ActualTab, info, {ImageTransparency = 1})
+                        local fadeOutContent = TweenService:Create(tab.Objects.ContentCanvas, info, {GroupTransparency = 1})
+                        local scaleOutTween = TweenService:Create(TabScale, info, {Scale = 1.2})
+                        table.insert(activeFadeTweens, fadeOutActualTab)
+                        table.insert(activeFadeTweens, fadeOutContent)
+                        table.insert(activeFadeTweens, scaleOutTween)
+                        fadeOutActualTab:Play()
+                        fadeOutContent:Play()
+                        scaleOutTween:Play()
 
                         if SpaceUI.Tabs.TabBackground.ImageTransparency < 1 then
                             TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
                         end
                         SpaceUI.IsAllowedToHoverTabButton = true
 
+                        -- Port dung cau truc rbxmx: file goc (exe_main_module.lua) luon tween
+                        -- GroupTransparency cua CAC CanvasGroup con (dashboard_frame, main_frame,
+                        -- credits_frame, window_controls) song song voi frame cha. ContentCanvas
+                        -- la CanvasGroup con tuong duong trong SpaceUI (dong 1744) nhung truoc day
+                        -- chua bao gio duoc tween - do la ly do noi dung tab dung nguyen ro net
+                        -- roi cat phut, thay vi mo dan giong file goc. task.wait giu nguyen 0.8s.
                         task.wait(0.8)
                         tab.Objects.ActualTab.Visible = false
                         tab.Objects.ScrollFrame.Visible = false
