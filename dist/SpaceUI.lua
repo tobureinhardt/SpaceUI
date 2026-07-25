@@ -3369,6 +3369,7 @@ do
                 Numbers.BackgroundTransparency = 1
                 Numbers.Position = UDim2.fromScale(0.59, 0.237)
                 Numbers.Size = UDim2.fromScale(0.409, 0.15)
+                Numbers.ZIndex = 2
 
                 local NumbersLayout = Instance.new("UIListLayout", Numbers)
                 NumbersLayout.Padding = UDim.new(0, 20)
@@ -3389,6 +3390,7 @@ do
                 SliderValue2.TextXAlignment = Enum.TextXAlignment.Right
                 SliderValue2.AutomaticSize = Enum.AutomaticSize.X
                 SliderValue2.LayoutOrder = 2
+                SliderValue2.ZIndex = 2
 
                 local SliderBox = Instance.new("Frame", SliderData.Objects.MainInstance)
                 SliderBox.AnchorPoint = Vector2.new(0, 0.5)
@@ -3396,6 +3398,7 @@ do
                 SliderBox.BackgroundTransparency = 0.6
                 SliderBox.Position = UDim2.fromScale(0, 0.63)
                 SliderBox.Size = UDim2.fromScale(1, 0.05)
+                SliderBox.ZIndex = 2
                 Instance.new("UICorner", SliderBox).CornerRadius = UDim.new(0, 15)
 
                 local Fill = Instance.new("Frame", SliderBox)
@@ -3403,6 +3406,7 @@ do
                 Fill.BackgroundColor3 = Color3.fromRGB(195, 195, 195)
                 Fill.Position = UDim2.fromScale(0, 0.5)
                 Fill.Size = UDim2.fromScale(math.clamp((tonumber(SliderValue2.Text)-SliderData.Min)/(SliderData.Max-SliderData.Min), 0, 1), 1)
+                Fill.ZIndex = 2
                 Instance.new("UICorner", Fill).CornerRadius = UDim.new(0, 15)
 
                 local Circle2 = Instance.new("ImageButton", Fill)
@@ -3412,6 +3416,7 @@ do
                 Circle2.Position = UDim2.fromScale(1, 0.5)
                 Circle2.Size = UDim2.fromOffset(10, 10)
                 Circle2.ImageTransparency = 1
+                Circle2.ZIndex = 2
                 Instance.new("UICorner", Circle2).CornerRadius = UDim.new(0, 15)
 
                 SliderData.Functions.SetValue = function(value: number, save: boolean, target: number)
@@ -3494,6 +3499,7 @@ do
                     SliderValue1.TextXAlignment = Enum.TextXAlignment.Left
                     SliderValue1.AutomaticSize = Enum.AutomaticSize.X
                     SliderValue1.LayoutOrder = 0
+                    SliderValue1.ZIndex = 2
                     local ValueSplitIcon = Instance.new("ImageLabel", Numbers)
                     ValueSplitIcon.BackgroundTransparency = 1
                     ValueSplitIcon.Size = UDim2.fromOffset(15, 15)
@@ -3502,6 +3508,7 @@ do
                     ValueSplitIcon.ImageTransparency = 0.6
                     ValueSplitIcon.ScaleType = Enum.ScaleType.Stretch
                     ValueSplitIcon.LayoutOrder = 1
+                    ValueSplitIcon.ZIndex = 2
 
                     Circle1 = Instance.new("ImageButton", Fill)
                     Circle1.AutoButtonColor = false
@@ -3510,6 +3517,7 @@ do
                     Circle1.Position = UDim2.fromScale(0, 0.5)
                     Circle1.Size = UDim2.fromOffset(10, 10)
                     Circle1.ImageTransparency = 1
+                    Circle1.ZIndex = 2
                     Instance.new("UICorner", Circle1).CornerRadius = UDim.new(0, 15)
 
                     local sliderdragbuttonclickcon2 =  Circle1.MouseButton1Down:Connect(function()
@@ -3679,6 +3687,7 @@ do
                 DropBox.Size = UDim2.new(1, 0, 0, 35)
                 DropBox.ImageTransparency = 1
                 DropBox.ClipsDescendants = true
+                DropBox.ZIndex = 2
                 Instance.new("UICorner", DropBox).CornerRadius = UDim.new(0, 6)
                 -- DropBox.AutomaticSize = Enum.AutomaticSize.Y
                 
@@ -3691,6 +3700,7 @@ do
                 Details.BackgroundTransparency = 1
                 Details.Position = UDim2.fromScale(0.5, 0)
                 Details.Size = UDim2.new(1, 0, 0, 35)
+                Details.ZIndex = 2
 
                 local SelectedText = Instance.new("TextLabel", Details)
                 SelectedText.AnchorPoint = Vector2.new(0, 0.5)
@@ -3729,6 +3739,7 @@ do
                 OptionsList.ScrollBarImageTransparency = 1
                 OptionsList.CanvasSize = UDim2.fromScale(0, 0)
                 OptionsList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+                OptionsList.ZIndex = 2
 
                 local OptionsLayout = Instance.new("UIListLayout", OptionsList)
                 OptionsLayout.Padding = UDim.new(0, 2)
@@ -3810,6 +3821,7 @@ do
                     Button.BackgroundTransparency = 1
                     Button.Size = UDim2.new(0.97, 0, 0, 20)
                     Button.Text = ""
+                    Button.ZIndex = 2
 
                     ButtonInfo.ButtonText.Parent = Button
                     ButtonInfo.ButtonText.AnchorPoint = Vector2.new(0, 0.5)
@@ -3822,6 +3834,7 @@ do
                     ButtonInfo.ButtonText.TextSize = 13
                     ButtonInfo.ButtonText.TextTransparency = 0.2
                     ButtonInfo.ButtonText.TextXAlignment = Enum.TextXAlignment.Left
+                    ButtonInfo.ButtonText.ZIndex = 2
 
                     ButtonInfo.CheckMark.Parent = Button
                     ButtonInfo.CheckMark.AnchorPoint = Vector2.new(0, 0.5)
@@ -3833,6 +3846,7 @@ do
                     ButtonInfo.CheckMark.ImageTransparency = 0.2
                     ButtonInfo.CheckMark.ScaleType = Enum.ScaleType.Stretch
                     ButtonInfo.CheckMark.Visible = false
+                    ButtonInfo.CheckMark.ZIndex = 2
 
                     if typeof(DropdownData.Default) == "table" then
                         if table.find(DropdownData.Default, tostring(v)) then
@@ -4072,6 +4086,7 @@ do
                 KeybindBox.Position = UDim2.fromScale(1, 0.5)
                 KeybindBox.Size = UDim2.fromOffset(25, 25)
                 KeybindBox.AutoButtonColor = false
+                KeybindBox.ZIndex = 2
                 Instance.new("UICorner", KeybindBox).CornerRadius = UDim.new(0, 5)
                 
                 local BoxStroke = Instance.new("UIStroke", KeybindBox)
@@ -4087,6 +4102,7 @@ do
                 BoxIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
                 BoxIcon.ImageTransparency = 0.6
                 BoxIcon.ScaleType = Enum.ScaleType.Stretch
+                BoxIcon.ZIndex = 2
 
                 local KeybindText = Instance.new("TextLabel", KeybindBox)
                 KeybindText.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -4099,6 +4115,7 @@ do
                 KeybindText.TextSize = 13
                 KeybindText.TextTransparency = 0.6
                 KeybindText.Visible = false
+                KeybindText.ZIndex = 2
 
                 if SpaceUI.Mobile then
                     table.insert(ModuleData.onToggles, function(self, enabled)
