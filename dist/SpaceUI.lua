@@ -70,6 +70,12 @@ local SpaceUI = getgenv().SpaceUI
 do
     SpaceUI.Tabs.ActiveTabs = SpaceUI.Tabs.ActiveTabs or {}
 
+    -- TweenService lấy độc lập tại đây: khối do...end này đứng trước dòng khai
+    -- báo `local TweenService` ở phần đầu file, nên biến đó chưa nằm trong scope
+    -- local của khối này (dù runtime đã có giá trị, Lua vẫn coi nó là global và
+    -- trả nil, gây lỗi "attempt to index nil with 'Create'").
+    local _FocusTweenService = game:GetService("TweenService")
+
     -- Tween ImageTransparency đang chạy cho hiệu ứng focus/unfocus của từng tab,
     -- keyed theo chính bảng `tab`. Huỷ tween cũ trước khi phát tween mới để đổi
     -- focus liên tục (bấm qua lại nhiều tab nhanh) không tạo 2 tween chồng nhau
@@ -82,8 +88,8 @@ do
             end
         end
         local info = TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-        local t1 = TweenService:Create(tab.Objects.ActualTab, info, {ImageTransparency = imageTransparency})
-        local t2 = TweenService:Create(tab.Objects.TabFocusShadow, info, {ImageTransparency = shadowTransparency})
+        local t1 = _FocusTweenService:Create(tab.Objects.ActualTab, info, {ImageTransparency = imageTransparency})
+        local t2 = _FocusTweenService:Create(tab.Objects.TabFocusShadow, info, {ImageTransparency = shadowTransparency})
         tabFocusTweens[tab] = {t1, t2}
         t1:Play()
         t2:Play()
