@@ -2029,6 +2029,7 @@ do
         tab.Objects.ScrollFrame.ScrollingDirection = Enum.ScrollingDirection.Y
         tab.Objects.ScrollFrame.VerticalScrollBarPosition = Enum.VerticalScrollBarPosition.Right
         tab.Objects.ScrollFrame.BorderSizePixel = 0
+        tab.Objects.ScrollFrame.ZIndex = 2
 
         local ScrollFrameList = Instance.new("UIListLayout", tab.Objects.ScrollFrame)
         ScrollFrameList.SortOrder = Enum.SortOrder.LayoutOrder
@@ -2460,6 +2461,7 @@ do
             KeybindInfoIcon.ImageColor3 = Color3.fromRGB(255,255,255)
             KeybindInfoIcon.ImageTransparency = 0.5
             KeybindInfoIcon.ScaleType = Enum.ScaleType.Fit
+            KeybindInfoIcon.ZIndex = 2
 
             local Requirements = Instance.new("Frame", ModuleData.Objects.Module)
             Requirements.AnchorPoint = Vector2.new(0.5, 0)
