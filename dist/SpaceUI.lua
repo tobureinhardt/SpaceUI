@@ -70,12 +70,33 @@ local SpaceUI = getgenv().SpaceUI
 do
     SpaceUI.Tabs.ActiveTabs = SpaceUI.Tabs.ActiveTabs or {}
 
+    -- Tween ImageTransparency đang chạy cho hiệu ứng focus/unfocus của từng tab,
+    -- keyed theo chính bảng `tab`. Huỷ tween cũ trước khi phát tween mới để đổi
+    -- focus liên tục (bấm qua lại nhiều tab nhanh) không tạo 2 tween chồng nhau
+    -- trên cùng property theo 2 hướng ngược nhau.
+    local tabFocusTweens = setmetatable({}, {__mode = "k"})
+    local function playFocusTween(tab, imageTransparency, shadowTransparency)
+        if tabFocusTweens[tab] then
+            for _, t in tabFocusTweens[tab] do
+                t:Cancel()
+            end
+        end
+        local info = TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local t1 = TweenService:Create(tab.Objects.ActualTab, info, {ImageTransparency = imageTransparency})
+        local t2 = TweenService:Create(tab.Objects.TabFocusShadow, info, {ImageTransparency = shadowTransparency})
+        tabFocusTweens[tab] = {t1, t2}
+        t1:Play()
+        t2:Play()
+    end
+
     function SpaceUI.Tabs.CaptureFocus(tab)
         if not tab or not tab.Objects or not tab.Objects.ActualTab then return end
         if SpaceUI.Tabs.FocusedTab == tab then return end
 
         SpaceUI.Tabs.FocusedTab = tab
         tab.Objects.ActualTab.ZIndex = 2
+        -- Tab được focus: đục đúng theo config gốc (không solid), shadow hiện ra.
+        playFocusTween(tab, SpaceUI.Config.UI.TabTransparency, 0.4)
 
         for i, v in SpaceUI.Tabs.ActiveTabs do
             if v ~= tab then
@@ -90,6 +111,8 @@ do
             SpaceUI.Tabs.FocusedTab = nil
         end
         tab.Objects.ActualTab.ZIndex = 1
+        -- Tab mất focus: solid hoàn toàn (hết xuyên thấu), shadow tắt hẳn.
+        playFocusTween(tab, 0, 1)
     end
 
     function SpaceUI.Tabs.ActivateTab(tab)
@@ -1794,6 +1817,23 @@ do
         tab.Objects.ActualTab.AutoButtonColor = false
         tab.Objects.ActualTab.Visible = false
         tab.Objects.ActualTab.ZIndex = 1
+
+        -- Shadow bao ngoài, chỉ hiện khi tab được focus (xem CaptureFocus/RemoveFocus).
+        -- Con của ActualTab nên tự bám theo Position/Size của tab; ZIndex rất thấp để
+        -- luôn nằm dưới mọi nội dung của CHÍNH tab này (không ảnh hưởng ZIndex so
+        -- sánh giữa các tab khác nhau, vì đó chỉ so ActualTab với ActualTab).
+        tab.Objects.TabFocusShadow = Instance.new("ImageLabel", tab.Objects.ActualTab)
+        tab.Objects.TabFocusShadow.Name = "TabFocusShadow"
+        tab.Objects.TabFocusShadow.AnchorPoint = Vector2.new(0.5, 0.5)
+        tab.Objects.TabFocusShadow.BackgroundTransparency = 1
+        tab.Objects.TabFocusShadow.BorderSizePixel = 0
+        tab.Objects.TabFocusShadow.Position = UDim2.fromScale(0.5, 0.5)
+        tab.Objects.TabFocusShadow.Size = UDim2.new(1, 88, 1, 88)
+        tab.Objects.TabFocusShadow.ZIndex = -1000
+        tab.Objects.TabFocusShadow.Image = "rbxassetid://16286730454"
+        tab.Objects.TabFocusShadow.ScaleType = Enum.ScaleType.Slice
+        tab.Objects.TabFocusShadow.SliceCenter = Rect.new(512, 512, 512, 512)
+        tab.Objects.TabFocusShadow.ImageTransparency = 1
 
         SpaceUI.Tabs.ActivateTab(tab)
 
