@@ -2385,7 +2385,14 @@ do
                         -- the tinh day som/tre hon luc tween xong -> Visible=false cat ngang tween
                         -- (nhin nhu khung 1 chut). Cho Completed dam bao luon dung thoi diem tween
                         -- da chot gia tri cuoi truoc khi an tab.
+                        -- QUAN TRONG: phai cho CA fadeOutActualTab LAN fadeOutContent, khong chi 1
+                        -- tween. Truoc day chi cho fadeOutActualTab -> ActualTab (nen/frame) an
+                        -- ngay khi no xong, nhung neu ContentCanvas chua fade kip (du chi vai frame)
+                        -- thi noi dung (Combat/Movement/Render...) van con hien ro sau khi nen da
+                        -- mat -> dung y het trieu chung "mat nen, con noi dung lo ra 1 chut roi moi
+                        -- bien mat" ma user thay.
                         fadeOutActualTab.Completed:Wait()
+                        fadeOutContent.Completed:Wait()
                         tab.Objects.ActualTab.Visible = false
                         tab.Objects.ScrollFrame.Visible = false
                     else
