@@ -2379,20 +2379,15 @@ do
                         -- la CanvasGroup con tuong duong trong SpaceUI (dong 1744) nhung truoc day
                         -- chua bao gio duoc tween - do la ly do noi dung tab dung nguyen ro net
                         -- roi cat phut, thay vi mo dan giong file goc.
-                        -- Cho Completed that cua tween thay vi task.wait(0.8): task.wait chi dam
-                        -- bao toi thieu N giay, khong dam bao dong bo voi frame ma TweenService
-                        -- thuc su chot gia tri dich, nen tren may/frame rate khong on dinh no co
-                        -- the tinh day som/tre hon luc tween xong -> Visible=false cat ngang tween
-                        -- (nhin nhu khung 1 chut). Cho Completed dam bao luon dung thoi diem tween
-                        -- da chot gia tri cuoi truoc khi an tab.
-                        -- QUAN TRONG: phai cho CA fadeOutActualTab LAN fadeOutContent, khong chi 1
-                        -- tween. Truoc day chi cho fadeOutActualTab -> ActualTab (nen/frame) an
-                        -- ngay khi no xong, nhung neu ContentCanvas chua fade kip (du chi vai frame)
-                        -- thi noi dung (Combat/Movement/Render...) van con hien ro sau khi nen da
-                        -- mat -> dung y het trieu chung "mat nen, con noi dung lo ra 1 chut roi moi
-                        -- bien mat" ma user thay.
-                        fadeOutActualTab.Completed:Wait()
-                        fadeOutContent.Completed:Wait()
+                        -- KHONG dung Completed:Wait(): neu tween bi :Cancel() (vd cancelActiveFadeTweens
+                        -- goi khi co lan ToggleTab khac chong len, xem dong 2248), event Completed
+                        -- KHONG fire -> Wait() treo vinh vien, ket code lai o day mai mai.
+                        -- Dung task.wait(info.Time) thay vi so 0.8 cung: cho dung theo duration
+                        -- thuc te cua tween (neu sau nay doi info.Time thi tu dong khop), khong
+                        -- phu thuoc event nen khong bao gio treo. Van dam bao ca ActualTab lan
+                        -- ContentCanvas fade xong truoc khi an, vi ca 3 tween dung chung info nen
+                        -- hoan tat gan nhu cung luc.
+                        task.wait(info.Time)
                         tab.Objects.ActualTab.Visible = false
                         tab.Objects.ScrollFrame.Visible = false
                     else
