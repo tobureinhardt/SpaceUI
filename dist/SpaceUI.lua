@@ -3124,13 +3124,16 @@ do
 
                 ConstructionData.Objects.MainInstance = Instance.new("ImageButton", ModuleSettings)
                 ConstructionData.Objects.MainInstance.AutoButtonColor = false
-                ConstructionData.Objects.MainInstance.BackgroundColor3 = Color3.fromRGB(0,0,0)
-                ConstructionData.Objects.MainInstance.BackgroundTransparency = 0.8
+                ConstructionData.Objects.MainInstance.BackgroundColor3 = Color3.fromRGB(255,255,255)
+                ConstructionData.Objects.MainInstance.BackgroundTransparency = 1
                 ConstructionData.Objects.MainInstance.Size = UDim2.new(1, 0, 0, ConstructionData.YSize)
-                ConstructionData.Objects.MainInstance.ImageTransparency = 1
+                -- Extracted from files/Exe5.rbxmx dashboard child-tab settings rows.
+                ConstructionData.Objects.MainInstance.Image = "rbxassetid://16287196357"
+                ConstructionData.Objects.MainInstance.ImageColor3 = Color3.fromRGB(0,0,0)
+                ConstructionData.Objects.MainInstance.ImageTransparency = 0.6
                 ConstructionData.Objects.MainInstance.Visible = false
                 ConstructionData.Objects.MainInstance.ZIndex = 2
-                Instance.new("UICorner", ConstructionData.Objects.MainInstance).CornerRadius = UDim.new(0, 10)
+                -- Exe5 rows use the baked rounded image above rather than a generated card corner.
                 
                 if ConstructionData.NeedsLayout then
                     local layout = Instance.new("UIListLayout", ConstructionData.Objects.MainInstance)
@@ -3139,39 +3142,40 @@ do
                 end
 
                 local SettingPadding = Instance.new("UIPadding", ConstructionData.Objects.MainInstance)
-                SettingPadding.PaddingBottom = UDim.new(0, 10)
-                SettingPadding.PaddingLeft = UDim.new(0, 15)
-                SettingPadding.PaddingRight = UDim.new(0, 15)
-                SettingPadding.PaddingTop = UDim.new(0, 10)
-
-                local stroke = Instance.new("UIStroke", ConstructionData.Objects.MainInstance)
-                stroke.Color = Color3.fromRGB(255, 255, 255)
-                stroke.Transparency = 0.95
+                SettingPadding.PaddingBottom = UDim.new(0, 0)
+                SettingPadding.PaddingLeft = UDim.new(0, 20)
+                SettingPadding.PaddingRight = UDim.new(0, 20)
+                SettingPadding.PaddingTop = UDim.new(0, 0)
 
                 local SettingDescLabel = Instance.new("TextLabel", ConstructionData.Objects.MainInstance)
                 SettingDescLabel.AnchorPoint = Vector2.new(0, 1)
                 SettingDescLabel.BackgroundTransparency = 1
-                SettingDescLabel.Position = UDim2.fromScale(0, 1)
-                SettingDescLabel.Size = UDim2.new(0.997, 0, 0, 15)
+                SettingDescLabel.Position = UDim2.new(0, 0, 1, 5)
+                SettingDescLabel.Size = UDim2.new(1, -40, 0, 0)
+                SettingDescLabel.AutomaticSize = Enum.AutomaticSize.Y
                 SettingDescLabel.ZIndex = 2
                 SettingDescLabel.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular)
                 SettingDescLabel.Text = ConstructionData.Description
                 SettingDescLabel.TextColor3 = Color3.fromRGB(255,255,255)
-                SettingDescLabel.TextSize = 13
-                SettingDescLabel.TextTransparency = 0.6
+                SettingDescLabel.TextSize = 14
+                SettingDescLabel.TextTransparency = 0.5
                 SettingDescLabel.TextXAlignment = Enum.TextXAlignment.Left
                 SettingDescLabel.LayoutOrder = 3
 
                 local SettingDetails = Instance.new("Frame", ConstructionData.Objects.MainInstance)
                 SettingDetails.BackgroundTransparency = 1
-                SettingDetails.Size = UDim2.new(0.63, 0, 0, 35)
+                SettingDetails.AnchorPoint = Vector2.new(0, 0.5)
+                SettingDetails.Position = UDim2.fromScale(0, 0.5)
+                SettingDetails.Size = UDim2.new(1, -40, 1, 0)
                 SettingDetails.LayoutOrder = 1
                 SettingDetails.ZIndex = 2
 
                 local SettingNameText = Instance.new("TextLabel", SettingDetails)
                 SettingNameText.ZIndex = 2
                 SettingNameText.BackgroundTransparency = 1
-                SettingNameText.Size = UDim2.new(0.997, 0, 0, 15)
+                SettingNameText.AnchorPoint = Vector2.new(0, 0.5)
+                SettingNameText.Position = UDim2.fromScale(0, 0.5)
+                SettingNameText.Size = UDim2.new(1, -120, 1, 0)
                 SettingNameText.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Medium)
                 SettingNameText.Text = ConstructionData.Name
                 SettingNameText.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -3179,9 +3183,10 @@ do
                 SettingNameText.TextTransparency = 0.1
                 SettingNameText.TextTruncate = Enum.TextTruncate.AtEnd
                 SettingNameText.TextXAlignment = Enum.TextXAlignment.Left
-                SettingNameText.TextYAlignment = Enum.TextYAlignment.Bottom
+                SettingNameText.TextYAlignment = Enum.TextYAlignment.Center
 
                 local ToolTip = Instance.new("TextLabel", SettingDetails)
+                ToolTip.Visible = false
                 ToolTip.ZIndex = 2
                 ToolTip.AnchorPoint = Vector2.new(0, 1)
                 ToolTip.BackgroundTransparency = 1
@@ -3195,6 +3200,7 @@ do
                 ToolTip.TextXAlignment = Enum.TextXAlignment.Left
 
                 local ToolTipIcon = Instance.new("ImageLabel", SettingDetails)
+                ToolTipIcon.Visible = false
                 ToolTipIcon.ZIndex = 2
                 ToolTipIcon.BackgroundTransparency = 1
                 ToolTipIcon.Position = UDim2.fromScale(-0.004, 0.571)
@@ -3238,7 +3244,7 @@ do
                 TextBoxData.Construction = ModuleData.Functions.ConstructSetting({
                     Name = TextBoxData.Name,
                     Description = TextBoxData.Description,
-                    Size = 125,
+                    Size = 50,
                     ToolTip = TextBoxData.ToolTip,
                     Layout = true,
                     OnToolTipEdit = function(new: {ToolTip: string})
@@ -3259,16 +3265,12 @@ do
                 ActualTextBoxBox.ZIndex = 2
                 ActualTextBoxBox.AnchorPoint = Vector2.new(1,0.5)
                 ActualTextBoxBox.BackgroundColor3 = Color3.fromRGB(65, 65, 65)
-                ActualTextBoxBox.BackgroundTransparency = 0.6
-                ActualTextBoxBox.Size = UDim2.new(1, 0, 0, 35)
+                ActualTextBoxBox.BackgroundTransparency = 0.7
+                ActualTextBoxBox.Size = UDim2.new(1, -10, 0, 50)
                 ActualTextBoxBox.LayoutOrder = 2
                 ActualTextBoxBox.AutomaticSize = Enum.AutomaticSize.Y
-                Instance.new("UICorner", ActualTextBoxBox).CornerRadius = UDim.new(0, 6)
+                Instance.new("UICorner", ActualTextBoxBox).CornerRadius = UDim.new(0, 10)
 
-                local BoxStroke = Instance.new("UIStroke", ActualTextBoxBox)
-                BoxStroke.Color = Color3.fromRGB(255,255,255)
-                BoxStroke.Transparency = 0.9
-                
                 local BoxPadding = Instance.new("UIPadding", ActualTextBoxBox)
                 BoxPadding.PaddingBottom = UDim.new(0, 12)
                 BoxPadding.PaddingLeft = UDim.new(0, 15)
@@ -3279,12 +3281,12 @@ do
                 ActualTextBox.BackgroundTransparency = 1
                 ActualTextBox.BorderSizePixel = 0
                 ActualTextBox.Position = UDim2.fromScale(0, 0)
-                ActualTextBox.Size = UDim2.fromScale(0.98, 0.26)
+                ActualTextBox.Size = UDim2.new(1, 0, 1, -1)
                 ActualTextBox.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Medium)
                 ActualTextBox.PlaceholderColor3 = Color3.fromRGB(140, 140, 140)
                 ActualTextBox.Text = TextBoxData.Default
                 ActualTextBox.TextColor3 = Color3.fromRGB(255,255,255)
-                ActualTextBox.TextSize = 13
+                ActualTextBox.TextSize = 16
                 ActualTextBox.TextTransparency = 0.2
                 ActualTextBox.TextWrapped = true
                 ActualTextBox.TextXAlignment = Enum.TextXAlignment.Left
@@ -3357,7 +3359,7 @@ do
                 MiniToggleData.Construction = ModuleData.Functions.ConstructSetting({
                     Name = MiniToggleData.Name,
                     Description = MiniToggleData.Description,
-                    Size = 80,
+                    Size = 45,
                     Layout = false,
                     ToolTip = MiniToggleData.ToolTip,
                     OnToolTipEdit = function(new: {ToolTip: string})
@@ -3372,33 +3374,31 @@ do
                 
                 MiniToggleData.Functions.EditToolTip = MiniToggleData.Construction.Functions.EditToolTip
 
-                local ToggleBox = Instance.new("Frame", MiniToggleData.Objects.MainInstance)
+                local ToggleBox = Instance.new("ImageLabel", MiniToggleData.Objects.MainInstance)
+                ToggleBox.Name = "check"
                 ToggleBox.ZIndex = 2
                 ToggleBox.AnchorPoint = Vector2.new(1, 0.5)
-                ToggleBox.BackgroundColor3 = Color3.fromRGB(65, 65, 65)
-                ToggleBox.BackgroundTransparency = 0.4
+                ToggleBox.BackgroundTransparency = 1
                 ToggleBox.Position = UDim2.fromScale(1, 0.5)
-                ToggleBox.Size = UDim2.fromOffset(36, 21)
-                Instance.new("UICorner", ToggleBox).CornerRadius = UDim.new(0, 15)
-                
-                local ToggleCircle = Instance.new("Frame", ToggleBox)
-                ToggleCircle.ZIndex = 2
-                ToggleCircle.AnchorPoint = Vector2.new(0, 0.5)
-                ToggleCircle.BackgroundColor3 = Color3.fromRGB(34, 34, 34)
-                ToggleCircle.Position = UDim2.fromScale(0.05, 0.5)
-                ToggleCircle.Size = UDim2.fromOffset(17, 17)
-                Instance.new("UICorner", ToggleCircle).CornerRadius = UDim.new(0, 15)
+                ToggleBox.Size = UDim2.fromOffset(18, 18)
+                ToggleBox.Image = "rbxassetid://6031094667"
+                ToggleBox.ImageColor3 = Color3.fromRGB(255, 255, 255)
+                ToggleBox.ImageTransparency = 1
+                ToggleBox.ScaleType = Enum.ScaleType.Fit
+                local ToggleCircle = Instance.new("UIScale", ToggleBox)
+                ToggleCircle.Name = "scale"
+                ToggleCircle.Scale = 0
 
                 MiniToggleData.Functions.Toggle = function(enabled, save, override)
                     if enabled and not MiniToggleData.Enabled or override or not enabled and MiniToggleData.Enabled then
                         MiniToggleData.Callback(MiniToggleData, enabled)
                     end
                     if enabled then
-                        TweenService:Create(ToggleBox, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0, BackgroundColor3 = Color3.fromRGB(195, 195, 195)}):Play()
-                        TweenService:Create(ToggleCircle, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.fromScale(0.95, 0.5)}):Play()
+                        TweenService:Create(ToggleBox, TweenInfo.new(0.45, Enum.EasingStyle.Exponential), {ImageTransparency = 0}):Play()
+                        TweenService:Create(ToggleCircle, TweenInfo.new(0.45, Enum.EasingStyle.Exponential), {Scale = 1}):Play()
                     else
-                        TweenService:Create(ToggleCircle, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.fromScale(0.05, 0.5)}):Play()
-                        TweenService:Create(ToggleBox, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.4, BackgroundColor3 = Color3.fromRGB(65, 65, 65)}):Play()
+                        TweenService:Create(ToggleCircle, TweenInfo.new(0.45, Enum.EasingStyle.Exponential), {Scale = 0}):Play()
+                        TweenService:Create(ToggleBox, TweenInfo.new(0.45, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
 
                     end
                     MiniToggleData.Enabled = enabled
