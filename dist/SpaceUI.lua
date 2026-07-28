@@ -2359,7 +2359,7 @@ do
                     if anim and SpaceUI.Config.UI.Anim  then
                         local info = TweenInfo.new(.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
                         local fadeOutActualTab = TweenService:Create(tab.Objects.ActualTab, info, {ImageTransparency = 1})
-                        local fadeOutContent = TweenService:Create(tab.Objects.ContentCanvas, TweenInfo.new(.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {GroupTransparency = 1})
+                        local fadeOutContent = TweenService:Create(tab.Objects.ContentCanvas, info, {GroupTransparency = 1})
                         local scaleOutTween = TweenService:Create(TabScale, info, {Scale = 1.2})
                         table.insert(activeFadeTweens, fadeOutActualTab)
                         table.insert(activeFadeTweens, fadeOutContent)
@@ -2378,8 +2378,14 @@ do
                         -- credits_frame, window_controls) song song voi frame cha. ContentCanvas
                         -- la CanvasGroup con tuong duong trong SpaceUI (dong 1744) nhung truoc day
                         -- chua bao gio duoc tween - do la ly do noi dung tab dung nguyen ro net
-                        -- roi cat phut, thay vi mo dan giong file goc. task.wait giu nguyen 0.8s.
-                        task.wait(0.8)
+                        -- roi cat phut, thay vi mo dan giong file goc.
+                        -- Cho Completed that cua tween thay vi task.wait(0.8): task.wait chi dam
+                        -- bao toi thieu N giay, khong dam bao dong bo voi frame ma TweenService
+                        -- thuc su chot gia tri dich, nen tren may/frame rate khong on dinh no co
+                        -- the tinh day som/tre hon luc tween xong -> Visible=false cat ngang tween
+                        -- (nhin nhu khung 1 chut). Cho Completed dam bao luon dung thoi diem tween
+                        -- da chot gia tri cuoi truoc khi an tab.
+                        fadeOutActualTab.Completed:Wait()
                         tab.Objects.ActualTab.Visible = false
                         tab.Objects.ScrollFrame.Visible = false
                     else
