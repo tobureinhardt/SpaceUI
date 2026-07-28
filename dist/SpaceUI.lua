@@ -2380,6 +2380,7 @@ do
                         -- chua bao gio duoc tween - do la ly do noi dung tab dung nguyen ro net
                         -- roi cat phut, thay vi mo dan giong file goc. task.wait giu nguyen 0.8s.
                         task.wait(0.8)
+                        task.wait()
                         tab.Objects.ActualTab.Visible = false
                         tab.Objects.ScrollFrame.Visible = false
                     else
