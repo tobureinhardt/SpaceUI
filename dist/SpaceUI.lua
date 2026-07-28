@@ -2359,7 +2359,7 @@ do
                     if anim and SpaceUI.Config.UI.Anim  then
                         local info = TweenInfo.new(.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
                         local fadeOutActualTab = TweenService:Create(tab.Objects.ActualTab, info, {ImageTransparency = 1})
-                        local fadeOutContent = TweenService:Create(tab.Objects.ContentCanvas, info, {GroupTransparency = 1})
+                        local fadeOutContent = TweenService:Create(tab.Objects.ContentCanvas, TweenInfo.new(.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {GroupTransparency = 1})
                         local scaleOutTween = TweenService:Create(TabScale, info, {Scale = 1.2})
                         table.insert(activeFadeTweens, fadeOutActualTab)
                         table.insert(activeFadeTweens, fadeOutContent)
@@ -2378,16 +2378,8 @@ do
                         -- credits_frame, window_controls) song song voi frame cha. ContentCanvas
                         -- la CanvasGroup con tuong duong trong SpaceUI (dong 1744) nhung truoc day
                         -- chua bao gio duoc tween - do la ly do noi dung tab dung nguyen ro net
-                        -- roi cat phut, thay vi mo dan giong file goc.
-                        -- KHONG dung Completed:Wait(): neu tween bi :Cancel() (vd cancelActiveFadeTweens
-                        -- goi khi co lan ToggleTab khac chong len, xem dong 2248), event Completed
-                        -- KHONG fire -> Wait() treo vinh vien, ket code lai o day mai mai.
-                        -- Dung task.wait(info.Time) thay vi so 0.8 cung: cho dung theo duration
-                        -- thuc te cua tween (neu sau nay doi info.Time thi tu dong khop), khong
-                        -- phu thuoc event nen khong bao gio treo. Van dam bao ca ActualTab lan
-                        -- ContentCanvas fade xong truoc khi an, vi ca 3 tween dung chung info nen
-                        -- hoan tat gan nhu cung luc.
-                        task.wait(info.Time)
+                        -- roi cat phut, thay vi mo dan giong file goc. task.wait giu nguyen 0.8s.
+                        task.wait(0.8)
                         tab.Objects.ActualTab.Visible = false
                         tab.Objects.ScrollFrame.Visible = false
                     else
