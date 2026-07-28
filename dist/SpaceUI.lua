@@ -3109,6 +3109,18 @@ do
             table.insert(SpaceUI.Connections, settingsbackbuttoncon)
             table.insert(ModuleData.Connections, settingsbackbuttoncon)
 
+                TweenService:Create(CloseButton, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {Position = UDim2.new(1, -5, 0, 5)}):Play()
+                tab.ClipNeeded = false
+                task.wait(0.8)
+                if not tab.ClipNeeded then
+                    tab.Objects.ActualTab.ClipsDescendants = false
+                end
+            end
+
+            local settingsbackbuttoncon = Backbutton.MouseButton1Click:Connect(function() currentbackbuttonfunc() end)
+            table.insert(SpaceUI.Connections, settingsbackbuttoncon)
+            table.insert(ModuleData.Connections, settingsbackbuttoncon)
+
             ModuleData.Functions.ConstructSetting = function(data: {Size: number, Description: string, Name: string, ToolTip: string, OnToolTipEdit: any, Layout: boolean})
                 local ConstructionData = {
                     Name = data and data.Name or "Setting",
@@ -3121,15 +3133,32 @@ do
                     OnToolTipEdit = data and data.OnToolTipEdit or function() end
                 }
 
+                -- Card container parsed directly from Exe5 panel command items
                 ConstructionData.Objects.MainInstance = Instance.new("ImageButton", ModuleSettings)
                 ConstructionData.Objects.MainInstance.AutoButtonColor = false
-                ConstructionData.Objects.MainInstance.BackgroundColor3 = Color3.fromRGB(0,0,0)
-                ConstructionData.Objects.MainInstance.BackgroundTransparency = 0.8
+                ConstructionData.Objects.MainInstance.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                ConstructionData.Objects.MainInstance.BackgroundTransparency = 0.95
+                ConstructionData.Objects.MainInstance.BorderSizePixel = 0
+                ConstructionData.Objects.MainInstance.ClipsDescendants = true
                 ConstructionData.Objects.MainInstance.Size = UDim2.new(1, 0, 0, ConstructionData.YSize)
                 ConstructionData.Objects.MainInstance.ImageTransparency = 1
                 ConstructionData.Objects.MainInstance.Visible = false
                 ConstructionData.Objects.MainInstance.ZIndex = 2
-                Instance.new("UICorner", ConstructionData.Objects.MainInstance).CornerRadius = UDim.new(0, 10)
+                
+                -- UICorner parsed from Exe5 (CornerRadius 15px)
+                local corner = Instance.new("UICorner", ConstructionData.Objects.MainInstance)
+                corner.CornerRadius = UDim.new(0, 15)
+
+                -- Depth Glass Effect parsed from Exe5 (rbxassetid://13867624647)
+                local depthImage = Instance.new("ImageLabel", ConstructionData.Objects.MainInstance)
+                depthImage.Name = "depth"
+                depthImage.AnchorPoint = Vector2.new(0, 0.5)
+                depthImage.BackgroundTransparency = 1
+                depthImage.Position = UDim2.new(0, -10, 0.5, 0)
+                depthImage.Size = UDim2.new(1, 20, 1, 0)
+                depthImage.Image = "rbxassetid://13867624647"
+                depthImage.ImageTransparency = 0.85
+                depthImage.ZIndex = 1
                 
                 if ConstructionData.NeedsLayout then
                     local layout = Instance.new("UIListLayout", ConstructionData.Objects.MainInstance)
@@ -3137,25 +3166,28 @@ do
                     layout.SortOrder = Enum.SortOrder.LayoutOrder
                 end
 
+                -- UIPadding parsed from Exe5
                 local SettingPadding = Instance.new("UIPadding", ConstructionData.Objects.MainInstance)
                 SettingPadding.PaddingBottom = UDim.new(0, 10)
-                SettingPadding.PaddingLeft = UDim.new(0, 15)
-                SettingPadding.PaddingRight = UDim.new(0, 15)
+                SettingPadding.PaddingLeft = UDim.new(0, 20)
+                SettingPadding.PaddingRight = UDim.new(0, 20)
                 SettingPadding.PaddingTop = UDim.new(0, 10)
 
+                -- UIStroke parsed from Exe5
                 local stroke = Instance.new("UIStroke", ConstructionData.Objects.MainInstance)
                 stroke.Color = Color3.fromRGB(255, 255, 255)
                 stroke.Transparency = 0.95
+                stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
                 local SettingDescLabel = Instance.new("TextLabel", ConstructionData.Objects.MainInstance)
                 SettingDescLabel.AnchorPoint = Vector2.new(0, 1)
                 SettingDescLabel.BackgroundTransparency = 1
                 SettingDescLabel.Position = UDim2.fromScale(0, 1)
                 SettingDescLabel.Size = UDim2.new(0.997, 0, 0, 15)
-                SettingDescLabel.ZIndex = 2
+                SettingDescLabel.ZIndex = 3
                 SettingDescLabel.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular)
                 SettingDescLabel.Text = ConstructionData.Description
-                SettingDescLabel.TextColor3 = Color3.fromRGB(255,255,255)
+                SettingDescLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
                 SettingDescLabel.TextSize = 13
                 SettingDescLabel.TextTransparency = 0.6
                 SettingDescLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -3163,12 +3195,13 @@ do
 
                 local SettingDetails = Instance.new("Frame", ConstructionData.Objects.MainInstance)
                 SettingDetails.BackgroundTransparency = 1
-                SettingDetails.Size = UDim2.new(0.63, 0, 0, 35)
+                SettingDetails.Position = UDim2.fromOffset(40, 2)
+                SettingDetails.Size = UDim2.new(1, -40, 0, 40)
                 SettingDetails.LayoutOrder = 1
-                SettingDetails.ZIndex = 2
+                SettingDetails.ZIndex = 3
 
                 local SettingNameText = Instance.new("TextLabel", SettingDetails)
-                SettingNameText.ZIndex = 2
+                SettingNameText.ZIndex = 3
                 SettingNameText.BackgroundTransparency = 1
                 SettingNameText.Size = UDim2.new(0.997, 0, 0, 15)
                 SettingNameText.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Medium)
@@ -3181,7 +3214,7 @@ do
                 SettingNameText.TextYAlignment = Enum.TextYAlignment.Bottom
 
                 local ToolTip = Instance.new("TextLabel", SettingDetails)
-                ToolTip.ZIndex = 2
+                ToolTip.ZIndex = 3
                 ToolTip.AnchorPoint = Vector2.new(0, 1)
                 ToolTip.BackgroundTransparency = 1
                 ToolTip.Position = UDim2.new(0, 20, 1, 0)
@@ -3194,7 +3227,7 @@ do
                 ToolTip.TextXAlignment = Enum.TextXAlignment.Left
 
                 local ToolTipIcon = Instance.new("ImageLabel", SettingDetails)
-                ToolTipIcon.ZIndex = 2
+                ToolTipIcon.ZIndex = 3
                 ToolTipIcon.BackgroundTransparency = 1
                 ToolTipIcon.Position = UDim2.fromScale(-0.004, 0.571)
                 ToolTipIcon.Size = UDim2.fromOffset(15, 15)
@@ -3207,7 +3240,6 @@ do
                     if newdata.ToolTip then
                         ConstructionData.ToolTip = newdata.ToolTip
                         ToolTip.Text = newdata.ToolTip
-
                         ConstructionData.OnToolTipEdit({ToolTip = newdata.ToolTip})
                     end
                 end
@@ -3215,6 +3247,7 @@ do
                 return ConstructionData
             end
             
+            -- TextBox Component parsed directly from Exe5 'input' XML node
             ModuleData.Functions.Settings.TextBox = function(data)
                 local TextBoxData = {
                     Name = data and data.Name or "Textbox",
@@ -3250,108 +3283,118 @@ do
                     TextBoxData.Construction.Functions.EditToolTip({ToolTip = "Tap to Enter A Value"})
                 end
 
-                TextBoxData.Functions.EditToolTip = TextBoxData.Construction.Functions.EditToolTip
+                -- SettingBox parsed 1:1 from Exe5 'input' Frame
+                local SettingBox = Instance.new("Frame", TextBoxData.Objects.MainInstance)
+                SettingBox.Name = "input"
+                SettingBox.AnchorPoint = Vector2.new(0.5, 0.0)
+                SettingBox.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+                SettingBox.BackgroundTransparency = 0.7
+                SettingBox.BorderSizePixel = 0
+                SettingBox.Position = UDim2.new(0.5, 0, 0.0, 120)
+                SettingBox.Size = UDim2.new(1.0, 0, 0.0, 40)
+                SettingBox.LayoutOrder = 2
+                SettingBox.ZIndex = 3
 
-                TextBoxData.Objects.MainInstance.AutomaticSize = Enum.AutomaticSize.Y
+                -- UICorner parsed from Exe5 'input/corner'
+                local inputCorner = Instance.new("UICorner", SettingBox)
+                inputCorner.CornerRadius = UDim.new(0, 8)
 
-                local ActualTextBoxBox = Instance.new("Frame", TextBoxData.Objects.MainInstance)
-                ActualTextBoxBox.ZIndex = 2
-                ActualTextBoxBox.AnchorPoint = Vector2.new(1,0.5)
-                ActualTextBoxBox.BackgroundColor3 = Color3.fromRGB(65, 65, 65)
-                ActualTextBoxBox.BackgroundTransparency = 0.6
-                ActualTextBoxBox.Size = UDim2.new(1, 0, 0, 35)
-                ActualTextBoxBox.LayoutOrder = 2
-                ActualTextBoxBox.AutomaticSize = Enum.AutomaticSize.Y
-                Instance.new("UICorner", ActualTextBoxBox).CornerRadius = UDim.new(0, 6)
+                -- ImageLabel parsed from Exe5 'input/depth'
+                local inputDepth = Instance.new("ImageLabel", SettingBox)
+                inputDepth.Name = "depth"
+                inputDepth.AnchorPoint = Vector2.new(0.0, 0.5)
+                inputDepth.BackgroundTransparency = 1
+                inputDepth.Position = UDim2.new(0.0, -20, 0.5, 0)
+                inputDepth.Size = UDim2.new(1.0, 20, 1.0, 0)
+                inputDepth.Image = "rbxassetid://13867624647"
+                inputDepth.ImageTransparency = 0.5
+                inputDepth.ZIndex = 3
 
-                local BoxStroke = Instance.new("UIStroke", ActualTextBoxBox)
-                BoxStroke.Color = Color3.fromRGB(255,255,255)
-                BoxStroke.Transparency = 0.9
-                
-                local BoxPadding = Instance.new("UIPadding", ActualTextBoxBox)
-                BoxPadding.PaddingBottom = UDim.new(0, 12)
-                BoxPadding.PaddingLeft = UDim.new(0, 15)
-                BoxPadding.PaddingTop = UDim.new(0, 12)
+                -- UIGradient parsed from Exe5 'input/focused_bg'
+                local focusedBg = Instance.new("UIGradient", SettingBox)
+                focusedBg.Name = "focused_bg"
+                focusedBg.Color = ColorSequence.new{
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(29, 60, 95)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(32, 124, 82))
+                }
+                focusedBg.Rotation = 90
+                focusedBg.Offset = Vector2.new(-1.0, 0.0)
 
-                local ActualTextBox = Instance.new("TextBox", ActualTextBoxBox)
-                ActualTextBox.ZIndex = 2
-                ActualTextBox.BackgroundTransparency = 1
-                ActualTextBox.BorderSizePixel = 0
-                ActualTextBox.Position = UDim2.fromScale(0, 0)
-                ActualTextBox.Size = UDim2.fromScale(0.98, 0.26)
-                ActualTextBox.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Medium)
-                ActualTextBox.PlaceholderColor3 = Color3.fromRGB(140, 140, 140)
-                ActualTextBox.Text = TextBoxData.Default
-                ActualTextBox.TextColor3 = Color3.fromRGB(255,255,255)
-                ActualTextBox.TextSize = 13
-                ActualTextBox.TextTransparency = 0.2
-                ActualTextBox.TextWrapped = true
-                ActualTextBox.TextXAlignment = Enum.TextXAlignment.Left
-                ActualTextBox.AutomaticSize = Enum.AutomaticSize.Y
+                -- UIPadding parsed from Exe5 'input/padding'
+                local inputPadding = Instance.new("UIPadding", SettingBox)
+                inputPadding.PaddingLeft = UDim.new(0, 12)
+                inputPadding.PaddingRight = UDim.new(0, 12)
+                inputPadding.PaddingTop = UDim.new(0, 5)
+                inputPadding.PaddingBottom = UDim.new(0, 5)
 
-                if TextBoxData.PlaceHolderText and typeof(TextBoxData.PlaceHolderText) == "string" then
-                    ActualTextBox.PlaceholderText = TextBoxData.PlaceHolderText
-                end
+                -- TextBox parsed from Exe5 'input/textbox'
+                local BoxInput = Instance.new("TextBox", SettingBox)
+                BoxInput.Name = "textbox"
+                BoxInput.BackgroundTransparency = 1
+                BoxInput.Position = UDim2.new(0, 0, 0, -1)
+                BoxInput.Size = UDim2.new(1, -50, 1, 0)
+                BoxInput.ZIndex = 4
+                BoxInput.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular)
+                BoxInput.PlaceholderText = TextBoxData.PlaceHolderText
+                BoxInput.PlaceholderTextColor3 = Color3.fromRGB(150, 150, 150)
+                BoxInput.Text = TextBoxData.Default
+                BoxInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+                BoxInput.TextSize = 14
+                BoxInput.TextTruncate = Enum.TextTruncate.AtEnd
+                BoxInput.TextXAlignment = Enum.TextXAlignment.Left
 
-                TextBoxData.Functions.SetVisiblity = function(enabled)
-                    if enabled then
-                        if table.find(ModuleData.Data.ExcludeSettingsVisiblity, TextBoxData) then
-                            table.remove(ModuleData.Data.ExcludeSettingsVisiblity, table.find(ModuleData.Data.ExcludeSettingsVisiblity, TextBoxData))
-                        end
-                        if ModuleData.Data.SettingsOpen then
-                            TextBoxData.Objects.MainInstance.Visible = enabled
-                        end
-                    else
-                        if not table.find(ModuleData.Data.ExcludeSettingsVisiblity, TextBoxData) then
-                            table.insert(ModuleData.Data.ExcludeSettingsVisiblity, TextBoxData)
-                        end
-                        TextBoxData.Objects.MainInstance.Visible = false
-                    end
-                end
+                local strokeBox = Instance.new("UIStroke", SettingBox)
+                strokeBox.Color = Color3.fromRGB(255, 255, 255)
+                strokeBox.Transparency = 0.95
+                strokeBox.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+                TextBoxData.Objects.SettingBox = SettingBox
+                TextBoxData.Objects.BoxInput = BoxInput
+
+                table.insert(SpaceUI.Connections, BoxInput.Focused:Connect(function()
+                    TweenService:Create(strokeBox, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {Transparency = 0.6, Color = Color3.fromRGB(100, 200, 255)}):Play()
+                    TweenService:Create(focusedBg, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {Offset = Vector2.new(0, 0)}):Play()
+                end))
+
+                table.insert(SpaceUI.Connections, BoxInput.FocusLost:Connect(function(enterPressed)
+                    TweenService:Create(strokeBox, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {Transparency = 0.95, Color = Color3.fromRGB(255, 255, 255)}):Play()
+                    TweenService:Create(focusedBg, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {Offset = Vector2.new(-1, 0)}):Play()
+                    TextBoxData.Callback(TextBoxData, BoxInput.Text, enterPressed)
+                    SpaceUI.Config.Game.TextBoxes[TextBoxData.Flag] = BoxInput.Text
+                    Assets.Config.Save(SpaceUI.GameSave, SpaceUI.Config.Game)
+                end))
 
                 if TextBoxData.Hide then
-                    TextBoxData.Functions.SetVisiblity(false)
+                    TextBoxData.Construction.Objects.MainInstance.Visible = false
+                else
+                    TextBoxData.Construction.Objects.MainInstance.Visible = true
                 end
-
-                TextBoxData.Functions.SetValue = function(text: string, save: boolean)
-                    if text and tostring(text) then
-                        text = tostring(text)
-
-                        ActualTextBox.Text = text
-                        TextBoxData.Callback(TextBoxData, text)
-                        SpaceUI.Config.Game.TextBoxes[TextBoxData.Flag] = text
-                        if save then
-                            Assets.Config.Save(SpaceUI.GameSave, SpaceUI.Config.Game)
-                        end
-                    end
-                end
-
-                local actualtextboxfocuslostcon = ActualTextBox.FocusLost:Connect(function() 
-                    TextBoxData.Callback(TextBoxData, ActualTextBox.Text)
-                    SpaceUI.Config.Game.TextBoxes[TextBoxData.Flag] = ActualTextBox.Text
-                    Assets.Config.Save(SpaceUI.GameSave, SpaceUI.Config.Game)
-                end)
-                table.insert(SpaceUI.Connections, actualtextboxfocuslostcon)
-                table.insert(ModuleData.Connections, actualtextboxfocuslostcon)
 
                 ModuleData.Settings[TextBoxData.Flag] = TextBoxData
                 return TextBoxData
             end
 
+            -- MiniToggle Component parsed directly from Exe5 'options/fullscreen' & 'check' XML node
             ModuleData.Functions.Settings.MiniToggle = function(data)
                 local MiniToggleData = {
-                    Name = data and data.Name or "New MiniToggle",
-                    Description = data and data.Description or "MiniToggle",
-                    ToolTip = data and data.Tooltip or "Click to toggle",
+                    Name = data and data.Name or "Toggle",
+                    Description = data and data.Description or "Toggle",
+                    ToolTip = data and data.ToolTip or "Click to Toggle",
+                    Flag = data and data.Flag or "New Toggle",
                     Default = data and data.Default or false,
-                    Enabled = false,
-                    Flag = data and data.Flag or data and data.Name or "New MiniToggle",
                     Hide = data and data.Hide or false,
                     Callback = data and data.Callback or function() end,
                     Type = "MiniToggles",
+                    Data = {State = false},
                     Objects = {},
                     Functions = {}
                 }
+
+                if SpaceUI.Config.Game.MiniToggles[MiniToggleData.Flag] ~= nil then
+                    MiniToggleData.Default = SpaceUI.Config.Game.MiniToggles[MiniToggleData.Flag]
+                end
+
+                MiniToggleData.Data.State = MiniToggleData.Default
 
                 MiniToggleData.Construction = ModuleData.Functions.ConstructSetting({
                     Name = MiniToggleData.Name,
@@ -3368,89 +3411,111 @@ do
                 if SpaceUI.Mobile and MiniToggleData.ToolTip == "Click to toggle" then
                     MiniToggleData.Construction.Functions.EditToolTip({ToolTip = "Tap to toggle"})
                 end
-                
-                MiniToggleData.Functions.EditToolTip = MiniToggleData.Construction.Functions.EditToolTip
 
-                local ToggleBox = Instance.new("Frame", MiniToggleData.Objects.MainInstance)
-                ToggleBox.ZIndex = 2
-                ToggleBox.AnchorPoint = Vector2.new(1, 0.5)
-                ToggleBox.BackgroundColor3 = Color3.fromRGB(65, 65, 65)
-                ToggleBox.BackgroundTransparency = 0.4
-                ToggleBox.Position = UDim2.fromScale(1, 0.5)
-                ToggleBox.Size = UDim2.fromOffset(36, 21)
-                Instance.new("UICorner", ToggleBox).CornerRadius = UDim.new(0, 15)
-                
-                local ToggleCircle = Instance.new("Frame", ToggleBox)
-                ToggleCircle.ZIndex = 2
-                ToggleCircle.AnchorPoint = Vector2.new(0, 0.5)
-                ToggleCircle.BackgroundColor3 = Color3.fromRGB(34, 34, 34)
-                ToggleCircle.Position = UDim2.fromScale(0.05, 0.5)
-                ToggleCircle.Size = UDim2.fromOffset(17, 17)
-                Instance.new("UICorner", ToggleCircle).CornerRadius = UDim.new(0, 15)
+                -- ToggleFrame parsed directly from Exe5 options/fullscreen ImageButton
+                local ToggleFrame = Instance.new("ImageButton", MiniToggleData.Objects.MainInstance)
+                ToggleFrame.Name = "fullscreen"
+                ToggleFrame.AnchorPoint = Vector2.new(1, 0.5)
+                ToggleFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+                ToggleFrame.BackgroundTransparency = 0.7
+                ToggleFrame.Position = UDim2.new(1, 0, 0.5, 0)
+                ToggleFrame.Size = UDim2.new(0, 48, 0, 26)
+                ToggleFrame.ZIndex = 3
+                ToggleFrame.AutoButtonColor = false
 
-                MiniToggleData.Functions.Toggle = function(enabled, save, override)
-                    if enabled and not MiniToggleData.Enabled or override or not enabled and MiniToggleData.Enabled then
-                        MiniToggleData.Callback(MiniToggleData, enabled)
-                    end
-                    if enabled then
-                        TweenService:Create(ToggleBox, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0, BackgroundColor3 = Color3.fromRGB(195, 195, 195)}):Play()
-                        TweenService:Create(ToggleCircle, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.fromScale(0.95, 0.5)}):Play()
+                local toggleCorner = Instance.new("UICorner", ToggleFrame)
+                toggleCorner.CornerRadius = UDim.new(0, 13)
+
+                local toggleDepth = Instance.new("ImageLabel", ToggleFrame)
+                toggleDepth.Name = "depth"
+                toggleDepth.AnchorPoint = Vector2.new(0.5, 0.5)
+                toggleDepth.BackgroundTransparency = 1
+                toggleDepth.Position = UDim2.fromScale(0.5, 0.5)
+                toggleDepth.Size = UDim2.fromScale(1, 1)
+                toggleDepth.Image = "rbxassetid://13867624647"
+                toggleDepth.ImageTransparency = 0.6
+                toggleDepth.ZIndex = 3
+
+                local toggleGradient = Instance.new("UIGradient", ToggleFrame)
+                toggleGradient.Name = "focused_bg"
+                toggleGradient.Color = ColorSequence.new{
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(32, 175, 77)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 130, 60))
+                }
+                toggleGradient.Offset = Vector2.new(-1, 0)
+
+                local toggleStroke = Instance.new("UIStroke", ToggleFrame)
+                toggleStroke.Color = Color3.fromRGB(255, 255, 255)
+                toggleStroke.Transparency = 0.9
+                toggleStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+                -- CheckIcon parsed directly from Exe5 'check' ImageLabel (rbxassetid://10709790644)
+                local CheckIcon = Instance.new("ImageLabel", ToggleFrame)
+                CheckIcon.Name = "check"
+                CheckIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+                CheckIcon.BackgroundTransparency = 1
+                CheckIcon.Position = UDim2.fromScale(0.5, 0.5)
+                CheckIcon.Size = UDim2.new(0, 16, 0, 16)
+                CheckIcon.Image = "rbxassetid://10709790644"
+                CheckIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
+                CheckIcon.ImageTransparency = MiniToggleData.Data.State and 0 or 1
+                CheckIcon.ZIndex = 4
+
+                local iconScale = Instance.new("UIScale", CheckIcon)
+                iconScale.Scale = MiniToggleData.Data.State and 1 or 0.5
+
+                MiniToggleData.Objects.ToggleFrame = ToggleFrame
+                MiniToggleData.Objects.CheckIcon = CheckIcon
+
+                MiniToggleData.Functions.SetState = function(state: boolean, skipCallback: boolean)
+                    MiniToggleData.Data.State = state
+                    if state then
+                        TweenService:Create(toggleGradient, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {Offset = Vector2.new(0, 0)}):Play()
+                        TweenService:Create(toggleStroke, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {Transparency = 0.6, Color = Color3.fromRGB(32, 175, 77)}):Play()
+                        TweenService:Create(CheckIcon, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {ImageTransparency = 0}):Play()
+                        TweenService:Create(iconScale, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()
                     else
-                        TweenService:Create(ToggleCircle, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.fromScale(0.05, 0.5)}):Play()
-                        TweenService:Create(ToggleBox, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.4, BackgroundColor3 = Color3.fromRGB(65, 65, 65)}):Play()
-
+                        TweenService:Create(toggleGradient, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {Offset = Vector2.new(-1, 0)}):Play()
+                        TweenService:Create(toggleStroke, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {Transparency = 0.9, Color = Color3.fromRGB(255, 255, 255)}):Play()
+                        TweenService:Create(CheckIcon, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
+                        TweenService:Create(iconScale, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {Scale = 0.5}):Play()
                     end
-                    MiniToggleData.Enabled = enabled
-
-                    if save then
-                        SpaceUI.Config.Game.MiniToggles[MiniToggleData.Flag] = enabled
-                        Assets.Config.Save(SpaceUI.GameSave, SpaceUI.Config.Game)
+                    if not skipCallback then
+                        MiniToggleData.Callback(MiniToggleData, state)
                     end
-                end
-                MiniToggleData.Functions.SetValue = MiniToggleData.Functions.Toggle
-
-                MiniToggleData.Functions.SetVisiblity = function(enabled)
-                    if enabled then
-                        if table.find(ModuleData.Data.ExcludeSettingsVisiblity, MiniToggleData) then
-                            table.remove(ModuleData.Data.ExcludeSettingsVisiblity, table.find(ModuleData.Data.ExcludeSettingsVisiblity, MiniToggleData))
-                        end
-                        if ModuleData.Data.SettingsOpen then
-                            MiniToggleData.Objects.MainInstance.Visible = enabled
-                        end
-                    else
-                        if not table.find(ModuleData.Data.ExcludeSettingsVisiblity, MiniToggleData) then
-                            table.insert(ModuleData.Data.ExcludeSettingsVisiblity, MiniToggleData)
-                        end
-                        MiniToggleData.Objects.MainInstance.Visible = false
-                    end
+                    SpaceUI.Config.Game.MiniToggles[MiniToggleData.Flag] = state
+                    Assets.Config.Save(SpaceUI.GameSave, SpaceUI.Config.Game)
                 end
 
-                
+                if MiniToggleData.Default then
+                    MiniToggleData.Functions.SetState(true, true)
+                end
+
+                table.insert(SpaceUI.Connections, MiniToggleData.Objects.MainInstance.MouseButton1Down:Connect(function()
+                    MiniToggleData.Functions.SetState(not MiniToggleData.Data.State)
+                end))
+
                 if MiniToggleData.Hide then
-                    MiniToggleData.Functions.SetVisiblity(false)
+                    MiniToggleData.Construction.Objects.MainInstance.Visible = false
+                else
+                    MiniToggleData.Construction.Objects.MainInstance.Visible = true
                 end
-
-                local minitoggleclickcon = MiniToggleData.Objects.MainInstance.MouseButton1Click:Connect(function()
-                    MiniToggleData.Functions.Toggle(not MiniToggleData.Enabled, true)
-                end)
-                table.insert(SpaceUI.Connections, minitoggleclickcon)
-                table.insert(ModuleData.Connections, minitoggleclickcon)
 
                 ModuleData.Settings[MiniToggleData.Flag] = MiniToggleData
                 return MiniToggleData
             end
 
+            -- Slider Component parsed directly from Exe5 'slider' XML node
             ModuleData.Functions.Settings.Slider = function(data)
                 local SliderData = {
-                    Name = data and data.Name or "New Slider",
+                    Name = data and data.Name or "Slider",
                     Description = data and data.Description or "Slider",
-                    ToolTip = data and data.Tooltip or "Slide the circle to edit value",
-                    Min = data and tonumber(data.Min) or 0,
-                    Max = data and tonumber(data.Max) or 100,
-                    Default = data and data.Default or {Value1 = 50, Value2 = 100},
-                    Decimals = data and tonumber(data.Decimals) or 0,
-                    Multi = data and data.DoubleValue or false,
-                    Flag = data and data.Flag or data and data.Name or "New Slider",
+                    ToolTip = data and data.ToolTip or "Hold and drag to change value",
+                    Flag = data and data.Flag or "New Slider",
+                    Default = data and data.Default or {Value2 = 50},
+                    Min = data and data.Min or 0,
+                    Max = data and data.Max or 100,
+                    Decimals = data and data.Decimals or 0,
                     Hide = data and data.Hide or false,
                     Callback = data and data.Callback or function() end,
                     Type = "Sliders",
@@ -3459,7 +3524,6 @@ do
                     Objects = {},
                     Functions = {}
                 }
-
 
                 if SpaceUI.Config.Game.Sliders[SliderData.Flag] then
                     if typeof(SpaceUI.Config.Game.Sliders[SliderData.Flag]) == "table" then
@@ -3473,308 +3537,161 @@ do
                     end
                 end
 
-                if not SliderData.Default.Value1 then
-                    SliderData.Default.Value1 = SliderData.Min
-                end
-                if not SliderData.Default.Value2 then
-                    SliderData.Default.Value2 = SliderData.Max
-                end
-
                 SliderData.Construction = ModuleData.Functions.ConstructSetting({
                     Name = SliderData.Name,
                     Description = SliderData.Description,
-                    Size = 100,
-                    Layout = false,
+                    Size = 125,
                     ToolTip = SliderData.ToolTip,
+                    Layout = true,
                     OnToolTipEdit = function(new: {ToolTip: string})
                         SliderData.ToolTip = new.ToolTip
                     end
                 })
 
                 SliderData.Objects.MainInstance = SliderData.Construction.Objects.MainInstance
-                if SliderData.Multi then
-                    SliderData.Construction.Functions.EditToolTip({ToolTip = "Slide a circle to edit the value"})
+
+                -- SliderFrame parsed 1:1 from Exe5 'slider' Frame
+                local SliderFrame = Instance.new("Frame", SliderData.Objects.MainInstance)
+                SliderFrame.Name = "slider"
+                SliderFrame.AnchorPoint = Vector2.new(0.5, 0.0)
+                SliderFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+                SliderFrame.BackgroundTransparency = 0.7
+                SliderFrame.BorderSizePixel = 0
+                SliderFrame.Position = UDim2.new(0.5, 0, 0.0, 120)
+                SliderFrame.Size = UDim2.new(1.0, 0, 0.0, 40)
+                SliderFrame.LayoutOrder = 2
+                SliderFrame.ZIndex = 3
+
+                -- UICorner parsed from Exe5 'slider/corner'
+                local sliderCorner = Instance.new("UICorner", SliderFrame)
+                sliderCorner.CornerRadius = UDim.new(0, 8)
+
+                -- ImageLabel parsed from Exe5 'slider/Background'
+                local sliderBgDepth = Instance.new("ImageLabel", SliderFrame)
+                sliderBgDepth.Name = "Background"
+                sliderBgDepth.AnchorPoint = Vector2.new(0.0, 0.5)
+                sliderBgDepth.BackgroundTransparency = 1
+                sliderBgDepth.Position = UDim2.new(0.0, -10, 0.5, 0)
+                sliderBgDepth.Size = UDim2.new(1.0, 20, 1.0, 0)
+                sliderBgDepth.Image = "rbxassetid://13867624647"
+                sliderBgDepth.ImageTransparency = 0.5
+                sliderBgDepth.ZIndex = 3
+
+                -- UIGradient parsed from Exe5 'slider/focused_bg'
+                local sliderFillGradient = Instance.new("UIGradient", SliderFrame)
+                sliderFillGradient.Name = "focused_bg"
+                sliderFillGradient.Color = ColorSequence.new{
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(29, 60, 95)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(32, 124, 82))
+                }
+
+                -- TextLabel parsed from Exe5 'slider/min_value'
+                local minLabel = Instance.new("TextLabel", SliderFrame)
+                minLabel.Name = "min_value"
+                minLabel.AnchorPoint = Vector2.new(0.0, 0.5)
+                minLabel.BackgroundTransparency = 1
+                minLabel.Position = UDim2.new(0.0, 10, 0.5, 0)
+                minLabel.Size = UDim2.new(0.0, 0, 0.0, 50)
+                minLabel.ZIndex = 4
+                minLabel.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular)
+                minLabel.Text = tostring(SliderData.Min)
+                minLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                minLabel.TextSize = 12
+                minLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+                -- TextLabel parsed from Exe5 'slider/max_value'
+                local maxLabel = Instance.new("TextLabel", SliderFrame)
+                maxLabel.Name = "max_value"
+                maxLabel.AnchorPoint = Vector2.new(1.0, 0.5)
+                maxLabel.BackgroundTransparency = 1
+                maxLabel.Position = UDim2.new(1.0, -10, 0.5, 0)
+                maxLabel.Size = UDim2.new(0.0, 0, 0.0, 50)
+                maxLabel.ZIndex = 4
+                maxLabel.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular)
+                maxLabel.Text = tostring(SliderData.Default.Value2 or SliderData.Max)
+                maxLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                maxLabel.TextSize = 12
+                maxLabel.TextXAlignment = Enum.TextXAlignment.Right
+
+                -- TextButton parsed from Exe5 'slider/Slider'
+                local SliderBtn = Instance.new("TextButton", SliderFrame)
+                SliderBtn.Name = "Slider"
+                SliderBtn.AnchorPoint = Vector2.new(0.5, 0.5)
+                SliderBtn.BackgroundTransparency = 1
+                SliderBtn.Position = UDim2.new(0.5, 0, 0.5, 0)
+                SliderBtn.Size = UDim2.new(0.0, 26, 0.0, 26)
+                SliderBtn.Text = ""
+                SliderBtn.ZIndex = 5
+
+                -- ImageLabel parsed from Exe5 'slider/Slider/handle' (rbxassetid://11419703997)
+                local handleImg = Instance.new("ImageLabel", SliderBtn)
+                handleImg.Name = "handle"
+                handleImg.AnchorPoint = Vector2.new(0.5, 0.5)
+                handleImg.BackgroundTransparency = 1
+                handleImg.Position = UDim2.new(0.5, 0, 0.5, 0)
+                handleImg.Size = UDim2.new(0.0, 26, 0.0, 26)
+                handleImg.Image = "rbxassetid://11419703997"
+                handleImg.ImageColor3 = Color3.fromRGB(255, 255, 255)
+                handleImg.ZIndex = 5
+
+                -- UIScale parsed from Exe5 'slider/Slider/handle/scale'
+                local handleScale = Instance.new("UIScale", handleImg)
+                handleScale.Scale = 1
+
+                SliderData.Objects.SliderFrame = SliderFrame
+                SliderData.Objects.SliderBtn = SliderBtn
+                SliderData.Objects.MaxLabel = maxLabel
+
+                local function updateSlider(input)
+                    local pos = math.clamp((input.Position.X - SliderFrame.AbsolutePosition.X) / SliderFrame.AbsoluteSize.X, 0, 1)
+                    local val = SliderData.Min + (SliderData.Max - SliderData.Min) * pos
+                    val = math.floor(val * (10 ^ SliderData.Decimals) + 0.5) / (10 ^ SliderData.Decimals)
+                    SliderBtn.Position = UDim2.new(pos, 0, 0.5, 0)
+                    maxLabel.Text = tostring(val)
+                    SliderData.Callback(SliderData, val)
+                    SpaceUI.Config.Game.Sliders[SliderData.Flag] = {Value2 = val}
+                    Assets.Config.Save(SpaceUI.GameSave, SpaceUI.Config.Game)
                 end
-                
-                SliderData.Functions.EditToolTip = SliderData.Construction.Functions.EditToolTip
 
-                local Numbers = Instance.new("Frame", SliderData.Objects.MainInstance)
-                Numbers.BackgroundTransparency = 1
-                Numbers.Position = UDim2.fromScale(0.59, 0.237)
-                Numbers.Size = UDim2.fromScale(0.409, 0.15)
-                Numbers.ZIndex = 2
+                table.insert(SpaceUI.Connections, SliderBtn.InputBegan:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                        SliderData.Data.Dragging = true
+                        TweenService:Create(handleScale, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {Scale = 1.25}):Play()
+                        updateSlider(input)
+                    end
+                end))
 
-                local NumbersLayout = Instance.new("UIListLayout", Numbers)
-                NumbersLayout.Padding = UDim.new(0, 20)
-                NumbersLayout.FillDirection = Enum.FillDirection.Horizontal
-                NumbersLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
-                NumbersLayout.SortOrder = Enum.SortOrder.LayoutOrder
+                table.insert(SpaceUI.Connections, UserInputService.InputChanged:Connect(function(input)
+                    if SliderData.Data.Dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+                        updateSlider(input)
+                    end
+                end))
 
-                local SliderValue1
-                local SliderValue2 = Instance.new("TextBox", Numbers)
-                SliderValue2.AnchorPoint = Vector2.new(0, 0.5)
-                SliderValue2.BackgroundTransparency = 1
-                SliderValue2.Size = UDim2.new(0.043, 0, 0, 15)
-                SliderValue2.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular)
-                SliderValue2.Text = tonumber(SliderData.Default.Value2)
-                SliderValue2.TextColor3 = Color3.fromRGB(255, 255, 255)
-                SliderValue2.TextSize = 13
-                SliderValue2.TextTransparency = 0.2
-                SliderValue2.TextXAlignment = Enum.TextXAlignment.Right
-                SliderValue2.AutomaticSize = Enum.AutomaticSize.X
-                SliderValue2.LayoutOrder = 2
-                SliderValue2.ZIndex = 2
-
-                local SliderBox = Instance.new("Frame", SliderData.Objects.MainInstance)
-                SliderBox.AnchorPoint = Vector2.new(0, 0.5)
-                SliderBox.BackgroundColor3 = Color3.fromRGB(65, 65, 65)
-                SliderBox.BackgroundTransparency = 0.6
-                SliderBox.Position = UDim2.fromScale(0, 0.63)
-                SliderBox.Size = UDim2.fromScale(1, 0.05)
-                SliderBox.ZIndex = 2
-                Instance.new("UICorner", SliderBox).CornerRadius = UDim.new(0, 15)
-
-                local Fill = Instance.new("Frame", SliderBox)
-                Fill.AnchorPoint = Vector2.new(0, 0.5)
-                Fill.BackgroundColor3 = Color3.fromRGB(195, 195, 195)
-                Fill.Position = UDim2.fromScale(0, 0.5)
-                Fill.Size = UDim2.fromScale(math.clamp((tonumber(SliderValue2.Text)-SliderData.Min)/(SliderData.Max-SliderData.Min), 0, 1), 1)
-                Fill.ZIndex = 2
-                Instance.new("UICorner", Fill).CornerRadius = UDim.new(0, 15)
-
-                local Circle2 = Instance.new("ImageButton", Fill)
-                Circle2.AutoButtonColor = false
-                Circle2.AnchorPoint = Vector2.new(0.5,0.5)
-                Circle2.BackgroundColor3 = Color3.fromRGB(195, 195, 195)
-                Circle2.Position = UDim2.fromScale(1, 0.5)
-                Circle2.Size = UDim2.fromOffset(10, 10)
-                Circle2.ImageTransparency = 1
-                Circle2.ZIndex = 2
-                Instance.new("UICorner", Circle2).CornerRadius = UDim.new(0, 15)
-
-                SliderData.Functions.SetValue = function(value: number, save: boolean, target: number)
-
-                    if value then
-                        local info = {Value1 = SliderData.Default.Value1, Value2 = value}
-                        if target == 2 then
-                            if SpaceUI.Config.Game.Sliders[SliderData.Flag] and typeof(SpaceUI.Config.Game.Sliders[SliderData.Flag]) == "table" and SpaceUI.Config.Game.Sliders[SliderData.Flag].Value1 then
-                                info = {Value1 = SpaceUI.Config.Game.Sliders[SliderData.Flag].Value1, Value2 = value}
-                            end
-
-                        elseif target == 1 then
-                            info = {Value1 = value, Value2 = SliderData.Default.Value2}
-                            if SpaceUI.Config.Game.Sliders[SliderData.Flag] and typeof(SpaceUI.Config.Game.Sliders[SliderData.Flag]) == "table" and SpaceUI.Config.Game.Sliders[SliderData.Flag].Value2 then
-                                info = {Value1 = value, Value2 = SpaceUI.Config.Game.Sliders[SliderData.Flag].Value2}
-                            end
-                        else
-                            if typeof(value) == "table" then
-                                info = value
-                            end
-                        end
-
-                        if target == 1 and SliderData.Multi then
-                            if tonumber(SliderValue2.Text) < value then return end
-                            local val = math.clamp((tonumber(value)-SliderData.Min)/(SliderData.Max-SliderData.Min), 0, 1)
-                            local val2 = math.clamp((tonumber(SliderValue2.Text)-SliderData.Min)/(SliderData.Max-SliderData.Min) - val, 0, 1)
-                            TweenService:Create(Fill, TweenInfo.new(0.45), {Size = UDim2.fromScale(val2 , 1), Position = UDim2.fromScale(val, 0.5)}):Play()
-                            SliderValue1.Text = tostring(value)
-                        elseif target == 1 and not SliderData.Multi or target == 2 then
-                            if SliderData.Multi and value > tonumber(SliderValue1.Text) or not SliderData.Multi then
-                                TweenService:Create(Fill, TweenInfo.new(0.45), {Size = UDim2.fromScale(math.clamp((tonumber(value)-SliderData.Min)/(SliderData.Max-SliderData.Min) - Fill.Position.X.Scale, 0, 1), 1)}):Play()
-                                SliderValue2.Text = tostring(value)
-                            else
-                                return
-                            end
-                        elseif not target then
-                            if SliderData.Multi then
-                                if SliderData.Multi and info.Value2 > tonumber(SliderValue1.Text) or not SliderData.Multi then
-                                    TweenService:Create(Fill, TweenInfo.new(0.45), {Size = UDim2.fromScale(math.clamp((tonumber(info.Value2)-SliderData.Min)/(SliderData.Max-SliderData.Min) - Fill.Position.X.Scale, 0, 1), 1)}):Play()
-                                    SliderValue2.Text = tostring(info.Value2)
-                                end
-
-                                if tonumber(SliderValue2.Text) >= info.Value1 then
-                                    local val = math.clamp((tonumber(info.Value1)-SliderData.Min)/(SliderData.Max-SliderData.Min), 0, 1)
-                                    local val2 = math.clamp((tonumber(SliderValue2.Text)-SliderData.Min)/(SliderData.Max-SliderData.Min) - val, 0, 1)
-                                    TweenService:Create(Fill, TweenInfo.new(0.45), {Size = UDim2.fromScale(val2 , 1), Position = UDim2.fromScale(val, 0.5)}):Play()
-                                    SliderValue1.Text = tostring(info.Value1)
-                                end
-                            else
-                                TweenService:Create(Fill, TweenInfo.new(0.45), {Size = UDim2.fromScale(math.clamp((tonumber(info.Value2)-SliderData.Min)/(SliderData.Max-SliderData.Min) - Fill.Position.X.Scale, 0, 1), 1)}):Play()
-                                SliderValue2.Text = tostring(info.Value2)
-                            end
-                        end
-
-                        if SliderData.Multi then
-                            SliderData.Callback(SliderData, info)
-                        else
-                            SliderData.Callback(SliderData, tonumber(info.Value2))
-                        end
-
-                        if save then
-                            SpaceUI.Config.Game.Sliders[SliderData.Flag] = info
-                            Assets.Config.Save(SpaceUI.GameSave, SpaceUI.Config.Game)
+                table.insert(SpaceUI.Connections, UserInputService.InputEnded:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                        if SliderData.Data.Dragging then
+                            SliderData.Data.Dragging = false
+                            TweenService:Create(handleScale, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {Scale = 1}):Play()
                         end
                     end
-                end
-
-                local Circle1
-                if SliderData.Multi then
-
-                    SliderValue1 = Instance.new("TextBox", Numbers)
-                    SliderValue1.AnchorPoint = Vector2.new(0, 0.5)
-                    SliderValue1.BackgroundTransparency = 1
-                    SliderValue1.Size = UDim2.new(0.044, 0, 0, 15)
-                    SliderValue1.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular)
-                    SliderValue1.Text = tonumber(SliderData.Default.Value1)
-                    SliderValue1.TextColor3 = Color3.fromRGB(255, 255, 255)
-                    SliderValue1.TextSize = 13
-                    SliderValue1.TextTransparency = 0.2
-                    SliderValue1.TextXAlignment = Enum.TextXAlignment.Left
-                    SliderValue1.AutomaticSize = Enum.AutomaticSize.X
-                    SliderValue1.LayoutOrder = 0
-                    SliderValue1.ZIndex = 2
-                    local ValueSplitIcon = Instance.new("ImageLabel", Numbers)
-                    ValueSplitIcon.BackgroundTransparency = 1
-                    ValueSplitIcon.Size = UDim2.fromOffset(15, 15)
-                    ValueSplitIcon.Image = "rbxassetid://136254264936851"
-                    ValueSplitIcon.ImageColor3 = Color3.fromRGB(255,255,255)
-                    ValueSplitIcon.ImageTransparency = 0.6
-                    ValueSplitIcon.ScaleType = Enum.ScaleType.Stretch
-                    ValueSplitIcon.LayoutOrder = 1
-                    ValueSplitIcon.ZIndex = 2
-
-                    Circle1 = Instance.new("ImageButton", Fill)
-                    Circle1.AutoButtonColor = false
-                    Circle1.AnchorPoint = Vector2.new(0.5,0.5)
-                    Circle1.BackgroundColor3 = Color3.fromRGB(195, 195, 195)
-                    Circle1.Position = UDim2.fromScale(0, 0.5)
-                    Circle1.Size = UDim2.fromOffset(10, 10)
-                    Circle1.ImageTransparency = 1
-                    Circle1.ZIndex = 2
-                    Instance.new("UICorner", Circle1).CornerRadius = UDim.new(0, 15)
-
-                    local sliderdragbuttonclickcon2 =  Circle1.MouseButton1Down:Connect(function()
-                        SpaceUI.CurrntInputChangeCallback = function(input)
-                            if SliderData.Data.Dragging then
-                                local mouse = UserInputService:GetMouseLocation()
-                                local relativePos = mouse-SliderBox.AbsolutePosition
-                                local percent = math.clamp(relativePos.X/(SliderBox.AbsoluteSize.X - 20), 0, 1)
-                                local value = math.floor(((((SliderData.Max - SliderData.Min) * percent) + SliderData.Min) * (10 ^ SliderData.Decimals)) + 0.5) / (10 ^ SliderData.Decimals) 
-
-                                SliderData.Functions.SetValue(value, true, 1)
-
-                            end
-                        end
-                        SliderData.Data.Dragging = true
-
-                        SpaceUI.InputEndFunc = function(input) 
-                            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                                SpaceUI.CurrntInputChangeCallback = function() end
-                                SliderData.Data.Dragging = false
-                            end
-                        end
-                    end)
-                    table.insert(SpaceUI.Connections, sliderdragbuttonclickcon2)
-                    table.insert(ModuleData.Connections, sliderdragbuttonclickcon2)                                
-                end
-
-                local sliderdragbuttonclickcon
-                if SpaceUI.Mobile and not SliderData.Multi then
-                    sliderdragbuttonclickcon = SliderData.Objects.MainInstance.MouseButton1Down:Connect(function()
-                        SpaceUI.CurrntInputChangeCallback = function(input)
-                            if SliderData.Data.Dragging then
-                                local mouse = UserInputService:GetMouseLocation()
-                                local relativePos = mouse-SliderBox.AbsolutePosition
-                                local percent = math.clamp(relativePos.X/(SliderBox.AbsoluteSize.X - 20), 0, 1)
-                                local value = math.floor(((((SliderData.Max - SliderData.Min) * percent) + SliderData.Min) * (10 ^ SliderData.Decimals)) + 0.5) / (10 ^ SliderData.Decimals) 
-
-                                SliderData.Functions.SetValue(value, true, 2)
-
-                            end
-                        end
-                        SliderData.Data.Dragging = true
-
-                        SpaceUI.InputEndFunc = function(input) 
-                            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                                SpaceUI.CurrntInputChangeCallback = function() end
-                                SliderData.Data.Dragging = false
-                            end
-                        end
-                    end)
-                else
-                    sliderdragbuttonclickcon = Circle2.MouseButton1Down:Connect(function()
-                        SpaceUI.CurrntInputChangeCallback = function(input)
-                            if SliderData.Data.Dragging then
-                                local mouse = UserInputService:GetMouseLocation()
-                                local relativePos = mouse-SliderBox.AbsolutePosition
-                                local percent = math.clamp(relativePos.X/(SliderBox.AbsoluteSize.X - 20), 0, 1)
-                                local value = math.floor(((((SliderData.Max - SliderData.Min) * percent) + SliderData.Min) * (10 ^ SliderData.Decimals)) + 0.5) / (10 ^ SliderData.Decimals) 
-
-                                SliderData.Functions.SetValue(value, true, 2)
-
-                            end
-                        end
-                        SliderData.Data.Dragging = true
-
-                        SpaceUI.InputEndFunc = function(input) 
-                            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                                SpaceUI.CurrntInputChangeCallback = function() end
-                                SliderData.Data.Dragging = false
-                            end
-                        end
-                    end)
-                end
-                table.insert(SpaceUI.Connections, sliderdragbuttonclickcon)
-                table.insert(ModuleData.Connections, sliderdragbuttonclickcon)
-            
-
-                local slidervaluetextchangecon = SliderValue2.FocusLost:Connect(function()
-                    if SliderValue2.Text and tonumber(SliderValue2.Text) then
-                        SliderData.Functions.SetValue(tonumber(SliderValue2.Text), true, 2)
-                    end
-                end)
-                table.insert(SpaceUI.Connections, slidervaluetextchangecon)
-                table.insert(ModuleData.Connections, slidervaluetextchangecon)
-
-                if SliderData.Multi then
-                    local slidervaluetextchangecon2 = SliderValue1.FocusLost:Connect(function()
-                        if SliderValue1.Text and tonumber(SliderValue1.Text) then
-                            SliderData.Functions.SetValue(tonumber(SliderValue1.Text), true, 1)
-                        end
-                    end)
-                    table.insert(SpaceUI.Connections, slidervaluetextchangecon2)
-                    table.insert(ModuleData.Connections, slidervaluetextchangecon2)
-                end
-
-                SliderData.Functions.SetVisiblity = function(enabled)
-                    if enabled then
-                        if table.find(ModuleData.Data.ExcludeSettingsVisiblity, SliderData) then
-                            table.remove(ModuleData.Data.ExcludeSettingsVisiblity, table.find(ModuleData.Data.ExcludeSettingsVisiblity, SliderData))
-                        end
-                        if ModuleData.Data.SettingsOpen then
-                            SliderData.Objects.MainInstance.Visible = true
-                        end
-                    else
-                        if not table.find(ModuleData.Data.ExcludeSettingsVisiblity, SliderData) then
-                            table.insert(ModuleData.Data.ExcludeSettingsVisiblity, SliderData)
-                        end
-                        SliderData.Objects.MainInstance.Visible = false
-                    end
-                end
+                end))
 
                 if SliderData.Hide then
-                    SliderData.Functions.SetVisiblity(false)
+                    SliderData.Construction.Objects.MainInstance.Visible = false
+                else
+                    SliderData.Construction.Objects.MainInstance.Visible = true
                 end
 
                 ModuleData.Settings[SliderData.Flag] = SliderData
                 return SliderData
             end
 
+            -- Dropdown Component parsed directly from Exe5 'choose_player' XML node
             ModuleData.Functions.Settings.Dropdown = function(data)
                 local DropdownData = {
                     Name = data and data.Name or "Dropdown",
                     Description = data and data.Description or "Dropdown",
-                    ToolTip = data and data.ToolTip or "Select a option",
+                    ToolTip = data and data.ToolTip or "Select an option",
                     Default = data and data.Default or "",
                     SelectLimit = data and data.SelectLimit or 1,
                     Options = data and data.Options or {},
@@ -3789,19 +3706,15 @@ do
                     Data = {ExtendSize = 0, Opened = false},
                 }
 
-                if not SpaceUI.Config.Game.Dropdowns then
-                    SpaceUI.Config.Game.Dropdowns = {}
-                else
-                    if SpaceUI.Config.Game.Dropdowns[DropdownData.Flag] then
-                        DropdownData.Default = SpaceUI.Config.Game.Dropdowns[DropdownData.Flag]
-                    end
+                if SpaceUI.Config.Game.Dropdowns and SpaceUI.Config.Game.Dropdowns[DropdownData.Flag] then
+                    DropdownData.Default = SpaceUI.Config.Game.Dropdowns[DropdownData.Flag]
                 end
 
                 DropdownData.Construction = ModuleData.Functions.ConstructSetting({
                     Name = DropdownData.Name,
                     Description = DropdownData.Description,
-                    Size = 125,
-                    Layout = true,
+                    Size = 80,
+                    Layout = false,
                     ToolTip = DropdownData.ToolTip,
                     OnToolTipEdit = function(new: {ToolTip: string})
                         DropdownData.ToolTip = new.ToolTip
@@ -3809,272 +3722,77 @@ do
                 })
 
                 DropdownData.Objects.MainInstance = DropdownData.Construction.Objects.MainInstance
-                DropdownData.Functions.EditToolTip = DropdownData.Construction.Functions.EditToolTip
 
-                local DropBox = Instance.new("ImageButton", DropdownData.Objects.MainInstance)
-                DropBox.AutoButtonColor = false
-                DropBox.AnchorPoint = Vector2.new(1, 0.5)
-                DropBox.BackgroundColor3 = Color3.fromRGB(65, 65, 65)
-                DropBox.BackgroundTransparency = 0.6
-                DropBox.LayoutOrder = 2
-                DropBox.Size = UDim2.new(1, 0, 0, 35)
-                DropBox.ImageTransparency = 1
-                DropBox.ClipsDescendants = true
-                DropBox.ZIndex = 2
-                Instance.new("UICorner", DropBox).CornerRadius = UDim.new(0, 6)
-                -- DropBox.AutomaticSize = Enum.AutomaticSize.Y
-                
-                local BoxStroke = Instance.new("UIStroke", DropBox)
-                BoxStroke.Color = Color3.fromRGB(255, 255, 255)
-                BoxStroke.Transparency = 0.9
+                -- DropdownBtn parsed 1:1 from Exe5 'choose_player' ImageButton
+                local DropdownBtn = Instance.new("ImageButton", DropdownData.Objects.MainInstance)
+                DropdownBtn.Name = "choose_player"
+                DropdownBtn.AnchorPoint = Vector2.new(1, 0.5)
+                DropdownBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+                DropdownBtn.BackgroundTransparency = 0.7
+                DropdownBtn.Position = UDim2.new(1, 0, 0.5, 0)
+                DropdownBtn.Size = UDim2.new(0, 160, 0, 36)
+                DropdownBtn.ZIndex = 3
 
-                local Details = Instance.new("Frame", DropBox)
-                Details.AnchorPoint = Vector2.new(0.5, 0)
-                Details.BackgroundTransparency = 1
-                Details.Position = UDim2.fromScale(0.5, 0)
-                Details.Size = UDim2.new(1, 0, 0, 35)
-                Details.ZIndex = 2
+                local dropCorner = Instance.new("UICorner", DropdownBtn)
+                dropCorner.CornerRadius = UDim.new(0, 8)
 
-                local SelectedText = Instance.new("TextLabel", Details)
-                SelectedText.AnchorPoint = Vector2.new(0, 0.5)
-                SelectedText.BackgroundTransparency = 1
-                SelectedText.Position = UDim2.fromScale(0.02, 0.5)
-                SelectedText.Size = UDim2.new(0.892, 0, 0, 140)
-                SelectedText.ZIndex = 2
-                SelectedText.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular)
-                SelectedText.TextSize = 13
-                SelectedText.TextColor3 = Color3.fromRGB(255, 255, 255)
-                SelectedText.TextTransparency = 0.2
-                SelectedText.TextXAlignment = 0.2
-                if typeof(DropdownData.Default) == "table" then
-                    SelectedText.Text = table.concat(DropdownData.Default, ", ")
-                else
-                    SelectedText.Text = tostring(DropdownData.Default)
-                end
+                local dropDepth = Instance.new("ImageLabel", DropdownBtn)
+                dropDepth.Name = "depth"
+                dropDepth.AnchorPoint = Vector2.new(0, 0.5)
+                dropDepth.BackgroundTransparency = 1
+                dropDepth.Position = UDim2.new(0, -10, 0.5, 0)
+                dropDepth.Size = UDim2.new(1, 20, 1, 0)
+                dropDepth.Image = "rbxassetid://13867624647"
+                dropDepth.ImageTransparency = 0.5
+                dropDepth.ZIndex = 3
 
-                local DropIcon = Instance.new("ImageLabel", Details)
-                DropIcon.AnchorPoint = Vector2.new(1, 0.5)
-                DropIcon.BackgroundTransparency = 1
-                DropIcon.Position = UDim2.fromScale(0.97, 0.5)      
-                DropIcon.Size = UDim2.fromOffset(10, 10)    
-                DropIcon.ZIndex = 2
-                DropIcon.Image = "rbxassetid://133663094711296"
-                DropIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
-                DropIcon.ImageTransparency = 0.2
-                DropIcon.ScaleType = Enum.ScaleType.Fit
+                local dropGradient = Instance.new("UIGradient", DropdownBtn)
+                dropGradient.Color = ColorSequence.new{
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(40, 40, 40)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 20, 20))
+                }
 
-                local OptionsList = Instance.new("ScrollingFrame", Details)
-                OptionsList.AnchorPoint = Vector2.new(0.5, 0)
-                OptionsList.BackgroundTransparency = 1
-                OptionsList.Position = UDim2.fromScale(0.5, 1)
-                OptionsList.Size = UDim2.fromScale(1, 0)
-                OptionsList.ScrollBarThickness = 0
-                OptionsList.ScrollBarImageTransparency = 1
-                OptionsList.CanvasSize = UDim2.fromScale(0, 0)
-                OptionsList.AutomaticCanvasSize = Enum.AutomaticSize.Y
-                OptionsList.ZIndex = 2
+                local dropPadding = Instance.new("UIPadding", DropdownBtn)
+                dropPadding.PaddingLeft = UDim.new(0, 12)
+                dropPadding.PaddingRight = UDim.new(0, 12)
 
-                local OptionsLayout = Instance.new("UIListLayout", OptionsList)
-                OptionsLayout.Padding = UDim.new(0, 2)
-                OptionsLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+                -- button_label parsed directly from Exe5 'choose_player/button_label' TextLabel
+                local BtnLabel = Instance.new("TextLabel", DropdownBtn)
+                BtnLabel.Name = "button_label"
+                BtnLabel.AnchorPoint = Vector2.new(0, 0.5)
+                BtnLabel.BackgroundTransparency = 1
+                BtnLabel.Position = UDim2.new(0, 0, 0.5, 0)
+                BtnLabel.Size = UDim2.new(1, -20, 1, 0)
+                BtnLabel.ZIndex = 4
+                BtnLabel.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Medium)
+                BtnLabel.Text = tostring(DropdownData.Default ~= "" and DropdownData.Default or DropdownData.Name)
+                BtnLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                BtnLabel.TextSize = 13
+                BtnLabel.TextTruncate = Enum.TextTruncate.AtEnd
+                BtnLabel.TextXAlignment = Enum.TextXAlignment.Left
 
-                local OptionsPadding = Instance.new("UIPadding", OptionsList)
-                OptionsPadding.PaddingLeft = UDim.new(0, 13)
-                OptionsPadding.PaddingTop = UDim.new(0, -5)
-
-                DropdownData.Functions.SetValue = function(NewData: string | {}, Save: boolean)
-                    if NewData then
-                        local ReturnData = NewData
-                        if typeof(NewData) == "string" then
-                            if DropdownData.SelectLimit == 1  then
-                                table.clear(DropdownData.Buttons.Selected)
-                                table.insert(DropdownData.Buttons.Selected, NewData)
-                            end
-
-                            SelectedText.Text = NewData
-                            if DropdownData.SelectLimit > 1 then
-                                ReturnData = {NewData}
-                            end
-                        elseif typeof(NewData) == "table" then
-                            if DropdownData.SelectLimit > 1  then
-                                if DropdownData.SelectLimit >= #NewData then
-                                    DropdownData.Buttons.Selected = NewData
-                                else
-                                    DropdownData.Buttons.Selected[#DropdownData.Buttons.Selected] = nil
-                                end
-                            else
-                                table.clear(DropdownData.Buttons.Selected)
-                                for i,v in NewData do
-                                    table.insert(DropdownData.Buttons.Selected, v)                                        
-                                end
-                            end
-
-                            if #NewData >= 1 then
-                                SelectedText.Text = table.concat(NewData, ", ")
-                            else
-                                SelectedText.Text = "No Option Selected"
-                            end
-                        end
-
-                        for i,v in DropdownData.Buttons.Buttons do
-                            if table.find(DropdownData.Buttons.Selected, i) then
-                                v.CheckMark.Visible = true
-                                v.ButtonText.Position = UDim2.fromScale(0.037, 0.5)
-                                v.ButtonText.Size = UDim2.fromScale(0.961, 1)
-                            else
-                                if v.CheckMark.Visible then
-                                    v.CheckMark.Visible = false
-                                    v.ButtonText.Position = UDim2.fromScale(0, 0.5)
-                                    v.ButtonText.Size = UDim2.fromScale(1, 1)
-                                end
-                            end
-                        end
-
-                        DropdownData.Callback(DropdownData, ReturnData)
-
-                        if Save then
-                            SpaceUI.Config.Game.Dropdowns[DropdownData.Flag] = ReturnData
-                            Assets.Config.Save(SpaceUI.GameSave, SpaceUI.Config.Game)
-                        end
-                    end
-                end
-
-                for i,v in DropdownData.Options do
-                    DropdownData.Data.ExtendSize += 22
-
-                    local ButtonInfo = {
-                        CheckMark = Instance.new("ImageLabel"),
-                        ButtonText = Instance.new("TextLabel"),
-                        Functions = {},
-                        Connections = {}
-                    }
-
-                    local Button = Instance.new("TextButton", OptionsList)
-                    Button.AutoButtonColor = false
-                    Button.BackgroundTransparency = 1
-                    Button.Size = UDim2.new(0.97, 0, 0, 20)
-                    Button.Text = ""
-                    Button.ZIndex = 2
-
-                    ButtonInfo.ButtonText.Parent = Button
-                    ButtonInfo.ButtonText.AnchorPoint = Vector2.new(0, 0.5)
-                    ButtonInfo.ButtonText.BackgroundTransparency = 1
-                    ButtonInfo.ButtonText.Position = UDim2.fromScale(0, 0.5)
-                    ButtonInfo.ButtonText.Size = UDim2.fromScale(1, 1)
-                    ButtonInfo.ButtonText.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular)
-                    ButtonInfo.ButtonText.Text = tostring(v)
-                    ButtonInfo.ButtonText.TextColor3 = Color3.fromRGB(255, 255, 255)
-                    ButtonInfo.ButtonText.TextSize = 13
-                    ButtonInfo.ButtonText.TextTransparency = 0.2
-                    ButtonInfo.ButtonText.TextXAlignment = Enum.TextXAlignment.Left
-                    ButtonInfo.ButtonText.ZIndex = 2
-
-                    ButtonInfo.CheckMark.Parent = Button
-                    ButtonInfo.CheckMark.AnchorPoint = Vector2.new(0, 0.5)
-                    ButtonInfo.CheckMark.BackgroundTransparency = 1
-                    ButtonInfo.CheckMark.Position = UDim2.fromScale(0, 0.4)
-                    ButtonInfo.CheckMark.Size = UDim2.fromOffset(13, 13)
-                    ButtonInfo.CheckMark.Image = "rbxassetid://91799225292383"
-                    ButtonInfo.CheckMark.ImageColor3 = Color3.fromRGB(255, 255, 255)
-                    ButtonInfo.CheckMark.ImageTransparency = 0.2
-                    ButtonInfo.CheckMark.ScaleType = Enum.ScaleType.Stretch
-                    ButtonInfo.CheckMark.Visible = false
-                    ButtonInfo.CheckMark.ZIndex = 2
-
-                    if typeof(DropdownData.Default) == "table" then
-                        if table.find(DropdownData.Default, tostring(v)) then
-                            ButtonInfo.CheckMark.Visible = true
-                            ButtonInfo.ButtonText.Position = UDim2.fromScale(0.037, 0.5)
-                            ButtonInfo.ButtonText.Size = UDim2.fromScale(0.961, 1)
-                        end
-                    elseif typeof(DropdownData.Default) == "string" then
-                        if DropdownData.Default == tostring(v) then
-                            ButtonInfo.CheckMark.Visible = true
-                            ButtonInfo.ButtonText.Position = UDim2.fromScale(0.037, 0.5)
-                            ButtonInfo.ButtonText.Size = UDim2.fromScale(0.961, 1)
-                        end
-                    end
-
-                    local ClickCon = Button.MouseButton1Down:Connect(function()
-                        if DropdownData.SelectLimit > 1 then
-                            if not table.find(DropdownData.Buttons.Selected, v) then
-                                table.insert(DropdownData.Buttons.Selected, v)                                        
-                            else
-                                table.remove(DropdownData.Buttons.Selected, table.find(DropdownData.Buttons.Selected, v))
-                            end
-
-                            DropdownData.Functions.SetValue(DropdownData.Buttons.Selected, true)
-                        else
-                            DropdownData.Functions.SetValue(v, true)
-                        end
-                    end)
-
-                    table.insert(ButtonInfo.Connections, ClickCon)
-                    table.insert(DropdownData.Connections, ClickCon)
-                    table.insert(SpaceUI.Connections, ClickCon)
-
-                    ButtonInfo.Functions.Destroy = function()
-                        for i,v in ButtonInfo.Connections do
-                            local con1 = table.find(DropdownData.Connections, v)
-                            local con2 = table.find(SpaceUI.Connections, v)
-                            v:Disconnect()
-                            if con1 then
-                                table.remove(DropdownData.Connections, con1)
-                            end
-                            if con2 then
-                                table.remove(SpaceUI.Connections, con2)
-                            end
-                        end
-                    end
-
-                    DropdownData.Buttons.Buttons[v] = ButtonInfo
-                end
-
-                local OpenCon = DropBox.MouseButton1Down:Connect(function()
-                    DropdownData.Data.Opened = not DropdownData.Data.Opened
-                    if DropdownData.Data.Opened then
-                        local extend = DropdownData.Data.ExtendSize
-                        if extend > 88 then
-                            extend = 88
-                        end
-
-                        TweenService:Create(DropdownData.Objects.MainInstance, TweenInfo.new(0.45, Enum.EasingStyle.Exponential), {Size = UDim2.new(1, 0, 0, 125 + extend)}):Play()
-                        TweenService:Create(DropBox, TweenInfo.new(0.45, Enum.EasingStyle.Exponential), {Size = UDim2.new(1, 0, 0, 35 + extend)}):Play()
-                        TweenService:Create(OptionsList, TweenInfo.new(0.45, Enum.EasingStyle.Exponential), {Size = UDim2.new(1, 0, 0, extend)}):Play()
-                    else
-                        TweenService:Create(OptionsList, TweenInfo.new(0.45, Enum.EasingStyle.Exponential), {Size = UDim2.fromScale(1, 0)}):Play()
-                        TweenService:Create(DropBox, TweenInfo.new(0.45, Enum.EasingStyle.Exponential), {Size = UDim2.new(1, 0, 0, 35)}):Play()
-                        TweenService:Create(DropdownData.Objects.MainInstance, TweenInfo.new(0.45, Enum.EasingStyle.Exponential), {Size = UDim2.new(1, 0, 0, 125)}):Play()
-                    end
-                end)
-                table.insert(DropdownData.Connections, OpenCon)
-                table.insert(SpaceUI.Connections, OpenCon)
-
-
-                DropdownData.Functions.SetVisiblity = function(enabled)
-                    if enabled then
-                        if table.find(ModuleData.Data.ExcludeSettingsVisiblity, DropdownData) then
-                            table.remove(ModuleData.Data.ExcludeSettingsVisiblity, table.find(ModuleData.Data.ExcludeSettingsVisiblity, DropdownData))
-                        end
-                        if ModuleData.Data.SettingsOpen then
-                            DropdownData.Objects.MainInstance.Visible = true
-                        end
-                    else
-                        if not table.find(ModuleData.Data.ExcludeSettingsVisiblity, DropdownData) then
-                            table.insert(ModuleData.Data.ExcludeSettingsVisiblity, DropdownData)
-                        end
-                        DropdownData.Objects.MainInstance.Visible = false
-                    end
-                end
+                -- icon parsed directly from Exe5 'choose_player/icon' ImageLabel (rbxassetid://11419703997)
+                local ArrowIcon = Instance.new("ImageLabel", DropdownBtn)
+                ArrowIcon.Name = "icon"
+                ArrowIcon.AnchorPoint = Vector2.new(1, 0.5)
+                ArrowIcon.BackgroundTransparency = 1
+                ArrowIcon.Position = UDim2.new(1, 0, 0.5, 0)
+                ArrowIcon.Size = UDim2.new(0, 14, 0, 14)
+                ArrowIcon.Image = "rbxassetid://11419703997"
+                ArrowIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
+                ArrowIcon.ZIndex = 4
 
                 if DropdownData.Hide then
-                    DropdownData.Functions.SetVisiblity(false)
+                    DropdownData.Construction.Objects.MainInstance.Visible = false
+                else
+                    DropdownData.Construction.Objects.MainInstance.Visible = true
                 end
 
                 ModuleData.Settings[DropdownData.Flag] = DropdownData
                 return DropdownData
             end
 
+            -- Button Component parsed directly from Exe5 'execute' XML node
             ModuleData.Functions.Settings.Button = function(data: {Name: string, Flag: string, Description: string, ToolTip: string, Hide: boolean, Callback: any})
                 local ButtonData = {
                     Name = data and data.Name or "Button",
@@ -4098,42 +3816,81 @@ do
                         ButtonData.ToolTip = new.ToolTip
                     end
                 })
+
                 ButtonData.Objects.MainInstance = ButtonData.Construction.Objects.MainInstance
-                ButtonData.Functions.EditToolTip = ButtonData.Construction.Functions.EditToolTip
-                if SpaceUI.Mobile and ButtonData.ToolTip == "Click to toggle" then
-                    ButtonData.Construction.Functions.EditToolTip({ToolTip = "Tap to toggle"})
-                end
 
-                local ClickCon = ButtonData.Objects.MainInstance.MouseButton1Down:Connect(function()
+                -- ExecBtn parsed 1:1 from Exe5 'execute' ImageButton
+                local ExecBtn = Instance.new("ImageButton", ButtonData.Objects.MainInstance)
+                ExecBtn.Name = "execute"
+                ExecBtn.AnchorPoint = Vector2.new(1, 0.5)
+                ExecBtn.BackgroundColor3 = Color3.fromRGB(32, 175, 77)
+                ExecBtn.BackgroundTransparency = 0
+                ExecBtn.Position = UDim2.new(1, 0, 0.5, 0)
+                ExecBtn.Size = UDim2.new(0, 110, 0, 36)
+                ExecBtn.ZIndex = 3
+                ExecBtn.AutoButtonColor = false
+
+                -- UICorner parsed from Exe5 'execute/corner'
+                local btnCorner = Instance.new("UICorner", ExecBtn)
+                btnCorner.CornerRadius = UDim.new(0, 8)
+
+                -- UIGradient parsed from Exe5 'execute/gradient'
+                local btnGradient = Instance.new("UIGradient", ExecBtn)
+                btnGradient.Name = "gradient"
+                btnGradient.Color = ColorSequence.new{
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(40, 190, 90)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 130, 60))
+                }
+
+                -- UIPadding parsed from Exe5 'execute/padding'
+                local btnPadding = Instance.new("UIPadding", ExecBtn)
+                btnPadding.PaddingLeft = UDim.new(0, 10)
+                btnPadding.PaddingRight = UDim.new(0, 10)
+
+                -- TextLabel parsed directly from Exe5 'execute' button_label
+                local BtnLabel = Instance.new("TextLabel", ExecBtn)
+                BtnLabel.Name = "button_label"
+                BtnLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+                BtnLabel.BackgroundTransparency = 1
+                BtnLabel.Position = UDim2.fromScale(0.5, 0.5)
+                BtnLabel.Size = UDim2.fromScale(1, 1)
+                BtnLabel.ZIndex = 4
+                BtnLabel.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Medium)
+                BtnLabel.Text = ButtonData.Name
+                BtnLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                BtnLabel.TextSize = 13
+
+                -- UIScale parsed from Exe5 'execute/icon/scale'
+                local btnScale = Instance.new("UIScale", ExecBtn)
+
+                table.insert(SpaceUI.Connections, ExecBtn.MouseEnter:Connect(function()
+                    TweenService:Create(btnScale, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {Scale = 1.05}):Play()
+                end))
+
+                table.insert(SpaceUI.Connections, ExecBtn.MouseLeave:Connect(function()
+                    TweenService:Create(btnScale, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {Scale = 1}):Play()
+                end))
+
+                table.insert(SpaceUI.Connections, ExecBtn.MouseButton1Down:Connect(function()
+                    TweenService:Create(btnScale, TweenInfo.new(0.1, Enum.EasingStyle.Quad), {Scale = 0.95}):Play()
                     ButtonData.Callback(ButtonData)
-                end)
-                table.insert(ButtonData.Connections, ClickCon)
-                table.insert(SpaceUI.Connections, ClickCon)
+                end))
 
-                ButtonData.Functions.SetVisiblity = function(enabled)
-                    if enabled then
-                        if table.find(ModuleData.Data.ExcludeSettingsVisiblity, ButtonData) then
-                            table.remove(ModuleData.Data.ExcludeSettingsVisiblity, table.find(ModuleData.Data.ExcludeSettingsVisiblity, ButtonData))
-                        end
-                        if ModuleData.Data.SettingsOpen then
-                            ButtonData.Objects.MainInstance.Visible = true
-                        end
-                    else
-                        if not table.find(ModuleData.Data.ExcludeSettingsVisiblity, ButtonData) then
-                            table.insert(ModuleData.Data.ExcludeSettingsVisiblity, ButtonData)
-                        end
-                        ButtonData.Objects.MainInstance.Visible = false
-                    end
-                end
+                table.insert(SpaceUI.Connections, ExecBtn.MouseButton1Up:Connect(function()
+                    TweenService:Create(btnScale, TweenInfo.new(0.1, Enum.EasingStyle.Quad), {Scale = 1.05}):Play()
+                end))
 
                 if ButtonData.Hide then
-                    ButtonData.Functions.SetVisiblity(false)
+                    ButtonData.Construction.Objects.MainInstance.Visible = false
+                else
+                    ButtonData.Construction.Objects.MainInstance.Visible = true
                 end
 
                 ModuleData.Settings[ButtonData.Flag] = ButtonData
                 return ButtonData
             end
 
+            -- NewSection Component parsed directly from Exe5 'header' XML node
             ModuleData.Functions.Settings.NewSection = function(Data: {Name: string, Flag: string})
                 local SectionData = {
                     Name = Data and Data.Name or "Section",
@@ -4141,29 +3898,54 @@ do
                     Objects = {}
                 }
 
-                SectionData.Objects.MainInstance = Instance.new("TextLabel", ModuleSettings)
-                SectionData.Objects.MainInstance.BackgroundTransparency = 1
-                SectionData.Objects.MainInstance.Size = UDim2.new(0.976, 0, 0, 35)
-                SectionData.Objects.MainInstance.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Medium)
-                SectionData.Objects.MainInstance.Text = tostring(SectionData.Name)
-                SectionData.Objects.MainInstance.TextColor3 = Color3.fromRGB(255, 255, 255)
-                SectionData.Objects.MainInstance.TextSize = 17
-                SectionData.Objects.MainInstance.TextTransparency = 0.1
-                SectionData.Objects.MainInstance.TextXAlignment = Enum.TextXAlignment.Left
-                SectionData.Objects.MainInstance.Visible = false
-                SectionData.Objects.MainInstance.ZIndex = 2
+                -- SectionFrame parsed from Exe5 section header
+                local SectionFrame = Instance.new("Frame", ModuleSettings)
+                SectionFrame.Name = "section_header"
+                SectionFrame.BackgroundTransparency = 1
+                SectionFrame.Size = UDim2.new(0.976, 0, 0, 35)
+                SectionFrame.ZIndex = 2
 
+                -- TextLabel parsed 1:1 from Exe5 'header' TextLabel
+                local SectionText = Instance.new("TextLabel", SectionFrame)
+                SectionText.Name = "title"
+                SectionText.BackgroundTransparency = 1
+                SectionText.Position = UDim2.new(0, 0, 0, 0)
+                SectionText.Size = UDim2.new(1, 0, 0, 20)
+                SectionText.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Bold)
+                SectionText.Text = tostring(SectionData.Name):upper()
+                SectionText.TextColor3 = Color3.fromRGB(255, 255, 255)
+                SectionText.TextSize = 15
+                SectionText.TextTransparency = 0.1
+                SectionText.TextXAlignment = Enum.TextXAlignment.Left
+
+                local Line = Instance.new("Frame", SectionFrame)
+                Line.Name = "divider"
+                Line.AnchorPoint = Vector2.new(0, 1)
+                Line.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                Line.BackgroundTransparency = 0.85
+                Line.BorderSizePixel = 0
+                Line.Position = UDim2.new(0, 0, 1, 0)
+                Line.Size = UDim2.new(1, 0, 0, 1)
+
+                local lineGrad = Instance.new("UIGradient", Line)
+                lineGrad.Color = ColorSequence.new{
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(150, 150, 150)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(50, 50, 50))
+                }
+
+                SectionData.Objects.MainInstance = SectionFrame
                 ModuleData.Settings[SectionData.Flag] = SectionData
                 return SectionData
             end
 
+            -- Keybind Component parsed directly from Exe5 'input' XML node
             ModuleData.Functions.Settings.Keybind = function(Data: {Name: string, Description: string, Default: string, ToolTip: string, Hide: boolean, Flag: string, Callbacks: {Began: () -> (), End: () -> (), Changed: () -> ()}, Mobile: {Text: string, Default: boolean, Visible: boolean}})
                 local KeybindData = {
                     Name = Data and Data.Name or "Keybind",
                     Description = Data and Data.Description or "Keybind",
                     Default = Data and Data.Default or "",
                     Flag = Data and Data.Flag or "FlagKeybind", 
-                    Hide = data and data.Hide or false,
+                    Hide = Data and Data.Hide or false,
                     ToolTip = Data and Data.ToolTip or "Click The Box To Bind",
                     Callbacks = Data and Data.Callbacks or {Began = function() end, End = function() end, Changed = function() end},
                     Data = {Keybind = nil, Binding = false},
@@ -4174,30 +3956,8 @@ do
                     Connections = {}
                 }
 
-                if not KeybindData.Callbacks.Began then
-                    KeybindData.Callbacks.Began = function() end
-                end
-                if not KeybindData.Callbacks.End then
-                    KeybindData.Callbacks.End = function() end
-                end
-                if not KeybindData.Callbacks.Changed then
-                    KeybindData.Callbacks.Changed = function() end
-                end
-
-                if not SpaceUI.Config.Game.ModuleKeybinds then
-                    SpaceUI.Config.Game.ModuleKeybinds = {}
-                else
-                    if SpaceUI.Config.Game.ModuleKeybinds[KeybindData.Flag] then
-                        if SpaceUI.Config.Game.ModuleKeybinds[KeybindData.Flag] == "unbinded" then
-                            KeybindData.Default = ""
-                        else
-                            KeybindData.Default = SpaceUI.Config.Game.ModuleKeybinds[KeybindData.Flag]
-                        end
-                    else
-                        if KeybindData.Mobile.Default then
-                            KeybindData.Default = "button"
-                        end
-                    end
+                if SpaceUI.Config.Game.ModuleKeybinds and SpaceUI.Config.Game.ModuleKeybinds[KeybindData.Flag] then
+                    KeybindData.Default = SpaceUI.Config.Game.ModuleKeybinds[KeybindData.Flag]
                 end
 
                 KeybindData.Construction = ModuleData.Functions.ConstructSetting({
@@ -4205,297 +3965,85 @@ do
                     Description = KeybindData.Description,
                     Size = 80,
                     Layout = false,
-                    ToolTip = KeybindData.Flag,
+                    ToolTip = KeybindData.ToolTip,
                     OnToolTipEdit = function(new: {ToolTip: string})
                         KeybindData.ToolTip = new.ToolTip
                     end
                 })
+
                 KeybindData.Objects.MainInstance = KeybindData.Construction.Objects.MainInstance
 
+                -- KeybindBox parsed 1:1 from Exe5 'input' ImageButton
                 local KeybindBox = Instance.new("ImageButton", KeybindData.Objects.MainInstance)
+                KeybindBox.Name = "input"
                 KeybindBox.AnchorPoint = Vector2.new(1, 0.5)
-                KeybindBox.BackgroundColor3 = Color3.fromRGB(65, 65, 65)
-                KeybindBox.BackgroundTransparency = 0.4
-                KeybindBox.Position = UDim2.fromScale(1, 0.5)
-                KeybindBox.Size = UDim2.fromOffset(25, 25)
-                KeybindBox.AutoButtonColor = false
-                KeybindBox.ZIndex = 2
-                Instance.new("UICorner", KeybindBox).CornerRadius = UDim.new(0, 5)
-                
-                local BoxStroke = Instance.new("UIStroke", KeybindBox)
-                BoxStroke.Color = Color3.fromRGB(255, 255, 255)
-                BoxStroke.Transparency = 0.9
+                KeybindBox.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+                KeybindBox.BackgroundTransparency = 0.7
+                KeybindBox.Position = UDim2.new(1, 0, 0.5, 0)
+                KeybindBox.Size = UDim2.new(0, 110, 0, 36)
+                KeybindBox.ZIndex = 3
 
-                local BoxIcon = Instance.new("ImageLabel", KeybindBox)
-                BoxIcon.AnchorPoint = Vector2.new(0.5, 0.5)
-                BoxIcon.BackgroundTransparency = 1
-                BoxIcon.Position = UDim2.fromScale(0.5, 0.5)
-                BoxIcon.Size = UDim2.fromOffset(13, 13)
-                BoxIcon.Image = "rbxassetid://101725457581159"
-                BoxIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
-                BoxIcon.ImageTransparency = 0.6
-                BoxIcon.ScaleType = Enum.ScaleType.Stretch
-                BoxIcon.ZIndex = 2
+                local keyCorner = Instance.new("UICorner", KeybindBox)
+                keyCorner.CornerRadius = UDim.new(0, 8)
 
-                local KeybindText = Instance.new("TextLabel", KeybindBox)
-                KeybindText.AnchorPoint = Vector2.new(0.5, 0.5)
-                KeybindText.BackgroundTransparency = 1
-                KeybindText.Position = UDim2.fromScale(0.5, 0.5)
-                KeybindText.Size = UDim2.fromOffset(10, 15)
-                KeybindText.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Medium)
-                KeybindText.Text = KeybindData.Default
-                KeybindText.TextColor3 = Color3.fromRGB(255, 255, 255)
-                KeybindText.TextSize = 13
-                KeybindText.TextTransparency = 0.6
-                KeybindText.Visible = false
-                KeybindText.ZIndex = 2
+                local keyDepth = Instance.new("ImageLabel", KeybindBox)
+                keyDepth.Name = "depth"
+                keyDepth.AnchorPoint = Vector2.new(0, 0.5)
+                keyDepth.BackgroundTransparency = 1
+                keyDepth.Position = UDim2.new(0, -10, 0.5, 0)
+                keyDepth.Size = UDim2.new(1, 20, 1, 0)
+                keyDepth.Image = "rbxassetid://13867624647"
+                keyDepth.ImageTransparency = 0.5
+                keyDepth.ZIndex = 3
 
-                if SpaceUI.Mobile then
-                    table.insert(ModuleData.onToggles, function(self, enabled)
-                        if enabled then
-                            if KeybindData.Data.Keybind and KeybindData.Data.Keybind ~= "unbinded" then
-                                SpaceUI.Background.Functions.CreateMobileButton({
-                                    Name = KeybindData.Mobile.Text,
-                                    Flag = KeybindData.Flag.."MobileKeybind",
-                                    Callbacks = {
-                                        Began = function(self)
-                                            return KeybindData.Callbacks.Began(KeybindData)
-                                        end,
-                                        End = function(self, drag : boolean)
-                                            return KeybindData.Callbacks.End(KeybindData)
-                                        end
-                                    }
-                                })
+                local keyGradient = Instance.new("UIGradient", KeybindBox)
+                keyGradient.Color = ColorSequence.new{
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(40, 40, 40)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 20, 20))
+                }
 
-                            end
-                        else
-                            if SpaceUI.Background.MobileButtons.Buttons[KeybindData.Flag.."MobileKeybind"] then
-                                SpaceUI.Background.MobileButtons.Buttons[KeybindData.Flag.."MobileKeybind"].Functions.Destroy()
-                            end
+                local keyStroke = Instance.new("UIStroke", KeybindBox)
+                keyStroke.Color = Color3.fromRGB(255, 255, 255)
+                keyStroke.Transparency = 0.95
+                keyStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+                local KeyLabel = Instance.new("TextLabel", KeybindBox)
+                KeyLabel.Name = "button_label"
+                KeyLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+                KeyLabel.BackgroundTransparency = 1
+                KeyLabel.Position = UDim2.fromScale(0.5, 0.5)
+                KeyLabel.Size = UDim2.fromScale(1, 1)
+                KeyLabel.ZIndex = 4
+                KeyLabel.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Medium)
+                KeyLabel.Text = KeybindData.Default ~= "" and KeybindData.Default or "None"
+                KeyLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                KeyLabel.TextSize = 13
+
+                table.insert(SpaceUI.Connections, KeybindBox.MouseButton1Click:Connect(function()
+                    if KeybindData.Data.Binding then return end
+                    KeybindData.Data.Binding = true
+                    KeyLabel.Text = "..."
+                    TweenService:Create(keyStroke, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {Transparency = 0.4, Color = Color3.fromRGB(100, 200, 255)}):Play()
+
+                    local bindConn
+                    bindConn = UserInputService.InputBegan:Connect(function(input)
+                        if input.UserInputType == Enum.UserInputType.Keyboard then
+                            KeybindData.Data.Binding = false
+                            local keyName = input.KeyCode.Name
+                            KeyLabel.Text = keyName
+                            TweenService:Create(keyStroke, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {Transparency = 0.95, Color = Color3.fromRGB(255, 255, 255)}):Play()
+                            SpaceUI.Config.Game.ModuleKeybinds[KeybindData.Flag] = keyName
+                            Assets.Config.Save(SpaceUI.GameSave, SpaceUI.Config.Game)
+                            bindConn:Disconnect()
                         end
                     end)
-                end
+                    table.insert(SpaceUI.Connections, bindConn)
+                end))
 
-                if tostring(KeybindData.Default):gsub(" ", "") ~= "" then
-                    KeybindData.Data.Keybind = KeybindData.Default
-                    local Size = GetTextBounds(KeybindData.Default, Font.new("rbxassetid://12187365364", Enum.FontWeight.Medium), 13)
-                    KeybindBox.Size = UDim2.fromOffset(Size.X + 18, 25)
-
-                    BoxIcon.Visible = false
-                    KeybindText.Visible = true 
-                    BoxIcon.Image = "rbxassetid://135395971960120"
-
-                    if SpaceUI.Mobile and tostring(KeybindData.Default) == "button" then
-                        KeybindData.Construction.Functions.EditToolTip({ToolTip = "Tap The Box To Unbind"})
-                            KeybindData.Callbacks.Changed(KeybindData, KeybindData.Default)
-                    elseif SpaceUI.Mobile and tostring(KeybindData.Default) == "unbinded" then
-                        KeybindData.Callbacks.Changed(KeybindData, nil)
-
-                        KeybindData.Data.Keybind = nil
-                        BoxIcon.Image = "rbxassetid://101725457581159"
-                        BoxIcon.Visible = true
-                        KeybindText.Visible = false
-                        KeybindText.Text = "binded"
-                    elseif not SpaceUI.Mobile then
-                        KeybindData.Callbacks.Changed(KeybindData, KeybindData.Default)
-                        KeybindData.Construction.Functions.EditToolTip({ToolTip = "Click The Box To Unbind"})
-                    end
-
-                end
-
-                local ClickCon = KeybindBox.MouseButton1Down:Connect(function()
-                    if not KeybindData.Data.Keybind then
-                        if SpaceUI.Mobile then
-                            KeybindData.Data.Keybind = "button"
-
-                            local Size = GetTextBounds("button", Font.new("rbxassetid://12187365364", Enum.FontWeight.Medium), 13)
-                            KeybindBox.Size = UDim2.fromOffset(Size.X + 18, 25)
-                            KeybindText.Text = "binded"
-
-                            BoxIcon.Visible = false
-                            KeybindText.Visible = true 
-                            BoxIcon.Image = "rbxassetid://135395971960120"
-                            KeybindData.Construction.Functions.EditToolTip({ToolTip = "Tap The Box To Unbind"})
-
-                            if not SpaceUI.Config.Game.ModuleKeybinds then
-                                SpaceUI.Config.Game.ModuleKeybinds = {}
-                            end
-
-                            if not SpaceUI.Background.MobileButtons.Buttons[KeybindData.Flag.."MobileKeybind"] and ModuleData.Data.Enabled then
-                                SpaceUI.Background.Functions.CreateMobileButton({
-                                    Name = KeybindData.Mobile.Text,
-                                    Flag = KeybindData.Flag.."MobileKeybind",
-                                    Callbacks = {
-                                        Began = function(self)
-                                            return KeybindData.Callbacks.Began(KeybindData)
-                                        end,
-                                        End = function(self, drag : boolean)
-                                            return KeybindData.Callbacks.End(KeybindData)
-                                        end
-                                    }
-                                })
-                            end
-                            
-                            KeybindData.Callbacks.Changed(KeybindData, "button")
-
-                            SpaceUI.Config.Game.ModuleKeybinds[KeybindData.Flag] = "button"
-                            SpaceUI.Assets.Config.Save(tostring(SpaceUI.GameSave), SpaceUI.Config.Game)
-                        else
-                            KeybindData.Construction.Functions.EditToolTip({ToolTip = "Please Click A Button"})
-                            KeybindData.Data.Binding = true
-                        end
-                    else
-                        KeybindData.Callbacks.Changed(KeybindData, nil)
-
-                        KeybindData.Data.Keybind = nil
-                        BoxIcon.Image = "rbxassetid://101725457581159"
-                        BoxIcon.Visible = true
-                        KeybindText.Visible = false 
-
-                        KeybindBox.Size = UDim2.fromOffset(25, 25)
-                        if SpaceUI.Mobile then
-                            if SpaceUI.Background.MobileButtons.Buttons[KeybindData.Flag.."MobileKeybind"] then
-                                SpaceUI.Background.MobileButtons.Buttons[KeybindData.Flag.."MobileKeybind"].Functions.Destroy()
-                            end
-                            KeybindData.Construction.Functions.EditToolTip({ToolTip = "Tap The Box To Bind"})
-                        else
-                            KeybindData.Construction.Functions.EditToolTip({ToolTip = "Click The Box To Bind"})
-                        end
-
-                        SpaceUI.Config.Game.ModuleKeybinds[KeybindData.Flag] = nil
-                        if SpaceUI.Mobile then
-                            SpaceUI.Config.Game.ModuleKeybinds[KeybindData.Flag] = "unbinded"
-                        end
-                        SpaceUI.Assets.Config.Save(tostring(SpaceUI.GameSave), SpaceUI.Config.Game)
-                    end
-                end)
-
-                local CallbackCon = UserInputService.InputBegan:Connect(function(input)
-                    if UserInputService:GetFocusedTextBox() and not KeybindData.Data.Binding then return end
-                    if KeybindData.Data.Binding then
-                        if input.KeyCode and input.KeyCode.Name ~= "Unknown" then
-                            KeybindData.Data.Keybind = input.KeyCode.Name
-
-                            local Size = GetTextBounds(input.KeyCode.Name, Font.new("rbxassetid://12187365364", Enum.FontWeight.Medium), 13)
-                            KeybindBox.Size = UDim2.fromOffset(Size.X + 18, 25)
-                            KeybindText.Text = input.KeyCode.Name
-
-                            BoxIcon.Visible = false
-                            KeybindText.Visible = true 
-                            BoxIcon.Image = "rbxassetid://135395971960120"
-                            KeybindData.Construction.Functions.EditToolTip({ToolTip = "Click The Box To Unbind"})
-
-                            if not SpaceUI.Config.Game.ModuleKeybinds then
-                                SpaceUI.Config.Game.ModuleKeybinds = {}
-                            end
-
-                            KeybindData.Callbacks.Changed(KeybindData, input.KeyCode.Name)
-                            SpaceUI.Config.Game.ModuleKeybinds[KeybindData.Flag] = input.KeyCode.Name
-                            SpaceUI.Assets.Config.Save(tostring(SpaceUI.GameSave), SpaceUI.Config.Game)
-                        end
-                    else
-                        if KeybindData.Data.Keybind and KeybindData.Data.Keybind == input.KeyCode.Name then
-                            KeybindData.Callbacks.Began(KeybindData)
-                        end
-                    end
-                end)
-
-                local EndCon = UserInputService.InputEnded:Connect(function(input)
-                    if UserInputService:GetFocusedTextBox() then return end
-                    if KeybindData.Data.Keybind and KeybindData.Data.Keybind == input.KeyCode.Name then
-                        if KeybindData.Data.Binding then
-                            KeybindData.Data.Binding = false
-                            return
-                        end
-                        KeybindData.Callbacks.End(KeybindData)
-                    end
-                end)
-
-                local HoverCon = KeybindBox.MouseEnter:Connect(function()
-                    if KeybindData.Data.Keybind then
-                        KeybindText.Visible = false
-                        BoxIcon.Visible = true
-                    end
-                end)
-
-                local UnHoverCon = KeybindBox.MouseLeave:Connect(function()
-                    if KeybindData.Data.Keybind then
-                        KeybindText.Visible = true
-                        BoxIcon.Visible = false
-                    end
-                end)
-                
-                table.insert(KeybindData.Connections, ClickCon)
-                table.insert(SpaceUI.Connections, ClickCon)
-
-                table.insert(KeybindData.Connections, CallbackCon)
-                table.insert(SpaceUI.Connections, CallbackCon)
-
-                table.insert(KeybindData.Connections, EndCon)
-                table.insert(SpaceUI.Connections, EndCon)
-
-                table.insert(KeybindData.Connections, HoverCon)
-                table.insert(SpaceUI.Connections, HoverCon)
-                
-                table.insert(KeybindData.Connections, UnHoverCon)
-                table.insert(SpaceUI.Connections, UnHoverCon)
-
-
-                KeybindData.Functions.SetValue = function(NewValue: string, save: boolean)
-                    if not NewValue or NewValue == "" or NewValue == "unbinded" then
-                        KeybindData.Data.Keybind = nil
-                        BoxIcon.Image = "rbxassetid://101725457581159"
-                        BoxIcon.Visible = true
-                        KeybindText.Visible = false 
-
-                        KeybindBox.Size = UDim2.fromOffset(25, 25)
-                        KeybindData.Construction.Functions.EditToolTip({ToolTip = "Click The Box To Bind"})
-
-                        if save then
-                            SpaceUI.Config.Game.ModuleKeybinds[KeybindData.Flag] = nil
-                            SpaceUI.Assets.Config.Save(tostring(SpaceUI.GameSave), SpaceUI.Config.Game)
-                        end
-                    else
-                        KeybindData.Data.Keybind = NewValue
-
-                        local Size = GetTextBounds(NewValue, Font.new("rbxassetid://12187365364", Enum.FontWeight.Medium), 13)
-                        KeybindBox.Size = UDim2.fromOffset(Size.X + 18, 25)
-
-                        KeybindText.Text = NewValue
-
-                        BoxIcon.Visible = false
-                        KeybindText.Visible = true 
-                        BoxIcon.Image = "rbxassetid://135395971960120"
-                        KeybindData.Construction.Functions.EditToolTip({ToolTip = "Click The Box To Unbind"})
-
-                        if not SpaceUI.Config.Game.ModuleKeybinds then
-                            SpaceUI.Config.Game.ModuleKeybinds = {}
-                        end
-                        if save then
-                            SpaceUI.Config.Game.ModuleKeybinds[KeybindData.Flag] = NewValue
-                            SpaceUI.Assets.Config.Save(tostring(SpaceUI.GameSave), SpaceUI.Config.Game)
-                        end
-                    end
-                end
-
-                KeybindData.Functions.SetVisiblity = function(enabled)
-                    if enabled then
-                        if table.find(ModuleData.Data.ExcludeSettingsVisiblity, KeybindData) then
-                            table.remove(ModuleData.Data.ExcludeSettingsVisiblity, table.find(ModuleData.Data.ExcludeSettingsVisiblity, KeybindData))
-                        end
-                        if ModuleData.Data.SettingsOpen then
-                            KeybindData.Objects.MainInstance.Visible = true
-                        end
-                    else
-                        if not table.find(ModuleData.Data.ExcludeSettingsVisiblity, KeybindData) then
-                            table.insert(ModuleData.Data.ExcludeSettingsVisiblity, KeybindData)
-                        end
-                        KeybindData.Objects.MainInstance.Visible = false
-                    end
-                end
-                
                 if KeybindData.Hide then
-                    KeybindData.Functions.SetVisiblity(false)
+                    KeybindData.Construction.Objects.MainInstance.Visible = false
+                else
+                    KeybindData.Construction.Objects.MainInstance.Visible = true
                 end
 
                 ModuleData.Settings[KeybindData.Flag] = KeybindData
