@@ -95,18 +95,6 @@ do
         t2:Play()
     end
 
-    -- Huy tween focus (playFocusTween) dang chay tren 1 tab cu the, neu co. Dung
-    -- truoc khi Play tween dong tab (fadeOutActualTab) de tranh 2 tween giang co
-    -- tren cung ActualTab.ImageTransparency gay khung/giat.
-    function SpaceUI.Tabs.CancelFocusTween(tab)
-        if tabFocusTweens[tab] then
-            for _, t in tabFocusTweens[tab] do
-                t:Cancel()
-            end
-            tabFocusTweens[tab] = nil
-        end
-    end
-
     function SpaceUI.Tabs.CaptureFocus(tab)
         if not tab or not tab.Objects or not tab.Objects.ActualTab then return end
         if SpaceUI.Tabs.FocusedTab == tab then return end
@@ -1839,6 +1827,7 @@ do
         -- Viền glow cố định quanh mọi tab, luôn hiện bất kể focus/unfocus (nguyên bản
         -- gốc bị mất trong quá trình sửa ZIndex trước đó - khôi phục y hệt).
         local TabPrism = Instance.new("ImageLabel", tab.Objects.ActualTab)
+        tab.Objects.TabPrism = TabPrism
         TabPrism.AnchorPoint = Vector2.new(0.5, 0.5)
         TabPrism.BackgroundTransparency = 1
         TabPrism.Position = UDim2.fromScale(0.5, 0.5)
@@ -2338,6 +2327,17 @@ do
                         fadeInActualTab:Play()
                         fadeInContent:Play()
                         scaleInTween:Play()
+
+                        -- Doi xung voi fade-out (xem nhanh dong ben duoi): TabPrism phai duoc
+                        -- dat lai ve trang thai an (1) roi tween ve gia tri hien thi that (0.8)
+                        -- moi lan mo, giong het cach fadeInActualTab/fadeInContent dat lai truoc
+                        -- khi tween. Neu khong, tu lan dong thu 2 tro di TabPrism giu nguyen o
+                        -- ImageTransparency=1 (vo hinh vinh vien) vi khong co gi dua no ve 0.8.
+                        if tab.Objects.TabPrism then
+                            tab.Objects.TabPrism.ImageTransparency = 1
+                            TweenService:Create(tab.Objects.TabPrism, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 0.8}):Play()
+                        end
+
                         task.wait(0.8)
                     else
                         if SpaceUI.Tabs.TabBackground.ImageTransparency < 1 then
@@ -2354,12 +2354,6 @@ do
                     if SpaceUI.Tabs.FocusedTab == tab then
                         SpaceUI.Tabs.RemoveFocus(tab)
                     end
-                    -- RemoveFocus (ngay tren) tu khoi dong 1 tween rieng (0.35s, Quad) tren
-                    -- chinh tab.Objects.ActualTab.ImageTransparency de dua ve trang thai mat
-                    -- focus. Neu khong huy no truoc khi Play fadeOutActualTab (0.8s, Exponential,
-                    -- cung property) ben duoi, 2 tween se giang co nhau tren cung 1 gia tri va
-                    -- gay khung/giat dung luc tween focus 0.35s hoan tat giua chung tween 0.8s.
-                    SpaceUI.Tabs.CancelFocusTween(tab)
                     SpaceUI.IsAllowedToHoverTabButton = false
                     CloseButton.Visible = false
                     tab.Objects.TabDragCanvas.Visible = false
@@ -2377,30 +2371,39 @@ do
                     if anim and SpaceUI.Config.UI.Anim  then
                         local info = TweenInfo.new(.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
                         local fadeOutActualTab = TweenService:Create(tab.Objects.ActualTab, info, {ImageTransparency = 1})
+                        local fadeOutContent = TweenService:Create(tab.Objects.ContentCanvas, TweenInfo.new(.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {GroupTransparency = 1})
                         local scaleOutTween = TweenService:Create(TabScale, info, {Scale = 1.2})
                         table.insert(activeFadeTweens, fadeOutActualTab)
+                        table.insert(activeFadeTweens, fadeOutContent)
                         table.insert(activeFadeTweens, scaleOutTween)
-
-                        -- Dung dung pattern dashboard (dong 5586-5604): an noi dung (ScrollFrame -
-                        -- chua SearchBar, Combat/Movement/Premium...) NGAY LAP TUC truoc khi Play,
-                        -- khong tween GroupTransparency cua no nua. Dashboard muot vi no lam y het
-                        -- the nay - ActualPage.Visible=false duoc set truoc khi tween MainFrame, nen
-                        -- nguoi dung chi thay 1 lop (khung) mo dan, khong bao gio thay 2 lop lech
-                        -- nhau. Truoc day ContentCanvas tung duoc tween GroupTransparency song song
-                        -- voi ActualTab nhung 2 property nay khong dam bao hoan tat cung frame, nen
-                        -- sau khi ActualTab mat, ScrollFrame (contnet) van con hien ra 1 chut.
-                        tab.Objects.ScrollFrame.Visible = false
-
                         fadeOutActualTab:Play()
+                        fadeOutContent:Play()
                         scaleOutTween:Play()
+
+                        -- TabPrism (vien glow, ZIndex 1000) la con cua ActualTab nhung tu luc
+                        -- khoi tao (dong ~1829) chua bao gio duoc tween o bat ky dau trong file.
+                        -- No dung yen o ImageTransparency=0.8 (luon hien mo mo) suot qua trinh
+                        -- dong, roi bien mat dot ngot khi ActualTab.Visible=false o cuoi -> gay
+                        -- cam giac tach lop (ruot ActualTab mo dan, vien dung yen roi cat dot
+                        -- ngot) va khung o gan cuoi animation.
+                        if tab.Objects.TabPrism then
+                            TweenService:Create(tab.Objects.TabPrism, info, {ImageTransparency = 1}):Play()
+                        end
 
                         if SpaceUI.Tabs.TabBackground.ImageTransparency < 1 then
                             TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
                         end
                         SpaceUI.IsAllowedToHoverTabButton = true
 
+                        -- Port dung cau truc rbxmx: file goc (exe_main_module.lua) luon tween
+                        -- GroupTransparency cua CAC CanvasGroup con (dashboard_frame, main_frame,
+                        -- credits_frame, window_controls) song song voi frame cha. ContentCanvas
+                        -- la CanvasGroup con tuong duong trong SpaceUI (dong 1744) nhung truoc day
+                        -- chua bao gio duoc tween - do la ly do noi dung tab dung nguyen ro net
+                        -- roi cat phut, thay vi mo dan giong file goc. task.wait giu nguyen 0.8s.
                         task.wait(0.8)
                         tab.Objects.ActualTab.Visible = false
+                        tab.Objects.ScrollFrame.Visible = false
                     else
                         TabScale.Scale = 1.2
                         tab.Objects.ActualTab.ImageTransparency = 1
