@@ -20,7 +20,7 @@ if not getgenv().SpaceUI then
         Config = {
             UI = {
                 Position = {X = 0.5, Y = 0.5},
-                Size = {X = 0.25, Y = 0.5},
+                Size = {X = 0.373, Y = 0.683},
                 FullScreen = false,
                 ToggleKeyCode = "LeftAlt",
                 Scale = 1,
@@ -93,6 +93,18 @@ do
         tabFocusTweens[tab] = {t1, t2}
         t1:Play()
         t2:Play()
+    end
+
+    -- Huy tween focus (playFocusTween) dang chay tren 1 tab cu the, neu co. Dung
+    -- truoc khi Play tween dong tab (fadeOutActualTab) de tranh 2 tween giang co
+    -- tren cung ActualTab.ImageTransparency gay khung/giat.
+    function SpaceUI.Tabs.CancelFocusTween(tab)
+        if tabFocusTweens[tab] then
+            for _, t in tabFocusTweens[tab] do
+                t:Cancel()
+            end
+            tabFocusTweens[tab] = nil
+        end
     end
 
     function SpaceUI.Tabs.CaptureFocus(tab)
@@ -2342,6 +2354,12 @@ do
                     if SpaceUI.Tabs.FocusedTab == tab then
                         SpaceUI.Tabs.RemoveFocus(tab)
                     end
+                    -- RemoveFocus (ngay tren) tu khoi dong 1 tween rieng (0.35s, Quad) tren
+                    -- chinh tab.Objects.ActualTab.ImageTransparency de dua ve trang thai mat
+                    -- focus. Neu khong huy no truoc khi Play fadeOutActualTab (0.8s, Exponential,
+                    -- cung property) ben duoi, 2 tween se giang co nhau tren cung 1 gia tri va
+                    -- gay khung/giat dung luc tween focus 0.35s hoan tat giua chung tween 0.8s.
+                    SpaceUI.Tabs.CancelFocusTween(tab)
                     SpaceUI.IsAllowedToHoverTabButton = false
                     CloseButton.Visible = false
                     tab.Objects.TabDragCanvas.Visible = false
