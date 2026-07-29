@@ -1827,7 +1827,6 @@ do
         -- Viền glow cố định quanh mọi tab, luôn hiện bất kể focus/unfocus (nguyên bản
         -- gốc bị mất trong quá trình sửa ZIndex trước đó - khôi phục y hệt).
         local TabPrism = Instance.new("ImageLabel", tab.Objects.ActualTab)
-        tab.Objects.TabPrism = TabPrism
         TabPrism.AnchorPoint = Vector2.new(0.5, 0.5)
         TabPrism.BackgroundTransparency = 1
         TabPrism.Position = UDim2.fromScale(0.5, 0.5)
@@ -2327,17 +2326,6 @@ do
                         fadeInActualTab:Play()
                         fadeInContent:Play()
                         scaleInTween:Play()
-
-                        -- Doi xung voi fade-out (xem nhanh dong ben duoi): TabPrism phai duoc
-                        -- dat lai ve trang thai an (1) roi tween ve gia tri hien thi that (0.8)
-                        -- moi lan mo, giong het cach fadeInActualTab/fadeInContent dat lai truoc
-                        -- khi tween. Neu khong, tu lan dong thu 2 tro di TabPrism giu nguyen o
-                        -- ImageTransparency=1 (vo hinh vinh vien) vi khong co gi dua no ve 0.8.
-                        if tab.Objects.TabPrism then
-                            tab.Objects.TabPrism.ImageTransparency = 1
-                            TweenService:Create(tab.Objects.TabPrism, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 0.8}):Play()
-                        end
-
                         task.wait(0.8)
                     else
                         if SpaceUI.Tabs.TabBackground.ImageTransparency < 1 then
@@ -2379,16 +2367,6 @@ do
                         fadeOutActualTab:Play()
                         fadeOutContent:Play()
                         scaleOutTween:Play()
-
-                        -- TabPrism (vien glow, ZIndex 1000) la con cua ActualTab nhung tu luc
-                        -- khoi tao (dong ~1829) chua bao gio duoc tween o bat ky dau trong file.
-                        -- No dung yen o ImageTransparency=0.8 (luon hien mo mo) suot qua trinh
-                        -- dong, roi bien mat dot ngot khi ActualTab.Visible=false o cuoi -> gay
-                        -- cam giac tach lop (ruot ActualTab mo dan, vien dung yen roi cat dot
-                        -- ngot) va khung o gan cuoi animation.
-                        if tab.Objects.TabPrism then
-                            TweenService:Create(tab.Objects.TabPrism, info, {ImageTransparency = 1}):Play()
-                        end
 
                         if SpaceUI.Tabs.TabBackground.ImageTransparency < 1 then
                             TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
