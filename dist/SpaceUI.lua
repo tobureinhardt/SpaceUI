@@ -20,7 +20,7 @@ if not getgenv().SpaceUI then
         Config = {
             UI = {
                 Position = {X = 0.5, Y = 0.5},
-                Size = {X = 0.373, Y = 0.683},
+                Size = {X = 0.25, Y = 0.5},
                 FullScreen = false,
                 ToggleKeyCode = "LeftAlt",
                 Scale = 1,
@@ -2359,13 +2359,21 @@ do
                     if anim and SpaceUI.Config.UI.Anim  then
                         local info = TweenInfo.new(.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
                         local fadeOutActualTab = TweenService:Create(tab.Objects.ActualTab, info, {ImageTransparency = 1})
-                        local fadeOutContent = TweenService:Create(tab.Objects.ContentCanvas, TweenInfo.new(.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {GroupTransparency = 1})
                         local scaleOutTween = TweenService:Create(TabScale, info, {Scale = 1.2})
                         table.insert(activeFadeTweens, fadeOutActualTab)
-                        table.insert(activeFadeTweens, fadeOutContent)
                         table.insert(activeFadeTweens, scaleOutTween)
+
+                        -- Dung dung pattern dashboard (dong 5586-5604): an noi dung (ScrollFrame -
+                        -- chua SearchBar, Combat/Movement/Premium...) NGAY LAP TUC truoc khi Play,
+                        -- khong tween GroupTransparency cua no nua. Dashboard muot vi no lam y het
+                        -- the nay - ActualPage.Visible=false duoc set truoc khi tween MainFrame, nen
+                        -- nguoi dung chi thay 1 lop (khung) mo dan, khong bao gio thay 2 lop lech
+                        -- nhau. Truoc day ContentCanvas tung duoc tween GroupTransparency song song
+                        -- voi ActualTab nhung 2 property nay khong dam bao hoan tat cung frame, nen
+                        -- sau khi ActualTab mat, ScrollFrame (contnet) van con hien ra 1 chut.
+                        tab.Objects.ScrollFrame.Visible = false
+
                         fadeOutActualTab:Play()
-                        fadeOutContent:Play()
                         scaleOutTween:Play()
 
                         if SpaceUI.Tabs.TabBackground.ImageTransparency < 1 then
@@ -2373,16 +2381,8 @@ do
                         end
                         SpaceUI.IsAllowedToHoverTabButton = true
 
-                        -- Port dung cau truc rbxmx: file goc (exe_main_module.lua) luon tween
-                        -- GroupTransparency cua CAC CanvasGroup con (dashboard_frame, main_frame,
-                        -- credits_frame, window_controls) song song voi frame cha. ContentCanvas
-                        -- la CanvasGroup con tuong duong trong SpaceUI (dong 1744) nhung truoc day
-                        -- chua bao gio duoc tween - do la ly do noi dung tab dung nguyen ro net
-                        -- roi cat phut, thay vi mo dan giong file goc. task.wait giu nguyen 0.8s.
                         task.wait(0.8)
-                        task.wait()
                         tab.Objects.ActualTab.Visible = false
-                        tab.Objects.ScrollFrame.Visible = false
                     else
                         TabScale.Scale = 1.2
                         tab.Objects.ActualTab.ImageTransparency = 1
