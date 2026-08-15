@@ -11,7 +11,6 @@ local Assets = {
     Main = {ToggleVisibility = nil}
 }
 
--- Initialize Hub global if not already set
 if not getgenv().SpaceUI then
     getgenv().SpaceUI = {
         Notifications = { Active = {}, Objects = {} },
@@ -31,7 +30,7 @@ if not getgenv().SpaceUI then
                 TabTransparency = 0.07,
                 KeybindTransparency = 0.7,
                 KeybindColor = {value1 = 0, value2 = 0, value3 = 0},
-                UseAccessibilityButton = true, -- Mặc định dùng Accessibility Button; set false để dùng lại TopbarPlus (API cũ)
+                UseAccessibilityButton = true,
             },
             Game = {
                 Modules = {},
@@ -63,23 +62,11 @@ if not getgenv().SpaceUI then
 end
 local SpaceUI = getgenv().SpaceUI
 
--- ── Leaflet-style Tab Focus Engine (ported từ EXE6 Leaflet.lua) ──────────────
--- Thay cho việc dựa vào thứ tự sibling lúc Instance.new (tab tạo trước luôn nằm
--- dưới), engine này set ZIndex động: tab đang focus = 2, các tab khác = 1.
--- Bấm vào bất kỳ đâu trong 1 tab (không chỉ thanh Drag) sẽ đưa tab đó lên trên.
 do
     SpaceUI.Tabs.ActiveTabs = SpaceUI.Tabs.ActiveTabs or {}
 
-    -- TweenService lấy độc lập tại đây: khối do...end này đứng trước dòng khai
-    -- báo `local TweenService` ở phần đầu file, nên biến đó chưa nằm trong scope
-    -- local của khối này (dù runtime đã có giá trị, Lua vẫn coi nó là global và
-    -- trả nil, gây lỗi "attempt to index nil with 'Create'").
     local _FocusTweenService = game:GetService("TweenService")
 
-    -- Tween ImageTransparency đang chạy cho hiệu ứng focus/unfocus của từng tab,
-    -- keyed theo chính bảng `tab`. Huỷ tween cũ trước khi phát tween mới để đổi
-    -- focus liên tục (bấm qua lại nhiều tab nhanh) không tạo 2 tween chồng nhau
-    -- trên cùng property theo 2 hướng ngược nhau.
     local tabFocusTweens = setmetatable({}, {__mode = "k"})
     local function playFocusTween(tab, imageTransparency, shadowTransparency)
         if tabFocusTweens[tab] then
@@ -101,7 +88,7 @@ do
 
         SpaceUI.Tabs.FocusedTab = tab
         tab.Objects.ActualTab.ZIndex = 2
-        -- Tab được focus: đục đúng theo config gốc (không solid), shadow hiện ra.
+
         playFocusTween(tab, SpaceUI.Config.UI.TabTransparency, 0.1)
 
         for i, v in SpaceUI.Tabs.ActiveTabs do
@@ -117,7 +104,7 @@ do
             SpaceUI.Tabs.FocusedTab = nil
         end
         tab.Objects.ActualTab.ZIndex = 1
-        -- Tab mất focus: solid hoàn toàn (hết xuyên thấu), shadow tắt hẳn.
+
         playFocusTween(tab, 0, 1)
     end
 
@@ -133,6 +120,249 @@ do
             SpaceUI.Tabs.RemoveFocus(tab)
         end
         table.remove(SpaceUI.Tabs.ActiveTabs, pos)
+    end
+end
+
+do
+    SpaceUI.Peek = {
+        Active = false,
+        Cards = {},
+        Overlay = nil,
+        MaxCards = 9,
+    }
+
+    local TweenService = game:GetService("TweenService")
+
+    local peekTweenInfo = TweenInfo.new(0.45, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
+    local peekFastInfo = TweenInfo.new(0.3, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
+
+    local function computeGrid(count)
+        local cols = math.ceil(math.sqrt(count))
+        local rows = math.ceil(count / cols)
+        return cols, rows
+    end
+
+    local function collectPeekTargets()
+        local targets = {}
+        if SpaceUI.Background and SpaceUI.Background.Objects and SpaceUI.Background.Objects.MainFrame
+            and SpaceUI.Background.Objects.MainFrame.Visible then
+            table.insert(targets, {Tab = nil, IsDashboard = true, Frame = SpaceUI.Background.Objects.MainFrame})
+        end
+        if SpaceUI.CurrentOpenTab then
+            for _, tab in SpaceUI.CurrentOpenTab do
+                if tab and tab.Objects and tab.Objects.ActualTab then
+                    table.insert(targets, {Tab = tab, IsDashboard = false, Frame = tab.Objects.ActualTab})
+                end
+            end
+        end
+        return targets
+    end
+
+    local function ensureOverlay()
+        if SpaceUI.Peek.Overlay then return SpaceUI.Peek.Overlay end
+
+        local Lighting = game:GetService("Lighting")
+        local blur = Lighting:FindFirstChild("SpaceUIPeekBlur")
+        if not blur then
+            blur = Instance.new("BlurEffect")
+            blur.Name = "SpaceUIPeekBlur"
+            blur.Size = 0
+            blur.Parent = Lighting
+        end
+
+        local overlay = Instance.new("TextButton")
+        overlay.Name = "PeekInputCatcher"
+        overlay.Text = ""
+        overlay.AutoButtonColor = false
+        overlay.BackgroundTransparency = 1
+        overlay.BorderSizePixel = 0
+        overlay.Size = UDim2.fromScale(1, 1)
+        overlay.Position = UDim2.fromScale(0, 0)
+        overlay.ZIndex = -100
+        overlay.Parent = SpaceUI.Background.Objects.MainScreenGui
+
+        SpaceUI.Peek.Overlay = overlay
+        SpaceUI.Peek.Blur = blur
+        return overlay
+    end
+
+    local function attachHitCatcher(card, zIndex)
+        local hit = Instance.new("TextButton")
+        hit.Name = "PeekHitCatcher"
+        hit.Text = ""
+        hit.AutoButtonColor = false
+        hit.BackgroundTransparency = 1
+        hit.Size = UDim2.fromScale(1, 1)
+        hit.Position = UDim2.fromScale(0, 0)
+        hit.ZIndex = zIndex
+        hit.Parent = card.Frame
+        card.HitCatcher = hit
+        return hit
+    end
+
+    local PEEK_CONTENT_ZINDEX_BOOST = 2000
+
+    local function boostDescendantZIndex(root, savedList)
+        for _, obj in root:GetDescendants() do
+            if obj:IsA("GuiObject") and obj.Name ~= "PeekHitCatcher" then
+                table.insert(savedList, {Object = obj, ZIndex = obj.ZIndex})
+                obj.ZIndex = obj.ZIndex + PEEK_CONTENT_ZINDEX_BOOST
+            end
+        end
+    end
+
+    local function restoreDescendantZIndex(savedList)
+        for _, entry in savedList do
+            if entry.Object and entry.Object.Parent then
+                entry.Object.ZIndex = entry.ZIndex
+            end
+        end
+        table.clear(savedList)
+    end
+
+    function SpaceUI.Peek.Exit(chosen)
+        if not SpaceUI.Peek.Active then return end
+        SpaceUI.Peek.Active = false
+
+        if SpaceUI.Peek.Blur then
+            TweenService:Create(SpaceUI.Peek.Blur, peekFastInfo, {Size = 0}):Play()
+        end
+        if SpaceUI.Peek.Overlay then
+            local ov = SpaceUI.Peek.Overlay
+            task.delay(peekFastInfo.Time, function()
+                if ov and ov.Parent then ov:Destroy() end
+            end)
+            SpaceUI.Peek.Overlay = nil
+        end
+
+        if chosen then
+            if chosen.Tab then
+
+                SpaceUI.Tabs.CaptureFocus(chosen.Tab)
+
+                if SpaceUI.Tabs.TabBackground then
+                    SpaceUI.Tabs.TabBackground.ZIndex = 2
+                end
+                if SpaceUI.Background and SpaceUI.Background.Objects and SpaceUI.Background.Objects.MainFrame then
+                    SpaceUI.Background.Objects.MainFrame.ZIndex = 1
+                end
+            elseif chosen.IsDashboard then
+
+                if SpaceUI.Tabs.FocusedTab then
+                    SpaceUI.Tabs.RemoveFocus(SpaceUI.Tabs.FocusedTab)
+                end
+                if SpaceUI.Background and SpaceUI.Background.Objects and SpaceUI.Background.Objects.MainFrame then
+                    SpaceUI.Background.Objects.MainFrame.ZIndex = 2
+                end
+                if SpaceUI.Tabs.TabBackground then
+                    SpaceUI.Tabs.TabBackground.ZIndex = 1
+                end
+            end
+        end
+
+        for _, card in SpaceUI.Peek.Cards do
+            if card.HitCatcher then
+                card.HitCatcher:Destroy()
+                card.HitCatcher = nil
+            end
+            local frame = card.Frame
+            if frame and frame.Parent then
+                frame.ZIndex = card.OriginalZIndex or frame.ZIndex
+                restoreDescendantZIndex(card.SavedDescendantZIndex)
+                TweenService:Create(frame, peekTweenInfo, {
+                    Position = card.OriginalPosition,
+                    Size = card.OriginalSize,
+                }):Play()
+            end
+        end
+
+        table.clear(SpaceUI.Peek.Cards)
+    end
+
+    function SpaceUI.Peek.Enter()
+        if SpaceUI.Peek.Active then return true end
+
+        local targets = collectPeekTargets()
+        if #targets == 0 then return false, "no_open_tabs" end
+        if #targets > SpaceUI.Peek.MaxCards then
+            return false, "too_many_tabs"
+        end
+
+        SpaceUI.Peek.Active = true
+        table.clear(SpaceUI.Peek.Cards)
+
+        local overlay = ensureOverlay()
+        SpaceUI.Peek.Blur.Size = 0
+        TweenService:Create(SpaceUI.Peek.Blur, peekTweenInfo, {Size = 18}):Play()
+
+        local cols, rows = computeGrid(#targets)
+        local outerPad = 0.06
+        local gutter = 0.025
+
+        local gridW = 1 - (outerPad * 2)
+        local gridH = 1 - (outerPad * 2)
+        local cardW = (gridW - gutter * (cols - 1)) / cols
+        local cardH = (gridH - gutter * (rows - 1)) / rows
+
+        for i, target in targets do
+            local frame = target.Frame
+            local card = {
+                Tab = target.Tab,
+                IsDashboard = target.IsDashboard,
+                Frame = frame,
+                OriginalPosition = frame.Position,
+                OriginalSize = frame.Size,
+                OriginalZIndex = frame.ZIndex,
+                SavedDescendantZIndex = {},
+            }
+            table.insert(SpaceUI.Peek.Cards, card)
+
+            local col = (i - 1) % cols
+            local row = math.floor((i - 1) / cols)
+
+            local itemsInThisRow = math.min(cols, #targets - row * cols)
+            local rowOffset = (gridW - (itemsInThisRow * cardW + (itemsInThisRow - 1) * gutter)) / 2
+
+            local targetX = outerPad + rowOffset + col * (cardW + gutter) + cardW / 2
+            local targetY = outerPad + row * (cardH + gutter) + cardH / 2
+
+            frame.ZIndex = 500 + i
+
+            boostDescendantZIndex(frame, card.SavedDescendantZIndex)
+            attachHitCatcher(card, frame.ZIndex)
+
+            TweenService:Create(frame, peekTweenInfo, {
+                Position = UDim2.fromScale(targetX, targetY),
+                Size = UDim2.fromScale(cardW, cardH),
+            }):Play()
+
+            table.insert(SpaceUI.Connections, card.HitCatcher.MouseButton1Click:Connect(function()
+                SpaceUI.Peek.Exit(card)
+            end))
+        end
+
+        table.insert(SpaceUI.Connections, overlay.MouseButton1Click:Connect(function()
+            SpaceUI.Peek.Exit(nil)
+        end))
+
+        return true
+    end
+
+    function SpaceUI.Peek.Toggle()
+        if SpaceUI.Peek.Active then
+            SpaceUI.Peek.Exit(nil)
+            return true
+        end
+        local ok, reason = SpaceUI.Peek.Enter()
+        if not ok and Assets.Notifications and Assets.Notifications.Send then
+            if reason == "too_many_tabs" then
+                Assets.Notifications.Send({
+                    Description = "Quá nhiều tab đang mở, không thể hiện Peek.",
+                    Duration = 3,
+                })
+            end
+        end
+        return ok
     end
 end
 
@@ -172,7 +402,7 @@ do
         if gameinfo then
             local dencgameinfo = HttpService:JSONDecode(gameinfo)
             if dencgameinfo and dencgameinfo.data and dencgameinfo.data[1] then
-                return dencgameinfo.data[1]                
+                return dencgameinfo.data[1]
             else
                 return "no game info after json"
             end
@@ -184,7 +414,7 @@ do
         if SpaceUI.Dev and isfile(file) then
             return loadstring(readfile(file))()
         else
-            local suc, err = pcall(function() 
+            local suc, err = pcall(function()
                 file = http.request({
                     Url = githublink,
                     Method = "GET"
@@ -221,7 +451,7 @@ do
         if SpaceUI.Tabs and SpaceUI.Tabs.Tabs then
             for i,v in SpaceUI.Tabs.Tabs do
                 if v.Modules then
-                    for i2, v2 in v.Modules do 
+                    for i2, v2 in v.Modules do
                         modules[i2] = v2
                     end
                 end
@@ -297,7 +527,7 @@ do
     Assets.Config.Save = function(File, data)
         writefile("SpaceUI/Config/"..File..".json", HttpService:JSONEncode(data))
     end
-    
+
     Assets.Config.Load = function(File, set)
         if isfile("SpaceUI/Config/"..File..".json") then
             local data = readfile("SpaceUI/Config/"..File..".json")
@@ -361,7 +591,7 @@ do
         end
         return "no file"
     end
-    
+
 end
 
 local function GetTextBounds(str: string, font: Font, textsize: number)
@@ -371,7 +601,7 @@ local function GetTextBounds(str: string, font: Font, textsize: number)
     Params.Size = textsize
     Params.Width = 1e9
     Params.RichText = false
-    
+
     return TextService:GetTextBoundsAsync(Params)
 end
 
@@ -380,7 +610,7 @@ do
         name: string,
         faces: { FontFace },
     }
-    
+
     type FontFace = {
         name: string,
         file: string,
@@ -449,7 +679,6 @@ do
                 TweenService:Create(v.Objects.Notification, TweenInfo.new(0.1, Enum.EasingStyle.Linear, Enum.EasingDirection.Out), {Position = UDim2.new(v.Objects.Notification.Position.X.Scale, v.Objects.Notification.Position.X.Offset, v.Objects.Notification.Position.Y.Scale, v.Objects.Notification.Position.Y.Offset + 50)}):Play()
             end
         end
-        
 
         NotificationData.Objects.Notification = Instance.new("ImageButton", SpaceUI.Notifications.Objects.NotificationGui)
         NotificationData.Objects.Notification.AnchorPoint = Vector2.new(0.5, 0)
@@ -488,7 +717,6 @@ do
         CloseButton.ScaleType = Enum.ScaleType.Fit
         CloseButton.ImageColor3 = Color3.fromRGB(255, 255, 255)
         CloseButton.AutoButtonColor = false
-
 
         local TimeLine = Instance.new("ImageLabel", NotificationData.Objects.Notification)
         TimeLine.AnchorPoint = Vector2.new(0.5, 1)
@@ -562,12 +790,12 @@ do
             end
             table.clear(NotificationData)
         end
-        
+
         NotificationData.Connections.conhover = NotificationData.Objects.Notification.MouseEnter:Connect(function()
             TimeLine.Visible = true
             CloseButton.Image = "rbxassetid://11293981586"
         end)
-        
+
         NotificationData.Connections.unconhover = NotificationData.Objects.Notification.MouseLeave:Connect(function()
             TimeLine.Visible = false
             CloseButton.Image = "rbxassetid://11295275950"
@@ -605,18 +833,17 @@ do
     end
 end
 
-
-do    
+do
     Assets.MainBackground.Init = function()
         local InitInfo = {
-            Functions = {Resize = nil, Drag = nil}, 
-            Data = {Resizing = false, Dragging = false, LastInputPosition = nil, IsToggleAnimating = false}, 
+            Functions = {Resize = nil, Drag = nil},
+            Data = {Resizing = false, Dragging = false, LastInputPosition = nil, IsToggleAnimating = false},
             Objects = {},
             NavigationButtons = {},
             WindowControls = {IsOpened = false, Instances = {}},
             MobileButtons = {indxs = {}, Buttons = {}}
         }
-    
+
         SpaceUI.Notifications.Objects.NotificationGui = Instance.new("ScreenGui", Assets.Functions.gethui())
         SpaceUI.Notifications.Objects.NotificationGui.ResetOnSpawn = false
         SpaceUI.Notifications.Objects.NotificationGui.IgnoreGuiInset = true
@@ -632,14 +859,14 @@ do
         if SpaceUI.Config.UI.ArrayList == nil then
             SpaceUI.Config.UI.ArrayList = false
         end
-    
+
         InitInfo.Objects.MainScreenGui = Instance.new("ScreenGui", Assets.Functions.gethui())
         InitInfo.Objects.MainScreenGui.ResetOnSpawn = false
         InitInfo.Objects.MainScreenGui.IgnoreGuiInset = true
         InitInfo.Objects.MainScreenGui.DisplayOrder = 10000
         InitInfo.Objects.MainScreenGuiScale = Instance.new("UIScale", InitInfo.Objects.MainScreenGui)
         InitInfo.Objects.MainScreenGuiScale.Scale = SpaceUI.Config.UI.Scale
-            
+
         InitInfo.Objects.MainFrame = Instance.new("ImageButton", InitInfo.Objects.MainScreenGui)
         InitInfo.Objects.MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
         InitInfo.Objects.MainFrame.AutoButtonColor = false
@@ -656,17 +883,15 @@ do
         InitInfo.Objects.MainFrameScale = Instance.new("UIScale", InitInfo.Objects.MainFrame)
         InitInfo.Objects.MainFrameScale.Scale = 1.2
         table.insert(SpaceUI.Corners, mainframecorner)
-    
+
         InitInfo.Objects.PageHolder = Instance.new("Frame", InitInfo.Objects.MainFrame)
         InitInfo.Objects.PageHolder.BackgroundTransparency = 1
         InitInfo.Objects.PageHolder.AnchorPoint = Vector2.new(0.5, 0.5)
         InitInfo.Objects.PageHolder.Size = UDim2.fromScale(1, 1)
         InitInfo.Objects.PageHolder.Position = UDim2.fromScale(0.5, 0.5)
         InitInfo.Objects.PageHolder.ClipsDescendants = true
-    
+
         do
-            -- TopbarPlus được tạo trong Main.Load
-            
 
             InitInfo.Objects.MobileKeybindFolder = Instance.new("Folder", InitInfo.Objects.MainScreenGui)
             InitInfo.Functions.CreateMobileButton = function(info)
@@ -687,7 +912,7 @@ do
                 if not MobileButtonInfo.Callbacks.End then
                     MobileButtonInfo.Callbacks.End = function() end
                 end
-    
+
                 if #InitInfo.MobileButtons.indxs > 0 then
                     MobileButtonInfo.Data.CurrIndex = #InitInfo.MobileButtons.indxs + 1
                     local curinfo = InitInfo.MobileButtons.indxs[#InitInfo.MobileButtons.indxs]
@@ -702,7 +927,7 @@ do
                         end
                     end
                 end
-    
+
                 MobileButtonInfo.Instances.MainBG = Instance.new("TextButton", InitInfo.Objects.MobileKeybindFolder)
                 MobileButtonInfo.Instances.MainBG.AutoButtonColor = false
                 MobileButtonInfo.Instances.MainBG.AnchorPoint = Vector2.new(0.5,0.5)
@@ -717,7 +942,7 @@ do
                 MobileButtonInfo.Instances.MainBG.ZIndex = 1000000
                 MobileButtonInfo.Instances.MainBG.TextColor3 = Color3.fromRGB(255,255,255)
                 MobileButtonInfo.Instances.MainBG.Draggable = true
-    
+
                 Instance.new("UICorner", MobileButtonInfo.Instances.MainBG).CornerRadius = UDim.new(0, 5)
 
                 local button = Instance.new("ImageButton", MobileButtonInfo.Instances.MainBG)
@@ -727,11 +952,11 @@ do
                 button.ZIndex = 10000000
                 button.ImageTransparency = 1
                 button.BackgroundTransparency = 1
-    
+
                 MobileButtonInfo.Functions.Destroy = function()
                     InitInfo.MobileButtons.Buttons[MobileButtonInfo.Flag] = nil
                     InitInfo.MobileButtons.indxs[MobileButtonInfo.Data.CurrIndex] = nil
-    
+
                     MobileButtonInfo.Instances.MainBG:Destroy()
                     for i,v in MobileButtonInfo.Connections do
                         if table.find(SpaceUI.Connections, v) then
@@ -739,13 +964,12 @@ do
                         end
                         v:Disconnect()
                     end
-    
+
                     local nextbutton = InitInfo.MobileButtons[MobileButtonInfo.Data.CurrIndex + 1]
                     if nextbutton and nextbutton.Data then
                         nextbutton.Data.CurrIndex -= 1
                     end
-    
-                    
+
                     table.clear(MobileButtonInfo)
                 end
 
@@ -758,13 +982,13 @@ do
                             if mouseStart and input then
                                 Delta = (Vector2.new(input.Position.X, input.Position.Y) - Vector2.new(mouseStart.X, mouseStart.Y))
                             end
-                
+
                             local newX = math.clamp(frameStart.X.Scale + (Delta.X / Viewport.X), FrameSize.X / Viewport.X / 2, 1 - FrameSize.X / Viewport.X / 2)
                             local newY = math.clamp(frameStart.Y.Scale + (Delta.Y / Viewport.Y), FrameSize.Y / Viewport.Y / 2, 1 - FrameSize.Y / Viewport.Y / 2)
-                
+
                             local Position = UDim2.new(newX, 0, newY, 0)
-                            MobileButtonInfo.Instances.MainBG.Position = Position 
-                            MobileButtonInfo.Data.Position = {X = newX, Y = newY}           
+                            MobileButtonInfo.Instances.MainBG.Position = Position
+                            MobileButtonInfo.Data.Position = {X = newX, Y = newY}
                         end
                     end)
                 end
@@ -782,11 +1006,11 @@ do
                                 HoldTime = 0
                                 SpaceUI.CurrntInputChangeCallback = function() end
                                 SpaceUI.InputEndFunc = nil
-                                
+
                                 if hold then
                                     MobileButtonInfo.Data.Dragging, InputStarting, FrameStarting = false, input.Position, MobileButtonInfo.Instances.MainBG.Position
 
-                                    if not SpaceUI.Config.Game.Other.MobileButtonPos then 
+                                    if not SpaceUI.Config.Game.Other.MobileButtonPos then
                                         SpaceUI.Config.Game.Other.MobileButtonPos = {}
                                     end
 
@@ -801,7 +1025,7 @@ do
                         if HoldTime >= 0.8 then
                             MobileButtonInfo.Data.Dragging, InputStarting, FrameStarting = true, input.Position, MobileButtonInfo.Instances.MainBG.Position
                             SpaceUI.CurrntInputChangeCallback = function(input)
-                                if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then  
+                                if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
                                     if MobileButtonInfo.Data.Dragging and not SpaceUI.Config.UI.FullScreen then
                                         MobileButtonInfo.Functions.Drag(InputStarting, FrameStarting, input)
                                     end
@@ -824,14 +1048,13 @@ do
                         MobileButtonInfo.Instances.MainBG.Position = UDim2.fromScale(MobileButtonInfo.Instances.MainBG.Position.X.Scale, pos.Y)
                     end
                 end
-            
-    
+
                 InitInfo.MobileButtons.indxs[MobileButtonInfo.Data.CurrIndex] = MobileButtonInfo
                 InitInfo.MobileButtons.Buttons[MobileButtonInfo.Flag] = MobileButtonInfo
                 return MobileButtonInfo
             end
         end
-    
+
         InitInfo.Objects.DropShadow = Instance.new("ImageLabel", InitInfo.Objects.MainFrame)
         InitInfo.Objects.DropShadow.AnchorPoint = Vector2.new(0.5, 0.5)
         InitInfo.Objects.DropShadow.BackgroundTransparency = 1
@@ -843,7 +1066,7 @@ do
         InitInfo.Objects.DropShadow.ScaleType = Enum.ScaleType.Slice
         InitInfo.Objects.DropShadow.SliceCenter = Rect.new(512, 512, 512, 512)
         InitInfo.Objects.DropShadow.SliceScale = 0.19
-    
+
         local ZoomFrame = Instance.new("Frame", InitInfo.Objects.MainFrame)
         ZoomFrame.Size = UDim2.fromScale(1, 1)
         ZoomFrame.BackgroundTransparency = 1
@@ -858,7 +1081,7 @@ do
                 Assets.Config.Save("UI", SpaceUI.Config.UI)
             end
         end))
-    
+
         table.insert(SpaceUI.Connections, ZoomFrame.MouseWheelBackward:Connect(function()
             if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.RightControl) and SpaceUI.Background.Objects.MainFrame.Visible then
                 SpaceUI.Config.UI.Scale = SpaceUI.Config.UI.Scale - 0.05
@@ -869,7 +1092,7 @@ do
                 Assets.Config.Save("UI", SpaceUI.Config.UI)
             end
         end))
-    
+
         InitInfo.Objects.NavigationButtons = Instance.new("Frame", InitInfo.Objects.MainFrame)
         InitInfo.Objects.NavigationButtons.BackgroundTransparency = 1
         InitInfo.Objects.NavigationButtons.Position = UDim2.fromScale(0.025, 0.091)
@@ -878,26 +1101,25 @@ do
         local navlist = Instance.new("UIListLayout", InitInfo.Objects.NavigationButtons)
         navlist.Padding = UDim.new(0, 10)
         navlist.FillDirection = Enum.FillDirection.Horizontal
-    
+
         InitInfo.Objects.WindowControls = Instance.new("CanvasGroup", InitInfo.Objects.MainFrame)
         InitInfo.Objects.WindowControls.AnchorPoint = Vector2.new(0.5, 0.5)
         InitInfo.Objects.WindowControls.BackgroundTransparency = 1
         InitInfo.Objects.WindowControls.Position = UDim2.fromScale(0.5, 0.5)
         InitInfo.Objects.WindowControls.Size = UDim2.fromScale(1, 1)
         InitInfo.Objects.WindowControls.ZIndex = 2
-    
+
         local MainControlsWindow = Instance.new("Frame", InitInfo.Objects.WindowControls)
         MainControlsWindow.AnchorPoint = Vector2.new(1, 1)
         MainControlsWindow.BackgroundTransparency = 1
         MainControlsWindow.Position = UDim2.fromScale(1, 1)
         MainControlsWindow.Size = UDim2.fromOffset(100, 50)
-    
+
         local MainWindowControlList = Instance.new("UIListLayout", MainControlsWindow)
         MainWindowControlList.FillDirection = Enum.FillDirection.Horizontal
         MainWindowControlList.SortOrder = Enum.SortOrder.LayoutOrder
         MainWindowControlList.HorizontalFlex = Enum.UIFlexAlignment.Fill
-    
-    
+
         InitInfo.Functions.CreateNavigationButton = function(Data: any)
             local buttondata = {
                 Button = nil,
@@ -905,18 +1127,18 @@ do
                 Icon = Data.Icon or "",
                 Callback = Data.Callback or function() end
             }
-    
+
             buttondata.Button = Instance.new("ImageButton", InitInfo.Objects.NavigationButtons)
             buttondata.Button.AutoButtonColor = false
             buttondata.Button.BackgroundTransparency = 0.9
             buttondata.Button.Size = UDim2.fromOffset(40, 40)
             buttondata.Button.Image = ""
             Instance.new("UICorner",buttondata.Button).CornerRadius = UDim.new(1,0)
-    
+
             local hovergradient = Instance.new("UIGradient", buttondata.Button)
             hovergradient.Transparency = NumberSequence.new{NumberSequenceKeypoint.new(0,0,0), NumberSequenceKeypoint.new(1, 0.331, 0)}
             hovergradient.Enabled = false
-    
+
             local iconimage = Instance.new("ImageLabel", buttondata.Button)
             iconimage.AnchorPoint = Vector2.new(0.5, 0.5)
             iconimage.BackgroundTransparency = 1
@@ -925,7 +1147,7 @@ do
             iconimage.Size = UDim2.fromScale(0.45, 0.45)
             iconimage.Image = buttondata.Icon
             local iconscale = Instance.new("UIScale", iconimage)
-    
+
             table.insert(SpaceUI.Connections, buttondata.Button.MouseEnter:Connect(function()
                 hovergradient.Enabled = true
                 TweenService:Create(iconscale, TweenInfo.new(0.15), {Scale = 1.2}):Play()
@@ -934,17 +1156,17 @@ do
                 hovergradient.Enabled = false
                 TweenService:Create(iconscale, TweenInfo.new(0.15), {Scale = 1}):Play()
             end))
-            table.insert(SpaceUI.Connections, buttondata.Button.MouseButton1Click:Connect(function() 
+            table.insert(SpaceUI.Connections, buttondata.Button.MouseButton1Click:Connect(function()
                 buttondata.Callback(buttondata)
                 TweenService:Create(iconscale, TweenInfo.new(0.15), {Scale = 1.4}):Play()
                 task.wait(0.15)
                 TweenService:Create(iconscale, TweenInfo.new(0.15), {Scale = 1}):Play()
             end))
-    
+
             InitInfo.NavigationButtons[Data.Name] = buttondata
             return buttondata
         end
-    
+
         InitInfo.Functions.CreateWindowControlButton = function(Data: any)
             local buttondata = {
                 Name = Data.Name or "Button",
@@ -955,7 +1177,7 @@ do
                 Objects = {Button = nil, Selection = nil},
                 Callbacks = Data.Callbacks or {Clicked = function() end, InputBegan = function() end}
             }
-    
+
             local HasInput = true
             if not buttondata.Callbacks.Clicked then
                 buttondata.Callbacks.Clicked = function() end
@@ -967,7 +1189,7 @@ do
                 buttondata.Callbacks.InputBegan = function() end
                 buttondata.Callbacks.Clicked = function() end
             end
-    
+
             if buttondata.Drag then
                 buttondata.Objects.Button = Instance.new("ImageButton", InitInfo.Objects.WindowControls)
                 buttondata.Objects.Button.AnchorPoint = Vector2.new(0.5, 0)
@@ -977,7 +1199,7 @@ do
                 buttondata.Objects.Button.Position = UDim2.fromScale(0.5, 0)
                 buttondata.Objects.Button.Size = UDim2.fromOffset(60, 40)
                 buttondata.Objects.Button.ZIndex = 10
-                
+
                 local dragicon = Instance.new("ImageLabel", buttondata.Objects.Button)
                 dragicon.AnchorPoint = Vector2.new(0.5, 0)
                 dragicon.BackgroundTransparency = 1
@@ -988,7 +1210,7 @@ do
                 dragicon.Image = "rbxassetid://12974354535"
                 dragicon.ImageTransparency = 0.5
                 dragicon.ScaleType = Enum.ScaleType.Fit
-    
+
                 table.insert(SpaceUI.Connections, buttondata.Objects.Button.MouseButton1Click:Connect(function()
                     buttondata.Callbacks.Clicked(buttondata)
                 end))
@@ -999,7 +1221,7 @@ do
                 buttondata.Objects.Button.LayoutOrder = buttondata.LayoutOrder
                 buttondata.Objects.Button.Size = UDim2.fromOffset(50, 50)
                 buttondata.Objects.Button.ZIndex = 10
-        
+
                 buttondata.Objects.ActualIcon = Instance.new("ImageLabel", buttondata.Objects.Button)
                 buttondata.Objects.ActualIcon.AnchorPoint = Vector2.new(0.5, 0.5)
                 buttondata.Objects.ActualIcon.BackgroundTransparency = 1
@@ -1010,7 +1232,7 @@ do
                 buttondata.Objects.ActualIcon.ImageTransparency = 0.2
                 buttondata.Objects.ActualIcon.ScaleType = Enum.ScaleType.Fit
                 local ActualIconScale = Instance.new("UIScale", buttondata.Objects.ActualIcon)
-        
+
                 buttondata.Objects.Selection = Instance.new("ImageLabel", buttondata.Objects.Button)
                 buttondata.Objects.Selection.AnchorPoint = Vector2.new(0.5, 0.5)
                 buttondata.Objects.Selection.BackgroundTransparency = 1
@@ -1020,32 +1242,30 @@ do
                 buttondata.Objects.Selection.Image = "rbxassetid://18412474498"
                 buttondata.Objects.Selection.ImageTransparency = 1
                 buttondata.Objects.Selection.ScaleType = Enum.ScaleType.Fit
-    
+
                 table.insert(SpaceUI.Connections, buttondata.Objects.Button.MouseButton1Click:Connect(function()
                     buttondata.Callbacks.Clicked(buttondata)
                     TweenService:Create(ActualIconScale, TweenInfo.new(0.15), {Scale = 0.5}):Play()
-        
+
                     TweenService:Create(buttondata.Objects.Selection, TweenInfo.new(0.15), {ImageTransparency = 0.9}):Play()
                     TweenService:Create(ActualIconScale, TweenInfo.new(0.15), {Scale = 1}):Play()
                 end))
-    
+
                 if not SpaceUI.Mobile then
                     table.insert(SpaceUI.Connections, buttondata.Objects.Button.MouseEnter:Connect(function()
                         buttondata.Objects.Selection.ImageTransparency = 1
                         ActualIconScale.Scale = 1.2
-    
+
                         TweenService:Create(ActualIconScale, TweenInfo.new(0.15), {Scale = 1.2}):Play()
                         TweenService:Create(buttondata.Objects.Selection, TweenInfo.new(0.15), {ImageTransparency = 0.8}):Play()
                     end))
 
-                    -- Hover-press: scale xuống lúc giữ chuột, trước khi Callbacks.Clicked chạy
-                    -- (port từ window_handler bản gốc: controls.resize.MouseButton1Down)
                     table.insert(SpaceUI.Connections, buttondata.Objects.Button.MouseButton1Down:Connect(function()
                         TweenService:Create(ActualIconScale, TweenInfo.new(0.15), {Scale = 0.5}):Play()
 
                         TweenService:Create(buttondata.Objects.Selection, TweenInfo.new(0.15), {ImageTransparency = 0.9}):Play()
                     end))
-    
+
                     table.insert(SpaceUI.Connections, buttondata.Objects.Button.MouseLeave:Connect(function()
                         TweenService:Create(ActualIconScale, TweenInfo.new(0.15), {Scale = 1}):Play()
                         TweenService:Create(buttondata.Objects.Selection, TweenInfo.new(0.15), {ImageTransparency = 1}):Play()
@@ -1054,48 +1274,48 @@ do
                         ActualIconScale.Scale = 1
                     end))
                 end
-    
+
             end
-    
+
             if HasInput then
                 table.insert(SpaceUI.Connections, buttondata.Objects.Button.InputBegan:Connect(buttondata.Callbacks.InputBegan))
             end
-        
+
             InitInfo.WindowControls.Instances[buttondata.Name] = buttondata
             return buttondata
         end
-    
+
         table.insert(SpaceUI.Connections, UserInputService.InputEnded:Connect(function(input)
             if SpaceUI.InputEndFunc then
                 SpaceUI.InputEndFunc(input)
             end
         end))
-    
+
         InitInfo.Functions.Resize = function(input : InputObject)
             if InitInfo.Data.Resizing and not SpaceUI.Config.UI.FullScreen then
                 if not UserCamera then return end
                 local delta = input.Position - InitInfo.Data.LastInputPosition
-        
+
                 local sensitivity = 0.008
-        
+
                 local scaleX = delta.X * sensitivity
                 local scaleY = delta.Y * sensitivity
-        
+
                 local minScale = 0.15
                 local maxScaleX = 0.95
                 local maxScaleY = 0.95
-        
+
                 local newScaleX = math.clamp(InitInfo.Objects.MainFrame.Size.X.Scale + scaleX, minScale, maxScaleX)
                 local newScaleY = math.clamp(InitInfo.Objects.MainFrame.Size.Y.Scale + scaleY, minScale, maxScaleY)
-        
+
                 TweenService:Create(InitInfo.Objects.MainFrame, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Size = UDim2.fromScale(newScaleX, newScaleY)}):Play()
                 InitInfo.Data.LastInputPosition = input.Position
                 SpaceUI.Config.UI.Size = {X = newScaleX, Y = newScaleY}
             end
         end
-    
+
         InitInfo.Functions.Drag = function(mouseStart: Vector2 | Vector3 | nil, frameStart: UDim2, input: InputObject?)
-            -- lowww taper fadeee
+
             pcall(function()
                 if UserCamera then
                     local Viewport = UserCamera.ViewportSize
@@ -1104,28 +1324,26 @@ do
                     if mouseStart and input then
                         Delta = (Vector2.new(input.Position.X, input.Position.Y) - Vector2.new(mouseStart.X, mouseStart.Y))
                     end
-        
+
                     local newX = math.clamp(frameStart.X.Scale + (Delta.X / Viewport.X), FrameSize.X / Viewport.X / 2, 1 - FrameSize.X / Viewport.X / 2)
                     local newY = math.clamp(frameStart.Y.Scale + (Delta.Y / Viewport.Y), FrameSize.Y / Viewport.Y / 2, 1 - FrameSize.Y / Viewport.Y / 2)
-        
+
                     local Position = UDim2.new(newX, 0, newY, 0)
                     InitInfo.Objects.MainFrame.Position = Position
-    
+
                     SpaceUI.Config.UI.Position = {X = newX, Y = newY}
                 end
             end)
         end
-    
-    
-        SpaceUI.CurrntInputChangeCallback = function() end 
+
+        SpaceUI.CurrntInputChangeCallback = function() end
         table.insert(SpaceUI.Connections, UserInputService.InputChanged:Connect(function(input)
             SpaceUI.CurrntInputChangeCallback(input)
         end))
-    
-    
+
         InitInfo.Functions.CreateNavigationButton({
-            Name = "Close", 
-            Icon = "rbxassetid://11293981586", 
+            Name = "Close",
+            Icon = "rbxassetid://11293981586",
             Callback = function()
                 if Assets.Main and Assets.Main.ToggleVisibility then
                     Assets.Main.ToggleVisibility(false)
@@ -1136,18 +1354,18 @@ do
                 end
             end
         })
-    
+
         local forcefullscreen = false
         InitInfo.Functions.CreateWindowControlButton({
-            Name = "FullScreen", 
-            Icon = "rbxassetid://11295287158", 
-            LayoutOrder = 1, 
+            Name = "FullScreen",
+            Icon = "rbxassetid://11295287158",
+            LayoutOrder = 1,
             Callbacks = {
                 Clicked = function(self)
                     if not forcefullscreen then
                         SpaceUI.Config.UI.FullScreen = not SpaceUI.Config.UI.FullScreen
                     end
-                    
+
                     if SpaceUI.Config.UI.FullScreen or forcefullscreen then
                         if not forcefullscreen then
                             SpaceUI.Config.UI.Position = {X = InitInfo.Objects.MainFrame.Position.X.Scale, Y = InitInfo.Objects.MainFrame.Position.Y.Scale}
@@ -1157,7 +1375,7 @@ do
                             SpaceUI.Config.UI.FullScreen = true
                             forcefullscreen = false
                         end
-    
+
                         TweenService:Create(InitInfo.Objects.MainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Exponential), {Position = UDim2.fromScale(.5, .5), Size = UDim2.fromScale(1, 1)}):Play()
                         for i,v in SpaceUI.Corners do
                             TweenService:Create(v, TweenInfo.new(0.5, Enum.EasingStyle.Exponential), {CornerRadius = UDim.new(0, 0)}):Play()
@@ -1174,38 +1392,37 @@ do
                         end
                         TweenService:Create(InitInfo.Objects.MainFrameScale, TweenInfo.new(0.5, Enum.EasingStyle.Exponential), {Scale = SpaceUI.Config.UI.Scale}):Play()
                     end
-                
+
                     Assets.Config.Save("UI", SpaceUI.Config.UI)
-                    
+
                 end
             }
         })
-    
-    
+
         local InputStarting, FrameStarting = nil, nil
         InitInfo.Functions.CreateWindowControlButton({
-            Name = "Drag", 
-            IsDrag = true, 
+            Name = "Drag",
+            IsDrag = true,
             Callbacks = {
                 InputBegan = function(input)
                     if (input.UserInputType == Enum.UserInputType.MouseButton1) or (input.UserInputType == Enum.UserInputType.Touch) then
-                        if SpaceUI.Config.UI.FullScreen then 
-    
+                        if SpaceUI.Config.UI.FullScreen then
+
                             SpaceUI.Config.UI.FullScreen = false
-    
+
                             InitInfo.WindowControls.Instances.FullScreen.Objects.ActualIcon.Image = "rbxassetid://11295287158"
                             InitInfo.WindowControls.Instances.Resize.Objects.ActualIcon.ImageTransparency = 0.2
-    
+
                             TweenService:Create(InitInfo.Objects.MainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Exponential), {Position = UDim2.fromScale(SpaceUI.Config.UI.Position.X, SpaceUI.Config.UI.Position.Y), Size = UDim2.fromScale(SpaceUI.Config.UI.Size.X, SpaceUI.Config.UI.Size.Y)}):Play()
                             for i,v in SpaceUI.Corners do
                                 TweenService:Create(v, TweenInfo.new(0.5, Enum.EasingStyle.Exponential), {CornerRadius = UDim.new(0, 20)}):Play()
                             end
                             TweenService:Create(InitInfo.Objects.MainFrameScale, TweenInfo.new(0.5, Enum.EasingStyle.Exponential), {Scale = SpaceUI.Config.UI.Scale}):Play()
                         end
-    
+
                         InitInfo.Data.Dragging, InputStarting, FrameStarting = true, input.Position, InitInfo.Objects.MainFrame.Position
                         SpaceUI.CurrntInputChangeCallback = function(input)
-                            if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then  
+                            if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
                                 if InitInfo.Data.Dragging and not SpaceUI.Config.UI.FullScreen then
                                     InitInfo.Functions.Drag(InputStarting, FrameStarting, input)
                                 end
@@ -1234,11 +1451,11 @@ do
                 end
             }
         })
-    
+
         InitInfo.Functions.CreateWindowControlButton({
-            Name = "Resize", 
-            Icon = "rbxassetid://11295287825", 
-            LayoutOrder = 2, 
+            Name = "Resize",
+            Icon = "rbxassetid://11295287825",
+            LayoutOrder = 2,
             Callbacks = {
                 InputBegan = function(input)
                     if (input.UserInputType == Enum.UserInputType.MouseButton1) or (input.UserInputType == Enum.UserInputType.Touch) then
@@ -1260,18 +1477,18 @@ do
                 end
             }
         })
-    
+
         if SpaceUI.Config.UI.FullScreen then
             forcefullscreen = true
             InitInfo.WindowControls.Instances.FullScreen.Callbacks.Clicked(InitInfo.WindowControls.Instances.FullScreen)
         end
-    
+
         return InitInfo
     end
-        
+
 end
 
-do 
+do
     Assets.ArrayList.Init = function()
         local Data = {
             Entries = {},
@@ -1282,31 +1499,30 @@ do
             Objects = SpaceUI.ArrayList.Objects
         }
 
-
         local Create = function(Class: string, Properties: { [string]: any }): Instance
             local Inst = Instance.new(Class)
-            
+
             for Index, Value in next, Properties do
                 if Index ~= 'Children' then
                     Inst[Index] = Value
                 end
             end
-            
+
             if Properties.Children then
                 for Index, Child in Properties.Children do
                     Child.Name = Index
                     Child.Parent = Inst
                 end
             end
-            
+
             return Inst
         end
 
         local TEXT_SIZE = if SpaceUI.Mobile then 16 else 24
-        
+
         local download = Assets.Font.Download("Product-Sans-Regular", "https://raw.githubusercontent.com/warprbx/HubRewrite/refs/heads/main/Hub/Assets/Fonts/Product-Sans-Regular.ttf")
         if not download then
-            return 
+            return
         end
 
         local product_sans_id = Assets.Font.create_family("ProductSans", {
@@ -1322,18 +1538,18 @@ do
             Line: Frame,
             MainText: TextLabel
         }
-        
+
         type ModuleEntry = {
             Name: string,
             Instance: EntryInstance?,
         }
-        
+
         local Template = Create("Frame", {
             BackgroundColor3 = Color3.new(),
             BackgroundTransparency = 0.35,
             BorderSizePixel = 0,
             Size = UDim2.fromOffset(0, 30),
-            
+
             Children = {
                 Line = Create("Frame", {
                     AnchorPoint = Vector2.new(1, 0),
@@ -1356,7 +1572,7 @@ do
                 })
             }
         })
-        
+
         local Holder = Create("Frame", {
             BackgroundTransparency = 1,
             AnchorPoint = Vector2.new(1, 0),
@@ -1370,23 +1586,22 @@ do
             },
         })
 
-
         function Data.Functions.PushModule(Entry: ModuleEntry)
             local EntryInstance = Template:Clone()
             local MainText = EntryInstance.MainText
             local MainSize = GetTextBounds(Entry.Name, font, TEXT_SIZE)
-            
+
             MainText.Text = Entry.Name
-            
+
             local XSize = MainSize.X + 14
             local YSize = TEXT_SIZE + 6
-            
+
             MainText.Size = UDim2.new(0, MainSize.X, 1, 0)
-            
+
             EntryInstance.Size = UDim2.fromOffset(XSize, YSize)
             EntryInstance.LayoutOrder = #Data.Entries
             EntryInstance.Parent = Holder
-                        
+
             local Index = #Data.Entries + 1
             local _Entry
             _Entry = {
@@ -1402,28 +1617,27 @@ do
                     end
                     Data.Functions.Resort()
                 end
-                
+
             }
-            
+
             Data.Entries[Index] = _Entry
-            
+
             Data.Functions.Resort()
-            
+
             return _Entry
         end
-
 
         function Data.Functions.Resort()
             table.sort(Data.Entries, function(a: ModuleEntry, b: ModuleEntry)
                 local TotalTextA = a.Name
                 local TotalTextB = b.Name
-                
+
                 local SizeA = GetTextBounds(TotalTextA, font, TEXT_SIZE)
                 local SizeB = GetTextBounds(TotalTextB, font, TEXT_SIZE)
-        
+
                 return SizeA.X > SizeB.X
             end)
-            
+
             for Index, Entry in next, Data.Entries do
                 Entry.Instance.LayoutOrder = Index
             end
@@ -1431,18 +1645,18 @@ do
 
         local function Rainbow(Delay: number)
             local time = (os.clock() * 1000 + Delay) / 1000
-            local hue = (math.sin(time * 0.5) * 40 + 240) 
+            local hue = (math.sin(time * 0.5) * 40 + 240)
             local saturation = math.sin(time * 0.3) * 0.1 + 0.35
             local value = 0.95
-            
+
             return Color3.fromHSV(hue / 360, saturation, value)
         end
-        
+
         local function ArrayListRainbow()
             local Speed = Data.RainbowSpeed
-            
+
             for i, Module in Data.Entries do
-                local Color = Rainbow(Speed - i * 250) 
+                local Color = Rainbow(Speed - i * 250)
                 Module.Instance.MainText.TextColor3 = Color
                 Module.Instance.Line.BackgroundColor3 = Color
             end
@@ -1475,15 +1689,15 @@ do
 end
 
 do
-    
+
     Assets.Pages.Init = function()
         local InitInfo = {
             Objects = {},
             Data = {},
             Functions = {},
             Connections = {}
-        }  
-    
+        }
+
         InitInfo.Objects.Pageselector = Instance.new("Frame", SpaceUI.Background.Objects.MainFrame)
         InitInfo.Objects.Pageselector.AnchorPoint = Vector2.new(0.5, 0.5)
         InitInfo.Objects.Pageselector.BackgroundTransparency = 0.9
@@ -1494,12 +1708,11 @@ do
         InitInfo.Objects.Pageselector.Visible = false
         InitInfo.Objects.Pageselector.ClipsDescendants = false
         InitInfo.Objects.Pageselector.BackgroundTransparency = 1
-    
-    
+
         InitInfo.Objects.PageselectorCorner = Instance.new("UICorner", InitInfo.Objects.Pageselector)
         InitInfo.Objects.PageselectorCorner.CornerRadius = UDim.new(0, 20)
         table.insert(SpaceUI.Corners, InitInfo.Objects.PageselectorCorner)
-    
+
         local MainPageselectorMenu = Instance.new("ImageLabel", InitInfo.Objects.Pageselector)
         MainPageselectorMenu.AnchorPoint = Vector2.new(0.5, 0.5)
         MainPageselectorMenu.BackgroundColor3 = Color3.fromRGB(62, 62, 62)
@@ -1512,7 +1725,7 @@ do
         InitInfo.Objects.MainPageselectorScale = Instance.new("UIScale", MainPageselectorMenu)
         InitInfo.Objects.MainPageselectorScale.Scale = 0.5
         MainPageselectorMenu.ZIndex = 40
-        
+
         local PageselectorShadow = Instance.new("ImageLabel", MainPageselectorMenu)
         PageselectorShadow.AnchorPoint = Vector2.new(0.5, 0.5)
         PageselectorShadow.BackgroundTransparency = 1
@@ -1522,20 +1735,20 @@ do
         PageselectorShadow.ImageTransparency = 0.8
         PageselectorShadow.ScaleType = Enum.ScaleType.Slice
         PageselectorShadow.SliceCenter = Rect.new(379, 379, 379, 379)
-    
+
         InitInfo.Objects.PageselectorButtons = Instance.new("Frame", MainPageselectorMenu)
         InitInfo.Objects.PageselectorButtons.AnchorPoint = Vector2.new(0.5, 0.5)
         InitInfo.Objects.PageselectorButtons.BackgroundTransparency = 1
         InitInfo.Objects.PageselectorButtons.Position = UDim2.fromScale(0.5, 0.5)
         InitInfo.Objects.PageselectorButtons.Size = UDim2.fromScale(1, 1)
         InitInfo.Objects.PageselectorButtons.ZIndex = 40
-    
+
         local PageselectorButtonsLayout = Instance.new("UIListLayout", InitInfo.Objects.PageselectorButtons)
         PageselectorButtonsLayout.SortOrder = Enum.SortOrder.LayoutOrder
         PageselectorButtonsLayout.Padding = UDim.new(0, 10)
         PageselectorButtonsLayout.VerticalAlignment = Enum.VerticalAlignment.Center
         PageselectorButtonsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-    
+
         InitInfo.Functions.ToggleSelectorVisibility = function(visible)
             if visible then
                 InitInfo.Objects.Pageselector.Visible = true
@@ -1543,11 +1756,11 @@ do
                 InitInfo.Objects.PageselectorButtons.Parent.Position = UDim2.new(0,0,0.5,0)
                 InitInfo.Objects.Pageselector.ClipsDescendants = true
                 InitInfo.Objects.Pageselector.BackgroundTransparency = 1
-        
+
                 TweenService:Create(InitInfo.Objects.Pageselector, TweenInfo.new(0.5, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.9}):Play()
                 TweenService:Create(InitInfo.Objects.PageselectorButtons.Parent, TweenInfo.new(0.5, Enum.EasingStyle.Exponential), {Position = UDim2.new(0, 60, 0.5, 0)}):Play()
                 TweenService:Create(InitInfo.Objects.MainPageselectorScale, TweenInfo.new(0.5, Enum.EasingStyle.Exponential), {Scale = 1}):Play()
-        
+
             else
                 TweenService:Create(InitInfo.Objects.Pageselector, TweenInfo.new(0.5, Enum.EasingStyle.Exponential), {BackgroundTransparency = 1}):Play()
                 TweenService:Create(InitInfo.Objects.PageselectorButtons.Parent, TweenInfo.new(0.5, Enum.EasingStyle.Exponential), {Position = UDim2.new(0, -10, 0.5, 0)}):Play()
@@ -1558,19 +1771,18 @@ do
             end
         end
 
-    
         SpaceUI.Background.Functions.CreateNavigationButton({
-            Name = "Menu", 
-            Icon = "rbxassetid://11295285432", 
+            Name = "Menu",
+            Icon = "rbxassetid://11295285432",
             Callback = function()
                 InitInfo.Functions.ToggleSelectorVisibility(not SpaceUI.Pageselector.Objects.Pageselector.Visible)
             end
         })
-    
+
         SpaceUI.Pageselector = InitInfo
         return InitInfo
     end
-    
+
     Assets.Pages.NewPage = function(Data)
         local PageData = {
             Name = Data.Name or "New Page",
@@ -1580,7 +1792,7 @@ do
             Default = Data.Default,
             Selected = Data.Default
         }
-    
+
         if not SpaceUI.Pageselector then Assets.Pages.Init() end
         PageData.Objects.PageselectorButton = Instance.new("ImageButton", SpaceUI.Pageselector.Objects.PageselectorButtons)
         PageData.Objects.PageselectorButton.BackgroundColor3 = Color3.fromRGB(255,255,255)
@@ -1591,7 +1803,7 @@ do
         PageData.Objects.PageselectorButton.ZIndex = 40
         PageData.Objects.PageselectorButton.AutoButtonColor = false
         Instance.new("UICorner", PageData.Objects.PageselectorButton).CornerRadius = UDim.new(1, 0)
-        
+
         local PageselectorButtonIcon = Instance.new("ImageLabel", PageData.Objects.PageselectorButton)
         PageselectorButtonIcon.AnchorPoint = Vector2.new(0.5, 0.5)
         PageselectorButtonIcon.BackgroundTransparency = 1
@@ -1601,9 +1813,9 @@ do
         PageselectorButtonIcon.ImageTransparency = 0.2
         PageselectorButtonIcon.ScaleType = Enum.ScaleType.Fit
         PageselectorButtonIcon.ZIndex = 40
-    
-        local PageSelectorButtonIconScale = Instance.new("UIScale", PageselectorButtonIcon) 
-    
+
+        local PageSelectorButtonIconScale = Instance.new("UIScale", PageselectorButtonIcon)
+
         PageData.Objects.ActualPage = Instance.new("CanvasGroup", SpaceUI.Background.Objects.PageHolder)
         PageData.Objects.ActualPage.AnchorPoint = Vector2.new(0.5, 1)
         PageData.Objects.ActualPage.BackgroundTransparency = 1
@@ -1616,13 +1828,13 @@ do
             PageData.Objects.ActualPage.GroupTransparency = 1
             PageData.Objects.ActualPage.Position = UDim2.new(0.5, 0, 1.2, 0)
         end
-        
+
         local Pagepad = Instance.new("UIPadding", PageData.Objects.ActualPage)
         Pagepad.PaddingBottom = UDim.new(0, 20)
         Pagepad.PaddingLeft = UDim.new(0, 10)
         Pagepad.PaddingRight = UDim.new(0, 10)
         Pagepad.PaddingTop = UDim.new(0, 10)
-    
+
         local Header = Instance.new("TextLabel", PageData.Objects.ActualPage)
         Header.AnchorPoint = Vector2.new(0.5, 0)
         Header.BackgroundTransparency = 1
@@ -1633,7 +1845,7 @@ do
         Header.TextColor3 = Color3.fromRGB(255, 255, 255)
         Header.TextSize = 22
         Header.TextXAlignment = Enum.TextXAlignment.Center
-    
+
         local MainFrameScrollPage = Instance.new("ScrollingFrame", PageData.Objects.ActualPage)
         MainFrameScrollPage.AnchorPoint = Vector2.new(0.5, 1)
         MainFrameScrollPage.BackgroundTransparency = 1
@@ -1647,30 +1859,30 @@ do
         MainFrameScrollPage.ClipsDescendants = true
         MainFrameScrollPage.CanvasSize = UDim2.new(0,0,0,0)
         MainFrameScrollPage.VerticalScrollBarPosition = Enum.VerticalScrollBarPosition.Right
-    
+
         local ScrollPad = Instance.new("UIPadding", MainFrameScrollPage)
         ScrollPad.PaddingBottom = UDim.new(0, 20)
         ScrollPad.PaddingLeft = UDim.new(0, 10)
         ScrollPad.PaddingRight = UDim.new(0, 10)
         ScrollPad.PaddingTop = UDim.new(0, 5)
-    
+
         local ScrollList = Instance.new("UIListLayout", MainFrameScrollPage)
         ScrollList.SortOrder = Enum.SortOrder.LayoutOrder
         ScrollList.Padding = UDim.new(0, 10)
         ScrollList.VerticalAlignment = Enum.VerticalAlignment.Top
         ScrollList.HorizontalAlignment = Enum.HorizontalAlignment.Center
-    
+
         table.insert(SpaceUI.Connections, PageData.Objects.PageselectorButton.MouseEnter:Connect(function()
             TweenService:Create(PageData.Objects.PageselectorButton, TweenInfo.new(0.1), {BackgroundTransparency = 0.8}):Play()
             TweenService:Create(PageSelectorButtonIconScale, TweenInfo.new(0.1), {Scale = 1.4}):Play()
         end))
-    
+
         table.insert(SpaceUI.Connections, PageData.Objects.PageselectorButton.MouseLeave:Connect(function()
             TweenService:Create(PageData.Objects.PageselectorButton, TweenInfo.new(0.1), {BackgroundTransparency = 1}):Play()
             TweenService:Create(PageSelectorButtonIconScale, TweenInfo.new(0.1), {Scale = 1}):Play()
         end))
-    
-        table.insert(SpaceUI.Connections, PageData.Objects.PageselectorButton.MouseButton1Click:Connect(function()  
+
+        table.insert(SpaceUI.Connections, PageData.Objects.PageselectorButton.MouseButton1Click:Connect(function()
             SpaceUI.Pageselector.Functions.ToggleSelectorVisibility(false)
             for i,v in SpaceUI.Pages do
                 if v.Objects and v.Objects.ActualPage then
@@ -1686,7 +1898,7 @@ do
                 end
             end
         end))
-    
+
         SpaceUI.Pages[PageData.Name] = PageData
         return PageData
     end
@@ -1706,7 +1918,7 @@ do
             Tweens = {SearchBackGround = nil},
             Connections = {},
             Modules = {},
-            Functions = {}, 
+            Functions = {},
             Data = {Dragging = false, SettingsOpen = false, ToggleAnimating = false}
         }
 
@@ -1761,7 +1973,7 @@ do
         UserIcon.ImageTransparency = 0.2
         UserIcon.ScaleType = Enum.ScaleType.Fit
 
-        if not tab.TabInfo then 
+        if not tab.TabInfo then
             tab.Objects.DashBoardButton.TextYAlignment = Enum.TextYAlignment.Center
             tab.Objects.DashBoardButton.Size = UDim2.new(1, 0, 0, 60)
         else
@@ -1824,8 +2036,6 @@ do
         tab.Objects.ActualTab.Visible = false
         tab.Objects.ActualTab.ZIndex = 1
 
-        -- Viền glow cố định quanh mọi tab, luôn hiện bất kể focus/unfocus (nguyên bản
-        -- gốc bị mất trong quá trình sửa ZIndex trước đó - khôi phục y hệt).
         local TabPrism = Instance.new("ImageLabel", tab.Objects.ActualTab)
         TabPrism.AnchorPoint = Vector2.new(0.5, 0.5)
         TabPrism.BackgroundTransparency = 1
@@ -1842,12 +2052,6 @@ do
         PrismStroke.Color = Color3.fromRGB(255, 255, 255)
         PrismStroke.Transparency = 0.85
 
-        -- Shadow chỉ hiện khi tab được focus (xem CaptureFocus/RemoveFocus). Copy y
-        -- hệt property của DropShadow gốc (InitInfo.Objects.DropShadow) - chỉ khác
-        -- ImageTransparency mặc định (ẩn) vì cái này cần tween ẩn/hiện theo focus.
-        -- Là con trực tiếp của ActualTab để tự động bám Position/Size/Visible theo
-        -- tab mà không cần tự bind qua GetPropertyChangedSignal (cách cũ gây lệch vị
-        -- trí ngay từ lần mở đầu tiên).
         tab.Objects.TabFocusShadow = Instance.new("ImageLabel", tab.Objects.ActualTab)
         tab.Objects.TabFocusShadow.Name = "TabFocusShadow"
         tab.Objects.TabFocusShadow.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -1864,8 +2068,6 @@ do
 
         SpaceUI.Tabs.ActivateTab(tab)
 
-        -- Bấm vào bất kỳ đâu trong tab (kể cả content, không chỉ thanh Drag) sẽ
-        -- đưa tab này lên trên các tab khác (Leaflet focus engine).
         table.insert(SpaceUI.Connections, tab.Objects.ActualTab.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or
                input.UserInputType == Enum.UserInputType.Touch then
@@ -1873,7 +2075,6 @@ do
             end
         end))
 
-        -- CanvasGroup bao toàn bộ content của tab
         tab.Objects.ContentCanvas = Instance.new("CanvasGroup", tab.Objects.ActualTab)
         tab.Objects.ContentCanvas.AnchorPoint = Vector2.new(0.5, 0.5)
         tab.Objects.ContentCanvas.BackgroundTransparency = 1
@@ -1881,7 +2082,7 @@ do
         tab.Objects.ContentCanvas.Size = UDim2.fromScale(1, 1)
         tab.Objects.ContentCanvas.ZIndex = 1
 
-        if not SpaceUI.Config.Game.Other.TabPos then 
+        if not SpaceUI.Config.Game.Other.TabPos then
             SpaceUI.Config.Game.Other.TabPos = {}
         end
         if SpaceUI.Config.Game.Other.TabPos[tab.Name] then
@@ -1910,7 +2111,7 @@ do
         tab.Objects.DragButton.Position = UDim2.fromScale(0.5, 0)
         tab.Objects.DragButton.Size = UDim2.fromOffset(60, 40)
         tab.Objects.DragButton.ZIndex = 10
-        
+
         local dragicon = Instance.new("ImageLabel", tab.Objects.DragButton)
         dragicon.AnchorPoint = Vector2.new(0.5, 0)
         dragicon.BackgroundTransparency = 1
@@ -1930,10 +2131,10 @@ do
                     if mouseStart and input then
                         Delta = (Vector2.new(input.Position.X, input.Position.Y) - Vector2.new(mouseStart.X, mouseStart.Y))
                     end
-        
+
                     local newX = frameStart.X.Scale + (Delta.X / Viewport.X)
                     local newY = frameStart.Y.Scale + (Delta.Y / Viewport.Y)
-        
+
                     tab.Objects.ActualTab.Position = UDim2.fromScale(newX, newY)
 
                     if not SpaceUI.Config.Game.Other.TabPos then
@@ -1948,15 +2149,13 @@ do
         table.insert(SpaceUI.Connections, tab.Objects.DragButton.InputBegan:Connect(function(input)
             if (input.UserInputType == Enum.UserInputType.MouseButton1) or (input.UserInputType == Enum.UserInputType.Touch) then
                 SpaceUI.Tabs.CaptureFocus(tab)
-                -- Ẩn TabBackground một lần duy nhất lúc bắt đầu kéo (không cần chạy mỗi
-                -- frame di chuyển chuột như code cũ — điều đó khiến TweenService nhận
-                -- hàng chục tween chồng nhau mỗi giây và không bao giờ hội tụ, gây kẹt dim).
+
                 if SpaceUI.Tabs.TabBackground.ImageTransparency < 1 then
                     TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
                 end
                 tab.Data.Dragging, InputStarting, FrameStarting = true, input.Position, tab.Objects.ActualTab.Position
                 SpaceUI.CurrntInputChangeCallback = function(input)
-                    if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then  
+                    if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
                         if tab.Data.Dragging then
                             tab.Functions.Drag(InputStarting, FrameStarting, input)
                         end
@@ -1974,10 +2173,6 @@ do
             end
         end))
 
-
-        -- ── Tab Resize Handle (góc bottom-right) ─────────────────────────────
-        -- Animation hover/press ported nguyên bản từ window_handler (Exe5 rbxmx):
-        -- icon.scale + selection.scale, dùng chung info = TweenInfo.new(0.4, Exponential)
         local ResizeInfo = TweenInfo.new(0.4, Enum.EasingStyle.Exponential)
 
         local TabResizeHandle = Instance.new("ImageButton", tab.Objects.TabDragCanvas)
@@ -1997,7 +2192,6 @@ do
         TabResizeHandleScale.Name = "scale"
         TabResizeHandleScale.Scale = 1
 
-        -- selection: glow/highlight phía sau icon, ẩn mặc định (ImageTransparency = 1)
         local TabResizeSelection = Instance.new("ImageLabel", TabResizeHandle)
         TabResizeSelection.Name = "selection"
         TabResizeSelection.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -2082,7 +2276,6 @@ do
                         Assets.Config.Save(SpaceUI.GameSave, SpaceUI.Config.Game)
                         SpaceUI.InputEndFunc = nil
 
-                        -- Reset animation handle về trạng thái gốc (tương đương stop() bản gốc)
                         TweenService:Create(TabResizeHandleScale, ResizeInfo, {Scale = 1}):Play()
                         TweenService:Create(TabResizeSelection, ResizeInfo, {ImageTransparency = 1}):Play()
                         TweenService:Create(TabResizeSelectionScale, ResizeInfo, {Scale = 0.5}):Play()
@@ -2091,14 +2284,11 @@ do
             end
         end))
 
-        -- Restore saved tab size
         if SpaceUI.Config.Game.Other.TabSize and SpaceUI.Config.Game.Other.TabSize[tab.Name] then
             local s = SpaceUI.Config.Game.Other.TabSize[tab.Name]
             tab.Objects.ActualTab.Size = UDim2.fromScale(s.W, s.H)
         end
 
-
-        
         local TabPad = Instance.new("UIPadding", tab.Objects.ActualTab)
         TabPad.PaddingBottom = UDim.new(0, 10)
         TabPad.PaddingLeft = UDim.new(0, 10)
@@ -2107,11 +2297,10 @@ do
 
         local TabScale = Instance.new("UIScale", tab.Objects.ActualTab)
         TabScale.Scale = 0
-        
+
         local TabConstraint = Instance.new("UISizeConstraint", tab.Objects.ActualTab)
         TabConstraint.MaxSize = Vector2.new(1000, 800)
 
-        -- Parent vào ActualTab (sibling của ContentCanvas), không phải vào trong ContentCanvas
         local TabHeader = Instance.new("TextLabel", tab.Objects.ActualTab)
         TabHeader.AnchorPoint = Vector2.new(0.5, 0)
         TabHeader.BackgroundTransparency = 1
@@ -2242,18 +2431,10 @@ do
         local SearchBarClearScale = Instance.new("UIScale", SearchBarClearIcon)
         SearchBarClearScale.Scale = 0
 
-
         local resotredback = {backbuttons = {}, keybinds = {}}
         local activeFadeTweens = {}
         local function cancelActiveFadeTweens()
-            -- reopen = true (gọi từ Assets.Main.ToggleVisibility khi bật/tắt cả UI)
-            -- cố tình bỏ qua debounce ToggleAnimating bên dưới, nên 2 lần gọi
-            -- ToggleTab có thể chồng lên nhau và tạo 2 tween chạy song song trên
-            -- cùng 1 property (GroupTransparency / ImageTransparency) theo 2 hướng
-            -- ngược nhau -> TweenService chốt giá trị cuối cùng nhận được, khiến
-            -- tab kẹt lại ở giữa khoảng mờ (nhìn như bị "dim") thay vì tới đích 0
-            -- hoặc 1. Huỷ tween cũ trước khi phát tween mới để luôn chỉ có 1 tween
-            -- sở hữu mỗi property tại một thời điểm.
+
             for i = #activeFadeTweens, 1, -1 do
                 activeFadeTweens[i]:Cancel()
                 table.remove(activeFadeTweens, i)
@@ -2261,23 +2442,18 @@ do
         end
 
         tab.Functions.ToggleTab = function(visible, anim, reopen)
-            -- Debounce: nếu tab đang giữa animation mở/đóng (0.8s), bỏ qua lời gọi
-            -- trùng lặp. Thiếu chốt này khiến 2 animation chạy chồng nhau tranh chấp
-            -- ContentCanvas.GroupTransparency / ActualTab.ImageTransparency theo 2
-            -- hướng ngược nhau, khiến nó kẹt dim mãi cho tới khi tab mất focus.
+
             if tab.Data.ToggleAnimating and not reopen then return end
             cancelActiveFadeTweens()
             tab.Data.ToggleAnimating = true
             task.spawn(function()
-                -- Nếu Module Settings đang bị kẹt mở (vd: tab bị đóng/dim trước khi bấm Back),
-                -- force-close nó về trạng thái bình thường trước khi tiếp tục, để tránh
-                -- TabHeader/ScrollFrame bị kẹt ở Position lệch ngoài màn hình.
+
                 if tab.Data.SettingsOpen and tab.Functions.CloseModuleSettings then
                     tab.Functions.CloseModuleSettings()
                 end
                 tab.Opened = visible
                 if visible then
-                    -- Mở tab: hiện ngay để animation (fade-in + scale) có thể nhìn thấy được
+
                     tab.Objects.ActualTab.Visible = true
                     tab.Objects.ScrollFrame.Visible = true
                     SpaceUI.Tabs.CaptureFocus(tab)
@@ -2289,6 +2465,9 @@ do
                         end
                         if Assets.Main.TrackRecentTab then
                             Assets.Main.TrackRecentTab(tab.Name)
+                        end
+                        if SpaceUI.AccessibilityButton and SpaceUI.AccessibilityButton.UpdateLabel then
+                            SpaceUI.AccessibilityButton.UpdateLabel()
                         end
                     end
 
@@ -2338,6 +2517,9 @@ do
                 else
                     if not reopen then
                         table.remove(SpaceUI.CurrentOpenTab, table.find(SpaceUI.CurrentOpenTab, tab))
+                        if SpaceUI.AccessibilityButton and SpaceUI.AccessibilityButton.UpdateLabel then
+                            SpaceUI.AccessibilityButton.UpdateLabel()
+                        end
                     end
                     if SpaceUI.Tabs.FocusedTab == tab then
                         SpaceUI.Tabs.RemoveFocus(tab)
@@ -2346,7 +2528,7 @@ do
                     CloseButton.Visible = false
                     tab.Objects.TabDragCanvas.Visible = false
                     for i,v in tab.Modules do
-                        if v.Objects and v.Objects.BackButton and v.Objects.BackButton.Visible then 
+                        if v.Objects and v.Objects.BackButton and v.Objects.BackButton.Visible then
                             v.Objects.BackButton.Visible = false
                             table.insert(resotredback.backbuttons, v.Objects.BackButton)
                         end
@@ -2373,12 +2555,6 @@ do
                         end
                         SpaceUI.IsAllowedToHoverTabButton = true
 
-                        -- Port dung cau truc rbxmx: file goc (exe_main_module.lua) luon tween
-                        -- GroupTransparency cua CAC CanvasGroup con (dashboard_frame, main_frame,
-                        -- credits_frame, window_controls) song song voi frame cha. ContentCanvas
-                        -- la CanvasGroup con tuong duong trong SpaceUI (dong 1744) nhung truoc day
-                        -- chua bao gio duoc tween - do la ly do noi dung tab dung nguyen ro net
-                        -- roi cat phut, thay vi mo dan giong file goc. task.wait giu nguyen 0.8s.
                         task.wait(0.8)
                         tab.Objects.ActualTab.Visible = false
                         tab.Objects.ScrollFrame.Visible = false
@@ -2389,11 +2565,11 @@ do
                             TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
                         end
                         SpaceUI.IsAllowedToHoverTabButton = true
-                        -- Không anim: ẩn ngay lập tức như hành vi cũ.
+
                         tab.Objects.ActualTab.Visible = false
                         tab.Objects.ScrollFrame.Visible = false
                     end
-                    local cnt = 0 
+                    local cnt = 0
                     for i,v in SpaceUI.CurrentOpenTab do
                         cnt += 1
                     end
@@ -2426,7 +2602,6 @@ do
         end)
         table.insert(tab.Connections, dashboardbuttonclickcon)
         table.insert(SpaceUI.Connections, dashboardbuttonclickcon)
-
 
         local dashboardbuttonhovercon =  tab.Objects.DashBoardButton.MouseEnter:Connect(function()
             if not SpaceUI.IsAllowedToHoverTabButton then
@@ -2508,7 +2683,6 @@ do
                             Duration = 4
                         })
 
-
                         task.wait(0.1)
                         ModuleData.Functions.Toggle(false, false, false, true, true)
                     end
@@ -2523,13 +2697,12 @@ do
             ModuleData.Objects.Module.ImageTransparency = 1
             ModuleData.Objects.Module.ClipsDescendants = true
             Instance.new("UICorner", ModuleData.Objects.Module).CornerRadius = UDim.new(0, 15)
-            
+
             local ModulePadding = Instance.new("UIPadding", ModuleData.Objects.Module)
             ModulePadding.PaddingBottom = UDim.new(0, 10)
             ModulePadding.PaddingLeft = UDim.new(0, 20)
             ModulePadding.PaddingRight = UDim.new(0, 20)
             ModulePadding.PaddingTop = UDim.new(0, 10)
-            
 
             local ModuleIcon = Instance.new("ImageLabel", ModuleData.Objects.Module)
             ModuleIcon.BackgroundTransparency = 1
@@ -2601,7 +2774,6 @@ do
             RequirementsList.SortOrder = Enum.SortOrder.LayoutOrder
             RequirementsList.Padding = UDim.new(0, 10)
             RequirementsList.HorizontalAlignment = Enum.HorizontalAlignment.Right
-
 
             local ToggleButton = Instance.new("ImageButton", Requirements)
             ToggleButton.AutoButtonColor = false
@@ -2749,7 +2921,7 @@ do
             end
 
             local moduleclickcon = ModuleData.Objects.Module.MouseButton1Click:Connect(function()
-                -- ToggleButton click bubble lên đây -> bỏ qua, đã handle ở togglebuttoncon
+
                 if _toggleJustClicked then
                     _toggleJustClicked = false
                     return
@@ -2921,8 +3093,8 @@ do
                     end
                     KeyBindButton.Text = "TAP TO BIND"
                 else
-                    ModuleData.Data.Keybind = nil 
-                    KeyBindButton.Text = "CLICK TO BIND" 
+                    ModuleData.Data.Keybind = nil
+                    KeyBindButton.Text = "CLICK TO BIND"
                     ModuleData.Data.SettingKeybind = false
                 end
 
@@ -2978,9 +3150,8 @@ do
             table.insert(SpaceUI.Connections, keybindinputbegancon)
             table.insert(ModuleData.Connections, keybindinputbegancon)
 
-
             local togglebuttoncon = ToggleButton.MouseButton1Click:Connect(function()
-                -- Set flag để moduleclickcon bỏ qua event bubble-up này
+
                 _toggleJustClicked = true
                 ModuleData.Functions.Toggle(not ModuleData.Data.Enabled, false, true, true, true)
             end)
@@ -2992,8 +3163,8 @@ do
                 tab.Data.SettingsOpen = true
                 ModuleData.Data.SettingsOpen = true
                 tab.Functions.CloseModuleSettings = function() currentbackbuttonfunc() end
-                tab.Objects.ActualTab.ClipsDescendants = true      
-                tab.ClipNeeded = true          
+                tab.Objects.ActualTab.ClipsDescendants = true
+                tab.ClipNeeded = true
                 TweenService:Create(tab.Objects.ScrollFrame, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {Position = UDim2.new(-1.8, 0, 0.04, 50)}):Play()
                 TweenService:Create(TabHeader, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {Position = UDim2.fromScale(-1.8, 0.04)}):Play()
                 TweenService:Create(CloseButton, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {Position = UDim2.new(-1.8, 0, 0, 5)}):Play()
@@ -3002,7 +3173,7 @@ do
                 if not tab.Data.SettingsOpen then
                     return
                 end
-                
+
                 for i,v in tab.Modules do
                     v.Objects.Module.Visible = false
                 end
@@ -3094,7 +3265,6 @@ do
                     v.Objects.Module.Visible = true
                 end
 
-
                 TweenService:Create(tab.Objects.ScrollFrame, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {Position = UDim2.new(0.5, 0, 0.04, 50)}):Play()
                 TweenService:Create(TabHeader, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {Position = UDim2.fromScale(0.5, 0.04)}):Play()
                 TweenService:Create(CloseButton, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {Position = UDim2.new(1, -5, 0, 5)}):Play()
@@ -3130,7 +3300,7 @@ do
                 ConstructionData.Objects.MainInstance.Visible = false
                 ConstructionData.Objects.MainInstance.ZIndex = 2
                 Instance.new("UICorner", ConstructionData.Objects.MainInstance).CornerRadius = UDim.new(0, 10)
-                
+
                 if ConstructionData.NeedsLayout then
                     local layout = Instance.new("UIListLayout", ConstructionData.Objects.MainInstance)
                     layout.Padding = UDim.new(0, 10)
@@ -3214,7 +3384,7 @@ do
 
                 return ConstructionData
             end
-            
+
             ModuleData.Functions.Settings.TextBox = function(data)
                 local TextBoxData = {
                     Name = data and data.Name or "Textbox",
@@ -3231,9 +3401,9 @@ do
                 }
 
                 if SpaceUI.Config.Game.TextBoxes[TextBoxData.Flag] then
-                    TextBoxData.Default = SpaceUI.Config.Game.TextBoxes[TextBoxData.Flag]                
+                    TextBoxData.Default = SpaceUI.Config.Game.TextBoxes[TextBoxData.Flag]
                 end
-                
+
                 TextBoxData.Construction = ModuleData.Functions.ConstructSetting({
                     Name = TextBoxData.Name,
                     Description = TextBoxData.Description,
@@ -3267,7 +3437,7 @@ do
                 local BoxStroke = Instance.new("UIStroke", ActualTextBoxBox)
                 BoxStroke.Color = Color3.fromRGB(255,255,255)
                 BoxStroke.Transparency = 0.9
-                
+
                 local BoxPadding = Instance.new("UIPadding", ActualTextBoxBox)
                 BoxPadding.PaddingBottom = UDim.new(0, 12)
                 BoxPadding.PaddingLeft = UDim.new(0, 15)
@@ -3326,7 +3496,7 @@ do
                     end
                 end
 
-                local actualtextboxfocuslostcon = ActualTextBox.FocusLost:Connect(function() 
+                local actualtextboxfocuslostcon = ActualTextBox.FocusLost:Connect(function()
                     TextBoxData.Callback(TextBoxData, ActualTextBox.Text)
                     SpaceUI.Config.Game.TextBoxes[TextBoxData.Flag] = ActualTextBox.Text
                     Assets.Config.Save(SpaceUI.GameSave, SpaceUI.Config.Game)
@@ -3368,7 +3538,7 @@ do
                 if SpaceUI.Mobile and MiniToggleData.ToolTip == "Click to toggle" then
                     MiniToggleData.Construction.Functions.EditToolTip({ToolTip = "Tap to toggle"})
                 end
-                
+
                 MiniToggleData.Functions.EditToolTip = MiniToggleData.Construction.Functions.EditToolTip
 
                 local ToggleBox = Instance.new("Frame", MiniToggleData.Objects.MainInstance)
@@ -3379,7 +3549,7 @@ do
                 ToggleBox.Position = UDim2.fromScale(1, 0.5)
                 ToggleBox.Size = UDim2.fromOffset(36, 21)
                 Instance.new("UICorner", ToggleBox).CornerRadius = UDim.new(0, 15)
-                
+
                 local ToggleCircle = Instance.new("Frame", ToggleBox)
                 ToggleCircle.ZIndex = 2
                 ToggleCircle.AnchorPoint = Vector2.new(0, 0.5)
@@ -3425,7 +3595,6 @@ do
                     end
                 end
 
-                
                 if MiniToggleData.Hide then
                     MiniToggleData.Functions.SetVisiblity(false)
                 end
@@ -3459,7 +3628,6 @@ do
                     Objects = {},
                     Functions = {}
                 }
-
 
                 if SpaceUI.Config.Game.Sliders[SliderData.Flag] then
                     if typeof(SpaceUI.Config.Game.Sliders[SliderData.Flag]) == "table" then
@@ -3495,7 +3663,7 @@ do
                 if SliderData.Multi then
                     SliderData.Construction.Functions.EditToolTip({ToolTip = "Slide a circle to edit the value"})
                 end
-                
+
                 SliderData.Functions.EditToolTip = SliderData.Construction.Functions.EditToolTip
 
                 local Numbers = Instance.new("Frame", SliderData.Objects.MainInstance)
@@ -3659,7 +3827,7 @@ do
                                 local mouse = UserInputService:GetMouseLocation()
                                 local relativePos = mouse-SliderBox.AbsolutePosition
                                 local percent = math.clamp(relativePos.X/(SliderBox.AbsoluteSize.X - 20), 0, 1)
-                                local value = math.floor(((((SliderData.Max - SliderData.Min) * percent) + SliderData.Min) * (10 ^ SliderData.Decimals)) + 0.5) / (10 ^ SliderData.Decimals) 
+                                local value = math.floor(((((SliderData.Max - SliderData.Min) * percent) + SliderData.Min) * (10 ^ SliderData.Decimals)) + 0.5) / (10 ^ SliderData.Decimals)
 
                                 SliderData.Functions.SetValue(value, true, 1)
 
@@ -3667,7 +3835,7 @@ do
                         end
                         SliderData.Data.Dragging = true
 
-                        SpaceUI.InputEndFunc = function(input) 
+                        SpaceUI.InputEndFunc = function(input)
                             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                                 SpaceUI.CurrntInputChangeCallback = function() end
                                 SliderData.Data.Dragging = false
@@ -3675,7 +3843,7 @@ do
                         end
                     end)
                     table.insert(SpaceUI.Connections, sliderdragbuttonclickcon2)
-                    table.insert(ModuleData.Connections, sliderdragbuttonclickcon2)                                
+                    table.insert(ModuleData.Connections, sliderdragbuttonclickcon2)
                 end
 
                 local sliderdragbuttonclickcon
@@ -3686,7 +3854,7 @@ do
                                 local mouse = UserInputService:GetMouseLocation()
                                 local relativePos = mouse-SliderBox.AbsolutePosition
                                 local percent = math.clamp(relativePos.X/(SliderBox.AbsoluteSize.X - 20), 0, 1)
-                                local value = math.floor(((((SliderData.Max - SliderData.Min) * percent) + SliderData.Min) * (10 ^ SliderData.Decimals)) + 0.5) / (10 ^ SliderData.Decimals) 
+                                local value = math.floor(((((SliderData.Max - SliderData.Min) * percent) + SliderData.Min) * (10 ^ SliderData.Decimals)) + 0.5) / (10 ^ SliderData.Decimals)
 
                                 SliderData.Functions.SetValue(value, true, 2)
 
@@ -3694,7 +3862,7 @@ do
                         end
                         SliderData.Data.Dragging = true
 
-                        SpaceUI.InputEndFunc = function(input) 
+                        SpaceUI.InputEndFunc = function(input)
                             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                                 SpaceUI.CurrntInputChangeCallback = function() end
                                 SliderData.Data.Dragging = false
@@ -3708,7 +3876,7 @@ do
                                 local mouse = UserInputService:GetMouseLocation()
                                 local relativePos = mouse-SliderBox.AbsolutePosition
                                 local percent = math.clamp(relativePos.X/(SliderBox.AbsoluteSize.X - 20), 0, 1)
-                                local value = math.floor(((((SliderData.Max - SliderData.Min) * percent) + SliderData.Min) * (10 ^ SliderData.Decimals)) + 0.5) / (10 ^ SliderData.Decimals) 
+                                local value = math.floor(((((SliderData.Max - SliderData.Min) * percent) + SliderData.Min) * (10 ^ SliderData.Decimals)) + 0.5) / (10 ^ SliderData.Decimals)
 
                                 SliderData.Functions.SetValue(value, true, 2)
 
@@ -3716,7 +3884,7 @@ do
                         end
                         SliderData.Data.Dragging = true
 
-                        SpaceUI.InputEndFunc = function(input) 
+                        SpaceUI.InputEndFunc = function(input)
                             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                                 SpaceUI.CurrntInputChangeCallback = function() end
                                 SliderData.Data.Dragging = false
@@ -3726,7 +3894,6 @@ do
                 end
                 table.insert(SpaceUI.Connections, sliderdragbuttonclickcon)
                 table.insert(ModuleData.Connections, sliderdragbuttonclickcon)
-            
 
                 local slidervaluetextchangecon = SliderValue2.FocusLost:Connect(function()
                     if SliderValue2.Text and tonumber(SliderValue2.Text) then
@@ -3822,8 +3989,7 @@ do
                 DropBox.ClipsDescendants = true
                 DropBox.ZIndex = 2
                 Instance.new("UICorner", DropBox).CornerRadius = UDim.new(0, 6)
-                -- DropBox.AutomaticSize = Enum.AutomaticSize.Y
-                
+
                 local BoxStroke = Instance.new("UIStroke", DropBox)
                 BoxStroke.Color = Color3.fromRGB(255, 255, 255)
                 BoxStroke.Transparency = 0.9
@@ -3855,8 +4021,8 @@ do
                 local DropIcon = Instance.new("ImageLabel", Details)
                 DropIcon.AnchorPoint = Vector2.new(1, 0.5)
                 DropIcon.BackgroundTransparency = 1
-                DropIcon.Position = UDim2.fromScale(0.97, 0.5)      
-                DropIcon.Size = UDim2.fromOffset(10, 10)    
+                DropIcon.Position = UDim2.fromScale(0.97, 0.5)
+                DropIcon.Size = UDim2.fromOffset(10, 10)
                 DropIcon.ZIndex = 2
                 DropIcon.Image = "rbxassetid://133663094711296"
                 DropIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
@@ -3905,7 +4071,7 @@ do
                             else
                                 table.clear(DropdownData.Buttons.Selected)
                                 for i,v in NewData do
-                                    table.insert(DropdownData.Buttons.Selected, v)                                        
+                                    table.insert(DropdownData.Buttons.Selected, v)
                                 end
                             end
 
@@ -3998,7 +4164,7 @@ do
                     local ClickCon = Button.MouseButton1Down:Connect(function()
                         if DropdownData.SelectLimit > 1 then
                             if not table.find(DropdownData.Buttons.Selected, v) then
-                                table.insert(DropdownData.Buttons.Selected, v)                                        
+                                table.insert(DropdownData.Buttons.Selected, v)
                             else
                                 table.remove(DropdownData.Buttons.Selected, table.find(DropdownData.Buttons.Selected, v))
                             end
@@ -4049,7 +4215,6 @@ do
                 end)
                 table.insert(DropdownData.Connections, OpenCon)
                 table.insert(SpaceUI.Connections, OpenCon)
-
 
                 DropdownData.Functions.SetVisiblity = function(enabled)
                     if enabled then
@@ -4137,7 +4302,7 @@ do
             ModuleData.Functions.Settings.NewSection = function(Data: {Name: string, Flag: string})
                 local SectionData = {
                     Name = Data and Data.Name or "Section",
-                    Flag = Data and Data.Flag or "Flag", 
+                    Flag = Data and Data.Flag or "Flag",
                     Objects = {}
                 }
 
@@ -4162,7 +4327,7 @@ do
                     Name = Data and Data.Name or "Keybind",
                     Description = Data and Data.Description or "Keybind",
                     Default = Data and Data.Default or "",
-                    Flag = Data and Data.Flag or "FlagKeybind", 
+                    Flag = Data and Data.Flag or "FlagKeybind",
                     Hide = data and data.Hide or false,
                     ToolTip = Data and Data.ToolTip or "Click The Box To Bind",
                     Callbacks = Data and Data.Callbacks or {Began = function() end, End = function() end, Changed = function() end},
@@ -4221,7 +4386,7 @@ do
                 KeybindBox.AutoButtonColor = false
                 KeybindBox.ZIndex = 2
                 Instance.new("UICorner", KeybindBox).CornerRadius = UDim.new(0, 5)
-                
+
                 local BoxStroke = Instance.new("UIStroke", KeybindBox)
                 BoxStroke.Color = Color3.fromRGB(255, 255, 255)
                 BoxStroke.Transparency = 0.9
@@ -4282,7 +4447,7 @@ do
                     KeybindBox.Size = UDim2.fromOffset(Size.X + 18, 25)
 
                     BoxIcon.Visible = false
-                    KeybindText.Visible = true 
+                    KeybindText.Visible = true
                     BoxIcon.Image = "rbxassetid://135395971960120"
 
                     if SpaceUI.Mobile and tostring(KeybindData.Default) == "button" then
@@ -4313,7 +4478,7 @@ do
                             KeybindText.Text = "binded"
 
                             BoxIcon.Visible = false
-                            KeybindText.Visible = true 
+                            KeybindText.Visible = true
                             BoxIcon.Image = "rbxassetid://135395971960120"
                             KeybindData.Construction.Functions.EditToolTip({ToolTip = "Tap The Box To Unbind"})
 
@@ -4335,7 +4500,7 @@ do
                                     }
                                 })
                             end
-                            
+
                             KeybindData.Callbacks.Changed(KeybindData, "button")
 
                             SpaceUI.Config.Game.ModuleKeybinds[KeybindData.Flag] = "button"
@@ -4350,7 +4515,7 @@ do
                         KeybindData.Data.Keybind = nil
                         BoxIcon.Image = "rbxassetid://101725457581159"
                         BoxIcon.Visible = true
-                        KeybindText.Visible = false 
+                        KeybindText.Visible = false
 
                         KeybindBox.Size = UDim2.fromOffset(25, 25)
                         if SpaceUI.Mobile then
@@ -4381,7 +4546,7 @@ do
                             KeybindText.Text = input.KeyCode.Name
 
                             BoxIcon.Visible = false
-                            KeybindText.Visible = true 
+                            KeybindText.Visible = true
                             BoxIcon.Image = "rbxassetid://135395971960120"
                             KeybindData.Construction.Functions.EditToolTip({ToolTip = "Click The Box To Unbind"})
 
@@ -4424,7 +4589,7 @@ do
                         BoxIcon.Visible = false
                     end
                 end)
-                
+
                 table.insert(KeybindData.Connections, ClickCon)
                 table.insert(SpaceUI.Connections, ClickCon)
 
@@ -4436,17 +4601,16 @@ do
 
                 table.insert(KeybindData.Connections, HoverCon)
                 table.insert(SpaceUI.Connections, HoverCon)
-                
+
                 table.insert(KeybindData.Connections, UnHoverCon)
                 table.insert(SpaceUI.Connections, UnHoverCon)
-
 
                 KeybindData.Functions.SetValue = function(NewValue: string, save: boolean)
                     if not NewValue or NewValue == "" or NewValue == "unbinded" then
                         KeybindData.Data.Keybind = nil
                         BoxIcon.Image = "rbxassetid://101725457581159"
                         BoxIcon.Visible = true
-                        KeybindText.Visible = false 
+                        KeybindText.Visible = false
 
                         KeybindBox.Size = UDim2.fromOffset(25, 25)
                         KeybindData.Construction.Functions.EditToolTip({ToolTip = "Click The Box To Bind"})
@@ -4464,7 +4628,7 @@ do
                         KeybindText.Text = NewValue
 
                         BoxIcon.Visible = false
-                        KeybindText.Visible = true 
+                        KeybindText.Visible = true
                         BoxIcon.Image = "rbxassetid://135395971960120"
                         KeybindData.Construction.Functions.EditToolTip({ToolTip = "Click The Box To Unbind"})
 
@@ -4493,7 +4657,7 @@ do
                         KeybindData.Objects.MainInstance.Visible = false
                     end
                 end
-                
+
                 if KeybindData.Hide then
                     KeybindData.Functions.SetVisiblity(false)
                 end
@@ -4549,7 +4713,7 @@ do
         if pageselectorbuttonicon then
             pageselectorbuttonicon.ImageTransparency = 0.1
         end
-        
+
         local SettingsScroll = Instance.new("ScrollingFrame", Settings.Objects.ActualPage)
         SettingsScroll.AnchorPoint = Vector2.new(0.5, 1)
         SettingsScroll.BackgroundTransparency = 1
@@ -4684,7 +4848,7 @@ do
                     Textbox.Text = ""
                     Textbox.TextSize = 16
                     Textbox.TextColor3 = Color3.fromRGB(255, 255, 255)
-                    Textbox.PlaceholderColor3 = Color3.fromRGB(255, 255, 255)   
+                    Textbox.PlaceholderColor3 = Color3.fromRGB(255, 255, 255)
                     Textbox.TextTransparency = 0.3
                     Textbox.TextXAlignment = Enum.TextXAlignment.Right
                     Textbox.ZIndex = 1000
@@ -4710,13 +4874,13 @@ do
                     return ButtonData.Callback(ButtonData, Textbox.Text)
                 end
 
-                table.insert(SpaceUI.Connections, ButtonData.Objects.MainButton.MouseButton1Click:Connect(function() 
+                table.insert(SpaceUI.Connections, ButtonData.Objects.MainButton.MouseButton1Click:Connect(function()
                     if ButtonData.Toggle then
                         ButtonData.Data.Enabled = not ButtonData.Data.Enabled
                         EnabledCheckMark.Visible = ButtonData.Data.Enabled
                         return ButtonData.Callback(ButtonData, ButtonData.Data.Enabled)
                     end
-                    return ButtonData.Callback(ButtonData) 
+                    return ButtonData.Callback(ButtonData)
                 end))
 
                 return ButtonData
@@ -4726,13 +4890,11 @@ do
         return SettingsPageInfo
     end
 
-end 
+end
 
-do    
+do
     Assets.Main.OnUninject = Instance.new("BindableEvent")
 
-    -- Lưu lại tab vừa được mở (không phải reopen do toggle UI) để Accessibility Button
-    -- có thể hiện 3 icon truy cập nhanh dựa trên lịch sử mở tab gần nhất.
     Assets.Main.TrackRecentTab = function(tabName)
         if not SpaceUI.Config.Game.Other then SpaceUI.Config.Game.Other = {} end
         local recent = SpaceUI.Config.Game.Other.RecentTabs
@@ -4740,7 +4902,7 @@ do
             recent = {}
             SpaceUI.Config.Game.Other.RecentTabs = recent
         end
-        -- Bỏ bản ghi cũ của cùng tab (nếu có) để đẩy nó lên đầu danh sách
+
         for i = #recent, 1, -1 do
             if recent[i] == tabName then
                 table.remove(recent, i)
@@ -4755,8 +4917,6 @@ do
         end)
     end
 
-    -- Trả về tối đa 3 đối tượng tab để hiện trên Accessibility Button:
-    -- ưu tiên lịch sử mở gần nhất, phần còn thiếu được lấp bằng tab ngẫu nhiên (không trùng).
     Assets.Main.GetQuickAccessTabs = function(count)
         count = count or 3
         local picked, seen = {}, {}
@@ -4780,7 +4940,7 @@ do
                     table.insert(pool, tab)
                 end
             end
-            -- Xáo trộn ngẫu nhiên (Fisher-Yates) rồi lấy cho đủ số lượng cần
+
             for i = #pool, 2, -1 do
                 local j = math.random(1, i)
                 pool[i], pool[j] = pool[j], pool[i]
@@ -4794,8 +4954,6 @@ do
         return picked
     end
 
-    -- Đóng mọi tab đang mở, rồi mở đúng 1 tab mục tiêu (dùng bởi cả TopbarPlus và
-    -- Accessibility Button khi bấm vào 1 icon truy cập nhanh).
     Assets.Main.OpenSingleTab = function(targetTab)
         if not targetTab or not targetTab.Functions or not targetTab.Functions.ToggleTab then return end
         if SpaceUI.CurrentOpenTab then
@@ -4809,8 +4967,22 @@ do
         targetTab.Functions.ToggleTab(true, true)
     end
 
+    Assets.Main.CloseAllExceptFocused = function()
+        local focused = SpaceUI.Tabs.FocusedTab
+        if not focused then return false end
+        if SpaceUI.CurrentOpenTab then
+            for i = #SpaceUI.CurrentOpenTab, 1, -1 do
+                local openTab = SpaceUI.CurrentOpenTab[i]
+                if openTab and openTab ~= focused and openTab.Functions and openTab.Functions.ToggleTab then
+                    openTab.Functions.ToggleTab(false, true)
+                end
+            end
+        end
+        return true
+    end
+
     if SpaceUI.Config.UI.UseAccessibilityButton == false then
-        -- ============ TopbarPlus (API cũ) ============
+
         do
             local Players = game:GetService("Players")
             local LocalPlayer = Players.LocalPlayer
@@ -4849,11 +5021,7 @@ do
         end
 
     else
-        -- ============ Accessibility Button (port 1:1 từ Exe5.rbxmx) ============
-        -- Node tree, Size/Position/Color giữ nguyên y hệt file gốc.
-        -- Chỉ thay đổi: 3 nút "players/dashboard/recent" -> 3 icon tab SpaceUI
-        -- (mở gần nhất, random nếu thiếu). Icon "Exe 5" ở trạng thái đóng giữ nguyên
-        -- theo yêu cầu (asset rbxassetid://134689689501109), có thể tự đổi sau.
+
         do
             local UserInputService = game:GetService("UserInputService")
             local TS = TweenService
@@ -4869,7 +5037,6 @@ do
             AccessibilityGui.DisplayOrder = 10001
             SpaceUI.AccessibilityGui = AccessibilityGui
 
-            -- accessibility_button (Frame)
             local frame = Instance.new("Frame")
             frame.Name = "accessibility_button"
             frame.Active = false
@@ -4886,7 +5053,6 @@ do
             frame.ZIndex = 1
             frame.Parent = AccessibilityGui
 
-            -- button (ImageButton) - pill nền
             local button = Instance.new("ImageButton")
             button.Name = "button"
             button.HoverImage = ""
@@ -4912,7 +5078,6 @@ do
             button.ZIndex = 1
             button.Parent = frame
 
-            -- button.page (Frame)
             local pageFrame = Instance.new("Frame")
             pageFrame.Name = "page"
             pageFrame.Active = false
@@ -4929,7 +5094,6 @@ do
             pageFrame.ZIndex = 1
             pageFrame.Parent = button
 
-            -- button.page.front (Frame)
             local front = Instance.new("Frame")
             front.Name = "front"
             front.Active = false
@@ -4947,9 +5111,6 @@ do
             front.ZIndex = 1
             front.Parent = pageFrame
 
-            -- button.page.front.open (ImageButton)
-            -- Căn giữa theo "front" (thay vì neo trái như rbxmx gốc) vì giờ bên trong
-            -- là chữ "Space" (TextLabel) chứ không phải ảnh logo có padding riêng.
             local open = Instance.new("ImageButton")
             open.Name = "open"
             open.HoverImage = ""
@@ -4973,9 +5134,6 @@ do
             open.ZIndex = 1
             open.Parent = front
 
-            -- button.page.front.open.icon -> đổi từ ảnh logo "Exe 5" sang chữ "Space"
-            -- (TextLabel, font Gotham - sans hiện đại gần với SF Pro nhất trong Roblox),
-            -- căn giữa cả 2 chiều để không bị lệch/tràn ra ngoài khung như bản ảnh cũ.
             local openIcon = Instance.new("TextLabel")
             openIcon.Name = "icon"
             openIcon.BackgroundTransparency = 1
@@ -5002,10 +5160,6 @@ do
             openIconScale.Scale = 1
             openIconScale.Parent = openIcon
 
-
-            -- button.page.list (UIListLayout)
-            -- HorizontalAlignment = Center để "open" (chứa chữ "Space") được căn giữa
-            -- theo chiều ngang của "front", thay vì bị đẩy về mép trái.
             local pageList = Instance.new("UIListLayout")
             pageList.Name = "list"
             pageList.Padding = UDim.new(0, 0)
@@ -5015,7 +5169,6 @@ do
             pageList.VerticalAlignment = Enum.VerticalAlignment.Center
             pageList.Parent = front
 
-            -- button.page.page (UIPageLayout)
             local pageLayout = Instance.new("UIPageLayout")
             pageLayout.Name = "page"
             pageLayout.Animated = true
@@ -5033,7 +5186,6 @@ do
             pageLayout.VerticalAlignment = Enum.VerticalAlignment.Top
             pageLayout.Parent = pageFrame
 
-            -- button.page.options (Frame)
             local options = Instance.new("Frame")
             options.Name = "options"
             options.Active = false
@@ -5051,8 +5203,6 @@ do
             options.ZIndex = 1
             options.Parent = pageFrame
 
-            -- 3 nút truy cập nhanh (thay players/dashboard/recent) - dùng chung 1 template
-            -- vì cả 3 node gốc có property giống hệt nhau (chỉ khác icon/asset).
             local quickTabs = {}
             local function buildQuickTabButton(name, layoutOrder)
                 local btn = Instance.new("ImageButton")
@@ -5102,7 +5252,7 @@ do
                 iconScale.Scale = 1
                 iconScale.Parent = icon
 
-                table.insert(quickTabs, {Button = btn, Icon = icon, Scale = iconScale, Tab = nil, IsDashboard = false})
+                table.insert(quickTabs, {Button = btn, Icon = icon, Scale = iconScale, Tab = nil, IsDashboard = false, IsPeek = false, IsCloseOthers = false, IsBackToSpace = false})
                 return btn, icon
             end
 
@@ -5110,7 +5260,6 @@ do
             buildQuickTabButton("quick_tab_2", 0)
             buildQuickTabButton("quick_tab_3", 0)
 
-            -- button.page.options.list (UIListLayout)
             local optionsList = Instance.new("UIListLayout")
             optionsList.Name = "list"
             optionsList.Padding = UDim.new(0, 10)
@@ -5120,13 +5269,11 @@ do
             optionsList.VerticalAlignment = Enum.VerticalAlignment.Top
             optionsList.Parent = options
 
-            -- button.scale (UIScale)
             local buttonScale = Instance.new("UIScale")
             buttonScale.Name = "scale"
             buttonScale.Scale = 1
             buttonScale.Parent = button
 
-            -- cover (ImageLabel) - overlay flash khi bấm ra ngoài
             local cover = Instance.new("ImageLabel")
             cover.Name = "cover"
             cover.Image = "rbxassetid://91331674599520"
@@ -5147,17 +5294,32 @@ do
             cover.ZIndex = 100
             cover.Parent = frame
 
-            -- ================= Logic (port từ accessibility_handler LocalScript gốc) =================
-            -- Toàn bộ logic hover/click/tween dưới đây giữ nguyên hành vi gốc, chỉ thay
-            -- main_module:Go_To(...) bằng Assets.Main.OpenSingleTab (mở 1 trong 3 tab gần nhất).
-
             local on_frame = false
 
-            local function refreshQuickTabIcons()
+            local function countOpenChildTabs()
+                if not SpaceUI.CurrentOpenTab then return 0 end
+                local n = 0
+                for _ in SpaceUI.CurrentOpenTab do
+                    n += 1
+                end
+                return n
+            end
+
+            local function updateAccessibilityLabel()
+                if countOpenChildTabs() >= 2 then
+                    openIcon.Text = "Options"
+                else
+                    openIcon.Text = "Space"
+                end
+            end
+
+            local function fillQuickTabsLegacy()
                 local tabs = Assets.Main.GetQuickAccessTabs(2)
                 for i, entry in quickTabs do
+                    entry.IsPeek = false
+                    entry.IsCloseOthers = false
+                    entry.IsBackToSpace = false
                     if i == 2 then
-                        -- Icon giữa cố định: mở thẳng UI chính (Dashboard), không phải tab động.
                         entry.Tab = nil
                         entry.IsDashboard = true
                         entry.Icon.Image = "rbxassetid://11295288868"
@@ -5170,6 +5332,36 @@ do
                         entry.Icon.Image = tab and tab.Icon or ""
                         entry.Button.Visible = tab ~= nil
                     end
+                end
+            end
+
+            local function fillQuickTabsMultiview()
+                for i, entry in quickTabs do
+                    entry.Tab = nil
+                    entry.IsDashboard = false
+                    entry.IsPeek = false
+                    entry.IsCloseOthers = false
+                    entry.IsBackToSpace = false
+                    if i == 1 then
+                        entry.IsCloseOthers = true
+                        entry.Icon.Image = "rbxassetid://124976839256685"
+                    elseif i == 2 then
+                        entry.IsPeek = true
+                        entry.Icon.Image = "rbxassetid://81932043269843"
+                    else
+                        entry.IsBackToSpace = true
+                        entry.Icon.Image = "rbxassetid://89183883274841"
+                    end
+                    entry.Button.Visible = true
+                end
+            end
+
+            local function refreshQuickTabIcons()
+                updateAccessibilityLabel()
+                if countOpenChildTabs() >= 2 then
+                    fillQuickTabsMultiview()
+                else
+                    fillQuickTabsLegacy()
                 end
             end
 
@@ -5202,6 +5394,25 @@ do
                 end
             end
 
+            local function showFrontWhileExpanded()
+                fillQuickTabsLegacy()
+                task.spawn(function()
+                    for _, entry in quickTabs do
+                        TS:Create(entry.Icon, inst, {ImageTransparency = 1}):Play()
+                        TS:Create(entry.Scale, inst, {Scale = 0}):Play()
+                    end
+
+                    task.wait()
+
+                    for i, entry in quickTabs do
+                        TS:Create(entry.Icon, quick, {ImageTransparency = 0}):Play()
+                        TS:Create(entry.Scale, quick, {Scale = 1}):Play()
+                        task.wait(0.1)
+                    end
+                end)
+            end
+
+            updateAccessibilityLabel()
             pageLayout:JumpTo(front)
 
             table.insert(SpaceUI.Connections, open.MouseButton1Click:Connect(function()
@@ -5210,6 +5421,29 @@ do
 
             for _, entry in quickTabs do
                 table.insert(SpaceUI.Connections, entry.Button.MouseButton1Click:Connect(function()
+                    if entry.IsPeek then
+
+                        accessibility(false)
+                        SpaceUI.Peek.Toggle()
+                        return
+                    end
+                    if entry.IsCloseOthers then
+
+                        local ok = Assets.Main.CloseAllExceptFocused()
+                        if not ok and Assets.Notifications and Assets.Notifications.Send then
+                            Assets.Notifications.Send({
+                                Description = "Không có tab nào đang được focus để giữ lại.",
+                                Duration = 3,
+                            })
+                        end
+                        refreshQuickTabIcons()
+                        return
+                    end
+                    if entry.IsBackToSpace then
+
+                        showFrontWhileExpanded()
+                        return
+                    end
                     accessibility(false)
                     if entry.IsDashboard then
                         if SpaceUI.Background and SpaceUI.Background.Objects and SpaceUI.Background.Objects.MainFrame then
@@ -5271,6 +5505,7 @@ do
                 Options = options,
                 QuickTabs = quickTabs,
                 Refresh = refreshQuickTabIcons,
+                UpdateLabel = updateAccessibilityLabel,
             }
         end
     end
@@ -5307,7 +5542,7 @@ do
         for i,v in SpaceUI.Connections do
             v:Disconnect()
         end
-        
+
         Assets.Main.OnUninject:Destroy()
         table.clear(getgenv().SpaceUI)
         getgenv().SpaceUI = nil
@@ -5431,7 +5666,7 @@ do
                             v.Objects.ActualTab.ImageColor3 = Color3.fromRGB(tonumber(v1), tonumber(v2), tonumber(v3))
                             v.Objects.CloseButton.BackgroundColor3 = Color3.fromRGB(tonumber(v1 + 20), tonumber(v2 + 20), tonumber(v3 + 20))
                             for i2, b in v.Modules do
-                                if b.Objects and b.Objects.BackButton then 
+                                if b.Objects and b.Objects.BackButton then
                                     b.Objects.BackButton.BackgroundColor3 = Color3.fromRGB(tonumber(v1 + 20), tonumber(v2 + 20), tonumber(v3 + 20))
                                 end
                             end
@@ -5475,7 +5710,6 @@ do
                 end
             end})
 
-
             Assets.Functions.LoadFile("SpaceUI/Games/"..file..".lua", "https://raw.githubusercontent.com/warprbx/HubRewrite/refs/heads/main/Hub/Games/"..file..".lua")
             Assets.Config.Load(file, "Game")
             return {Background = SpaceUI.Background, Dashboard = SpaceUI.Dashboard, Settings = Settings}
@@ -5485,9 +5719,6 @@ do
             return {Background = SpaceUI.Background, Dashboard = SpaceUI.Dashboard}
         end
     end
-
-
-
 
     local ToggleTweens = {}
     local Restore = {}
@@ -5517,18 +5748,17 @@ do
 
             local tweenInfo = TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
             if visible then
-                if not SpaceUI.Background.Objects.MainFrame.Visible then  
+                if not SpaceUI.Background.Objects.MainFrame.Visible then
                     if SpaceUI.Mobile then
-                        -- TopbarPlus manages visibility automatically
+
                     end
                     SpaceUI.Background.Objects.MainFrame.Visible = true
                     SpaceUI.Background.Objects.DropShadow.Visible = true
-                    
+
                     SpaceUI.Background.Objects.MainFrame.BackgroundTransparency = 1
                     SpaceUI.Background.Objects.MainFrame.ImageTransparency = 1
                     SpaceUI.Background.Objects.MainFrameScale.Scale = 1.2
                     SpaceUI.Background.Objects.WindowControls.GroupTransparency = 1
-
 
                     table.insert(ToggleTweens, TweenService:Create(SpaceUI.Background.Objects.MainFrame, tweenInfo, {BackgroundTransparency = 0.1, ImageTransparency = 0.8}))
                     table.insert(ToggleTweens, TweenService:Create(SpaceUI.Background.Objects.WindowControls, tweenInfo, {GroupTransparency = 0.4}))
@@ -5572,7 +5802,7 @@ do
                     SpaceUI.Notifications.Active.discordnoti.Functions.Remove(true)
                 end
                 if SpaceUI.Mobile then
-                    -- TopbarPlus manages visibility automatically
+
                 end
 
                 if SpaceUI.CurrentOpenTab then
