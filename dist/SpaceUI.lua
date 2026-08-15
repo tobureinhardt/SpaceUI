@@ -3237,7 +3237,7 @@ do
                 TextBoxData.Construction = ModuleData.Functions.ConstructSetting({
                     Name = TextBoxData.Name,
                     Description = TextBoxData.Description,
-                    Size = 125,
+                    Size = 50,
                     ToolTip = TextBoxData.ToolTip,
                     Layout = true,
                     OnToolTipEdit = function(new: {ToolTip: string})
@@ -3251,47 +3251,91 @@ do
                 end
 
                 TextBoxData.Functions.EditToolTip = TextBoxData.Construction.Functions.EditToolTip
-
                 TextBoxData.Objects.MainInstance.AutomaticSize = Enum.AutomaticSize.Y
 
+                -- EXE 5 (Build 517) styled TextBox Container with depth layer and focused gradient
                 local ActualTextBoxBox = Instance.new("Frame", TextBoxData.Objects.MainInstance)
-                ActualTextBoxBox.ZIndex = 2
-                ActualTextBoxBox.AnchorPoint = Vector2.new(1,0.5)
-                ActualTextBoxBox.BackgroundColor3 = Color3.fromRGB(65, 65, 65)
-                ActualTextBoxBox.BackgroundTransparency = 0.6
-                ActualTextBoxBox.Size = UDim2.new(1, 0, 0, 35)
+                ActualTextBoxBox.AnchorPoint = Vector2.new(1, 0.5)
+                ActualTextBoxBox.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+                ActualTextBoxBox.BackgroundTransparency = 0.5
+                ActualTextBoxBox.Size = UDim2.new(1, -10, 0, 44)
                 ActualTextBoxBox.LayoutOrder = 2
                 ActualTextBoxBox.AutomaticSize = Enum.AutomaticSize.Y
-                Instance.new("UICorner", ActualTextBoxBox).CornerRadius = UDim.new(0, 6)
-
-                local BoxStroke = Instance.new("UIStroke", ActualTextBoxBox)
-                BoxStroke.Color = Color3.fromRGB(255,255,255)
-                BoxStroke.Transparency = 0.9
                 
+                local corner = Instance.new("UICorner", ActualTextBoxBox)
+                corner.CornerRadius = UDim.new(0, 10)
+
+                local depth = Instance.new("ImageLabel", ActualTextBoxBox)
+                depth.Name = "depth"
+                depth.BackgroundTransparency = 1
+                depth.Image = "rbxassetid://16291885532"
+                depth.ImageTransparency = 0.55
+                depth.ScaleType = Enum.ScaleType.Slice
+                depth.SliceCenter = Rect.new(206, 206, 206, 206)
+                depth.Size = UDim2.new(1, 0, 1, 0)
+                depth.ZIndex = 1
+
+                local focusedBg = Instance.new("UIGradient", ActualTextBoxBox)
+                focusedBg.Name = "focused_bg"
+                focusedBg.Color = ColorSequence.new{
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(60, 60, 60)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(90, 90, 90))
+                }
+                focusedBg.Transparency = NumberSequence.new{
+                    NumberSequenceKeypoint.new(0, 0, 0),
+                    NumberSequenceKeypoint.new(1, 0.46875, 0)
+                }
+                focusedBg.Offset = Vector2.new(0, 0)
+
                 local BoxPadding = Instance.new("UIPadding", ActualTextBoxBox)
-                BoxPadding.PaddingBottom = UDim.new(0, 12)
-                BoxPadding.PaddingLeft = UDim.new(0, 15)
-                BoxPadding.PaddingTop = UDim.new(0, 12)
+                BoxPadding.PaddingBottom = UDim.new(0, 10)
+                BoxPadding.PaddingLeft = UDim.new(0, 14)
+                BoxPadding.PaddingRight = UDim.new(0, 14)
+                BoxPadding.PaddingTop = UDim.new(0, 10)
 
                 local ActualTextBox = Instance.new("TextBox", ActualTextBoxBox)
-                ActualTextBox.ZIndex = 2
+                ActualTextBox.Name = "textbox"
                 ActualTextBox.BackgroundTransparency = 1
                 ActualTextBox.BorderSizePixel = 0
                 ActualTextBox.Position = UDim2.fromScale(0, 0)
-                ActualTextBox.Size = UDim2.fromScale(0.98, 0.26)
+                ActualTextBox.Size = UDim2.new(1, 0, 1, 0)
                 ActualTextBox.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Medium)
                 ActualTextBox.PlaceholderColor3 = Color3.fromRGB(140, 140, 140)
                 ActualTextBox.Text = TextBoxData.Default
-                ActualTextBox.TextColor3 = Color3.fromRGB(255,255,255)
-                ActualTextBox.TextSize = 13
-                ActualTextBox.TextTransparency = 0.2
+                ActualTextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+                ActualTextBox.TextSize = 15
+                ActualTextBox.TextTransparency = 0.15
                 ActualTextBox.TextWrapped = true
                 ActualTextBox.TextXAlignment = Enum.TextXAlignment.Left
                 ActualTextBox.AutomaticSize = Enum.AutomaticSize.Y
+                ActualTextBox.ZIndex = 2
 
                 if TextBoxData.PlaceHolderText and typeof(TextBoxData.PlaceHolderText) == "string" then
                     ActualTextBox.PlaceholderText = TextBoxData.PlaceHolderText
                 end
+
+                -- Focus / FocusLost animations (EXE 5 Quad easing)
+                local focusCon = ActualTextBox.Focused:Connect(function()
+                    TweenService:Create(depth, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                        ImageTransparency = 0.2
+                    }):Play()
+                    TweenService:Create(focusedBg, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                        Offset = Vector2.new(0.4, 0)
+                    }):Play()
+                end)
+                table.insert(SpaceUI.Connections, focusCon)
+                table.insert(ModuleData.Connections, focusCon)
+
+                local focusLostAnimCon = ActualTextBox.FocusLost:Connect(function()
+                    TweenService:Create(depth, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                        ImageTransparency = 0.55
+                    }):Play()
+                    TweenService:Create(focusedBg, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                        Offset = Vector2.new(0, 0)
+                    }):Play()
+                end)
+                table.insert(SpaceUI.Connections, focusLostAnimCon)
+                table.insert(ModuleData.Connections, focusLostAnimCon)
 
                 TextBoxData.Functions.SetVisiblity = function(enabled)
                     if enabled then
@@ -3356,7 +3400,7 @@ do
                 MiniToggleData.Construction = ModuleData.Functions.ConstructSetting({
                     Name = MiniToggleData.Name,
                     Description = MiniToggleData.Description,
-                    Size = 80,
+                    Size = 45,
                     Layout = false,
                     ToolTip = MiniToggleData.ToolTip,
                     OnToolTipEdit = function(new: {ToolTip: string})
@@ -3371,34 +3415,33 @@ do
                 
                 MiniToggleData.Functions.EditToolTip = MiniToggleData.Construction.Functions.EditToolTip
 
-                local ToggleBox = Instance.new("Frame", MiniToggleData.Objects.MainInstance)
-                ToggleBox.ZIndex = 2
+                -- EXE 5 (Build 517) Checkmark Icon (rbxassetid://10709790644)
+                local ToggleBox = Instance.new("ImageLabel", MiniToggleData.Objects.MainInstance)
+                ToggleBox.Name = "check"
                 ToggleBox.AnchorPoint = Vector2.new(1, 0.5)
-                ToggleBox.BackgroundColor3 = Color3.fromRGB(65, 65, 65)
-                ToggleBox.BackgroundTransparency = 0.4
+                ToggleBox.BackgroundTransparency = 1
                 ToggleBox.Position = UDim2.fromScale(1, 0.5)
-                ToggleBox.Size = UDim2.fromOffset(36, 21)
-                Instance.new("UICorner", ToggleBox).CornerRadius = UDim.new(0, 15)
+                ToggleBox.Size = UDim2.fromOffset(20, 20)
+                ToggleBox.Image = "rbxassetid://10709790644"
+                ToggleBox.ImageColor3 = Color3.fromRGB(255, 255, 255)
+                ToggleBox.ImageTransparency = 1
+                ToggleBox.ScaleType = Enum.ScaleType.Fit
                 
-                local ToggleCircle = Instance.new("Frame", ToggleBox)
-                ToggleCircle.ZIndex = 2
-                ToggleCircle.AnchorPoint = Vector2.new(0, 0.5)
-                ToggleCircle.BackgroundColor3 = Color3.fromRGB(34, 34, 34)
-                ToggleCircle.Position = UDim2.fromScale(0.05, 0.5)
-                ToggleCircle.Size = UDim2.fromOffset(17, 17)
-                Instance.new("UICorner", ToggleCircle).CornerRadius = UDim.new(0, 15)
+                local ToggleCircle = Instance.new("UIScale", ToggleBox)
+                ToggleCircle.Name = "scale"
+                ToggleCircle.Scale = 0
 
+                -- EXE 5 Exponential toggle animation (0.35s)
                 MiniToggleData.Functions.Toggle = function(enabled, save, override)
                     if enabled and not MiniToggleData.Enabled or override or not enabled and MiniToggleData.Enabled then
                         MiniToggleData.Callback(MiniToggleData, enabled)
                     end
                     if enabled then
-                        TweenService:Create(ToggleBox, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0, BackgroundColor3 = Color3.fromRGB(195, 195, 195)}):Play()
-                        TweenService:Create(ToggleCircle, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.fromScale(0.95, 0.5)}):Play()
+                        TweenService:Create(ToggleBox, TweenInfo.new(0.35, Enum.EasingStyle.Exponential), {ImageTransparency = 0}):Play()
+                        TweenService:Create(ToggleCircle, TweenInfo.new(0.35, Enum.EasingStyle.Exponential), {Scale = 1}):Play()
                     else
-                        TweenService:Create(ToggleCircle, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.fromScale(0.05, 0.5)}):Play()
-                        TweenService:Create(ToggleBox, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.4, BackgroundColor3 = Color3.fromRGB(65, 65, 65)}):Play()
-
+                        TweenService:Create(ToggleCircle, TweenInfo.new(0.35, Enum.EasingStyle.Exponential), {Scale = 0}):Play()
+                        TweenService:Create(ToggleBox, TweenInfo.new(0.35, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
                     end
                     MiniToggleData.Enabled = enabled
 
@@ -3424,7 +3467,6 @@ do
                         MiniToggleData.Objects.MainInstance.Visible = false
                     end
                 end
-
                 
                 if MiniToggleData.Hide then
                     MiniToggleData.Functions.SetVisiblity(false)
@@ -4091,7 +4133,7 @@ do
                 ButtonData.Construction = ModuleData.Functions.ConstructSetting({
                     Name = ButtonData.Name,
                     Description = ButtonData.Description,
-                    Size = 80,
+                    Size = 45,
                     Layout = false,
                     ToolTip = ButtonData.ToolTip,
                     OnToolTipEdit = function(new: {ToolTip: string})
@@ -4104,11 +4146,40 @@ do
                     ButtonData.Construction.Functions.EditToolTip({ToolTip = "Tap to toggle"})
                 end
 
-                local ClickCon = ButtonData.Objects.MainInstance.MouseButton1Down:Connect(function()
+                local btnScale = Instance.new("UIScale", ButtonData.Objects.MainInstance)
+                btnScale.Scale = 1.0
+
+                ButtonData.Objects.MainInstance.MouseEnter:Connect(function()
+                    TweenService:Create(ButtonData.Objects.MainInstance, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {
+                        ImageTransparency = 0.4
+                    }):Play()
+                end)
+
+                ButtonData.Objects.MainInstance.MouseLeave:Connect(function()
+                    TweenService:Create(ButtonData.Objects.MainInstance, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {
+                        ImageTransparency = 0.6
+                    }):Play()
+                    TweenService:Create(btnScale, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
+                        Scale = 1.0
+                    }):Play()
+                end)
+
+                local ClickDownCon = ButtonData.Objects.MainInstance.MouseButton1Down:Connect(function()
+                    TweenService:Create(btnScale, TweenInfo.new(0.12, Enum.EasingStyle.Quad), {
+                        Scale = 0.96
+                    }):Play()
+                end)
+                table.insert(ButtonData.Connections, ClickDownCon)
+                table.insert(SpaceUI.Connections, ClickDownCon)
+
+                local ClickUpCon = ButtonData.Objects.MainInstance.MouseButton1Up:Connect(function()
+                    TweenService:Create(btnScale, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
+                        Scale = 1.0
+                    }):Play()
                     ButtonData.Callback(ButtonData)
                 end)
-                table.insert(ButtonData.Connections, ClickCon)
-                table.insert(SpaceUI.Connections, ClickCon)
+                table.insert(ButtonData.Connections, ClickUpCon)
+                table.insert(SpaceUI.Connections, ClickUpCon)
 
                 ButtonData.Functions.SetVisiblity = function(enabled)
                     if enabled then
@@ -4500,6 +4571,189 @@ do
 
                 ModuleData.Settings[KeybindData.Flag] = KeybindData
                 return KeybindData
+            end
+
+            
+            -- 8. TagSelector (EXE 5 Global Ban PlayersInput)
+            ModuleData.Functions.Settings.TagSelector = function(data: {Name: string, Flag: string, Description: string, ToolTip: string, Default: {string}?, Hide: boolean, Callback: any})
+                local TagData = {
+                    Name = data and data.Name or "Tag Selector",
+                    Flag = data and data.Flag or "TagSelector",
+                    Description = data and data.Description or "Add/Remove Tags",
+                    ToolTip = data and data.ToolTip or "Enter text and press Enter to add tag",
+                    Default = data and data.Default or {},
+                    Tags = {},
+                    Hide = data and data.Hide or false,
+                    Callback = data and data.Callback or function() end,
+                    Type = "TagSelectors",
+                    Objects = {},
+                    Functions = {}
+                }
+
+                TagData.Construction = ModuleData.Functions.ConstructSetting({
+                    Name = TagData.Name,
+                    Description = TagData.Description,
+                    Size = 75,
+                    ToolTip = TagData.ToolTip,
+                    Layout = true,
+                    OnToolTipEdit = function(new) TagData.ToolTip = new.ToolTip end
+                })
+                TagData.Objects.MainInstance = TagData.Construction.Objects.MainInstance
+                TagData.Objects.MainInstance.AutomaticSize = Enum.AutomaticSize.Y
+
+                local container = Instance.new("Frame", TagData.Objects.MainInstance)
+                container.Name = "TagContainer"
+                container.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+                container.BackgroundTransparency = 0.5
+                container.Size = UDim2.new(1, -10, 0, 44)
+                container.AutomaticSize = Enum.AutomaticSize.Y
+                container.LayoutOrder = 2
+                Instance.new("UICorner", container).CornerRadius = UDim.new(0, 10)
+
+                local tagList = Instance.new("UIListLayout", container)
+                tagList.FillDirection = Enum.FillDirection.Horizontal
+                tagList.ItemLineAlignment = Enum.ItemLineAlignment.Center
+                tagList.HorizontalFlex = Enum.UIFlexAlignment.Grow
+                tagList.Padding = UDim.new(0, 6)
+
+                local tagPad = Instance.new("UIPadding", container)
+                tagPad.PaddingLeft = UDim.new(0, 10)
+                tagPad.PaddingRight = UDim.new(0, 10)
+                tagPad.PaddingTop = UDim.new(0, 8)
+                tagPad.PaddingBottom = UDim.new(0, 8)
+
+                local tagInput = Instance.new("TextBox", container)
+                tagInput.BackgroundTransparency = 1
+                tagInput.Size = UDim2.new(0, 120, 0, 26)
+                tagInput.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Medium)
+                tagInput.PlaceholderText = "Add tag..."
+                tagInput.PlaceholderColor3 = Color3.fromRGB(140, 140, 140)
+                tagInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+                tagInput.TextSize = 14
+                tagInput.Text = ""
+
+                local function addTag(tagName: string)
+                    if tagName == "" or table.find(TagData.Tags, tagName) then return end
+                    table.insert(TagData.Tags, tagName)
+                    
+                    local tagBtn = Instance.new("TextButton", container)
+                    tagBtn.Name = "tag_" .. tagName
+                    tagBtn.AutoButtonColor = false
+                    tagBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+                    tagBtn.BackgroundTransparency = 0.3
+                    tagBtn.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Medium)
+                    tagBtn.Text = tagName .. "  ✕"
+                    tagBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+                    tagBtn.TextSize = 13
+                    tagBtn.AutomaticSize = Enum.AutomaticSize.X
+                    tagBtn.Size = UDim2.new(0, 0, 0, 24)
+                    Instance.new("UICorner", tagBtn).CornerRadius = UDim.new(0, 6)
+                    
+                    local pad = Instance.new("UIPadding", tagBtn)
+                    pad.PaddingLeft = UDim.new(0, 8)
+                    pad.PaddingRight = UDim.new(0, 8)
+                    
+                    tagBtn.MouseButton1Click:Connect(function()
+                        local idx = table.find(TagData.Tags, tagName)
+                        if idx then table.remove(TagData.Tags, idx) end
+                        tagBtn:Destroy()
+                        TagData.Callback(TagData, TagData.Tags)
+                    end)
+                    
+                    tagInput.Text = ""
+                    TagData.Callback(TagData, TagData.Tags)
+                end
+
+                tagInput.FocusLost:Connect(function(enterPressed)
+                    if enterPressed and tagInput.Text ~= "" then
+                        addTag(tagInput.Text)
+                    end
+                end)
+
+                if TagData.Default and type(TagData.Default) == "table" then
+                    for _, t in ipairs(TagData.Default) do
+                        addTag(t)
+                    end
+                end
+
+                TagData.Functions.AddTag = addTag
+                TagData.Functions.GetTags = function() return TagData.Tags end
+
+                ModuleData.Settings[TagData.Flag] = TagData
+                return TagData
+            end
+
+            -- 9. IconSelector (EXE 5 Server Announcements IconSelector)
+            ModuleData.Functions.Settings.IconSelector = function(data: {Name: string, Flag: string, Description: string, Default: string?, Callback: any})
+                local IconData = {
+                    Name = data and data.Name or "Icon Selector",
+                    Flag = data and data.Flag or "IconSelector",
+                    Description = data and data.Description or "Choose an Icon",
+                    Selected = data and data.Default or "star",
+                    Callback = data and data.Callback or function() end,
+                    Type = "IconSelectors",
+                    Objects = {},
+                    Functions = {}
+                }
+
+                IconData.Construction = ModuleData.Functions.ConstructSetting({
+                    Name = IconData.Name,
+                    Description = IconData.Description,
+                    Size = 140,
+                    Layout = true,
+                    ToolTip = "Select an icon from the grid"
+                })
+                IconData.Objects.MainInstance = IconData.Construction.Objects.MainInstance
+
+                local gridScroll = Instance.new("ScrollingFrame", IconData.Objects.MainInstance)
+                gridScroll.Name = "IconGrid"
+                gridScroll.BackgroundTransparency = 1
+                gridScroll.Size = UDim2.new(1, -10, 0, 100)
+                gridScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+                gridScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+                gridScroll.ScrollBarThickness = 3
+
+                local grid = Instance.new("UIGridLayout", gridScroll)
+                grid.CellSize = UDim2.fromOffset(30, 30)
+                grid.CellPadding = UDim2.fromOffset(6, 6)
+
+                local icons = {
+                    star = "rbxassetid://11430231167", alarm = "rbxassetid://12967561554",
+                    warn = "rbxassetid://11419713314", lock = "rbxassetid://14187755345",
+                    info = "rbxassetid://11422155687", users = "rbxassetid://11432832657",
+                    message = "rbxassetid://11422929748", user = "rbxassetid://11295273292",
+                    bell = "rbxassetid://11295275950", camera = "rbxassetid://11326670865"
+                }
+
+                for iconName, assetId in pairs(icons) do
+                    local iconBtn = Instance.new("ImageButton", gridScroll)
+                    iconBtn.Name = iconName
+                    iconBtn.AutoButtonColor = false
+                    iconBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+                    iconBtn.BackgroundTransparency = if IconData.Selected == iconName then 0.2 else 0.8
+                    Instance.new("UICorner", iconBtn).CornerRadius = UDim.new(0, 6)
+                    
+                    local iconImg = Instance.new("ImageLabel", iconBtn)
+                    iconImg.AnchorPoint = Vector2.new(0.5, 0.5)
+                    iconImg.Position = UDim2.fromScale(0.5, 0.5)
+                    iconImg.Size = UDim2.fromOffset(18, 18)
+                    iconImg.BackgroundTransparency = 1
+                    iconImg.Image = assetId
+                    iconImg.ImageColor3 = Color3.fromRGB(255, 255, 255)
+                    
+                    iconBtn.MouseButton1Click:Connect(function()
+                        IconData.Selected = iconName
+                        for _, ch in ipairs(gridScroll:GetChildren()) do
+                            if ch:IsA("ImageButton") then
+                                ch.BackgroundTransparency = if ch.Name == iconName then 0.2 else 0.8
+                            end
+                        end
+                        IconData.Callback(IconData, iconName, assetId)
+                    end)
+                end
+
+                ModuleData.Settings[IconData.Flag] = IconData
+                return IconData
             end
 
             ModuleData.Functions.Destroy = function()
