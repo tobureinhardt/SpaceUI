@@ -3237,7 +3237,7 @@ do
                 TextBoxData.Construction = ModuleData.Functions.ConstructSetting({
                     Name = TextBoxData.Name,
                     Description = TextBoxData.Description,
-                    Size = 50,
+                    Size = 125,
                     ToolTip = TextBoxData.ToolTip,
                     Layout = true,
                     OnToolTipEdit = function(new: {ToolTip: string})
@@ -3251,91 +3251,47 @@ do
                 end
 
                 TextBoxData.Functions.EditToolTip = TextBoxData.Construction.Functions.EditToolTip
+
                 TextBoxData.Objects.MainInstance.AutomaticSize = Enum.AutomaticSize.Y
 
-                -- EXE 5 (Build 517) styled TextBox Container with depth layer and focused gradient
                 local ActualTextBoxBox = Instance.new("Frame", TextBoxData.Objects.MainInstance)
-                ActualTextBoxBox.AnchorPoint = Vector2.new(1, 0.5)
-                ActualTextBoxBox.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-                ActualTextBoxBox.BackgroundTransparency = 0.5
-                ActualTextBoxBox.Size = UDim2.new(1, -10, 0, 44)
+                ActualTextBoxBox.ZIndex = 2
+                ActualTextBoxBox.AnchorPoint = Vector2.new(1,0.5)
+                ActualTextBoxBox.BackgroundColor3 = Color3.fromRGB(65, 65, 65)
+                ActualTextBoxBox.BackgroundTransparency = 0.6
+                ActualTextBoxBox.Size = UDim2.new(1, 0, 0, 35)
                 ActualTextBoxBox.LayoutOrder = 2
                 ActualTextBoxBox.AutomaticSize = Enum.AutomaticSize.Y
+                Instance.new("UICorner", ActualTextBoxBox).CornerRadius = UDim.new(0, 6)
+
+                local BoxStroke = Instance.new("UIStroke", ActualTextBoxBox)
+                BoxStroke.Color = Color3.fromRGB(255,255,255)
+                BoxStroke.Transparency = 0.9
                 
-                local corner = Instance.new("UICorner", ActualTextBoxBox)
-                corner.CornerRadius = UDim.new(0, 10)
-
-                local depth = Instance.new("ImageLabel", ActualTextBoxBox)
-                depth.Name = "depth"
-                depth.BackgroundTransparency = 1
-                depth.Image = "rbxassetid://16291885532"
-                depth.ImageTransparency = 0.55
-                depth.ScaleType = Enum.ScaleType.Slice
-                depth.SliceCenter = Rect.new(206, 206, 206, 206)
-                depth.Size = UDim2.new(1, 0, 1, 0)
-                depth.ZIndex = 1
-
-                local focusedBg = Instance.new("UIGradient", ActualTextBoxBox)
-                focusedBg.Name = "focused_bg"
-                focusedBg.Color = ColorSequence.new{
-                    ColorSequenceKeypoint.new(0, Color3.fromRGB(60, 60, 60)),
-                    ColorSequenceKeypoint.new(1, Color3.fromRGB(90, 90, 90))
-                }
-                focusedBg.Transparency = NumberSequence.new{
-                    NumberSequenceKeypoint.new(0, 0, 0),
-                    NumberSequenceKeypoint.new(1, 0.46875, 0)
-                }
-                focusedBg.Offset = Vector2.new(0, 0)
-
                 local BoxPadding = Instance.new("UIPadding", ActualTextBoxBox)
-                BoxPadding.PaddingBottom = UDim.new(0, 10)
-                BoxPadding.PaddingLeft = UDim.new(0, 14)
-                BoxPadding.PaddingRight = UDim.new(0, 14)
-                BoxPadding.PaddingTop = UDim.new(0, 10)
+                BoxPadding.PaddingBottom = UDim.new(0, 12)
+                BoxPadding.PaddingLeft = UDim.new(0, 15)
+                BoxPadding.PaddingTop = UDim.new(0, 12)
 
                 local ActualTextBox = Instance.new("TextBox", ActualTextBoxBox)
-                ActualTextBox.Name = "textbox"
+                ActualTextBox.ZIndex = 2
                 ActualTextBox.BackgroundTransparency = 1
                 ActualTextBox.BorderSizePixel = 0
                 ActualTextBox.Position = UDim2.fromScale(0, 0)
-                ActualTextBox.Size = UDim2.new(1, 0, 1, 0)
+                ActualTextBox.Size = UDim2.fromScale(0.98, 0.26)
                 ActualTextBox.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Medium)
                 ActualTextBox.PlaceholderColor3 = Color3.fromRGB(140, 140, 140)
                 ActualTextBox.Text = TextBoxData.Default
-                ActualTextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-                ActualTextBox.TextSize = 15
-                ActualTextBox.TextTransparency = 0.15
+                ActualTextBox.TextColor3 = Color3.fromRGB(255,255,255)
+                ActualTextBox.TextSize = 13
+                ActualTextBox.TextTransparency = 0.2
                 ActualTextBox.TextWrapped = true
                 ActualTextBox.TextXAlignment = Enum.TextXAlignment.Left
                 ActualTextBox.AutomaticSize = Enum.AutomaticSize.Y
-                ActualTextBox.ZIndex = 2
 
                 if TextBoxData.PlaceHolderText and typeof(TextBoxData.PlaceHolderText) == "string" then
                     ActualTextBox.PlaceholderText = TextBoxData.PlaceHolderText
                 end
-
-                -- Focus / FocusLost animations (EXE 5 Quad easing)
-                local focusCon = ActualTextBox.Focused:Connect(function()
-                    TweenService:Create(depth, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                        ImageTransparency = 0.2
-                    }):Play()
-                    TweenService:Create(focusedBg, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                        Offset = Vector2.new(0.4, 0)
-                    }):Play()
-                end)
-                table.insert(SpaceUI.Connections, focusCon)
-                table.insert(ModuleData.Connections, focusCon)
-
-                local focusLostAnimCon = ActualTextBox.FocusLost:Connect(function()
-                    TweenService:Create(depth, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                        ImageTransparency = 0.55
-                    }):Play()
-                    TweenService:Create(focusedBg, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                        Offset = Vector2.new(0, 0)
-                    }):Play()
-                end)
-                table.insert(SpaceUI.Connections, focusLostAnimCon)
-                table.insert(ModuleData.Connections, focusLostAnimCon)
 
                 TextBoxData.Functions.SetVisiblity = function(enabled)
                     if enabled then
@@ -3400,7 +3356,7 @@ do
                 MiniToggleData.Construction = ModuleData.Functions.ConstructSetting({
                     Name = MiniToggleData.Name,
                     Description = MiniToggleData.Description,
-                    Size = 45,
+                    Size = 80,
                     Layout = false,
                     ToolTip = MiniToggleData.ToolTip,
                     OnToolTipEdit = function(new: {ToolTip: string})
@@ -3415,33 +3371,34 @@ do
                 
                 MiniToggleData.Functions.EditToolTip = MiniToggleData.Construction.Functions.EditToolTip
 
-                -- EXE 5 (Build 517) Checkmark Icon (rbxassetid://10709790644)
-                local ToggleBox = Instance.new("ImageLabel", MiniToggleData.Objects.MainInstance)
-                ToggleBox.Name = "check"
+                local ToggleBox = Instance.new("Frame", MiniToggleData.Objects.MainInstance)
+                ToggleBox.ZIndex = 2
                 ToggleBox.AnchorPoint = Vector2.new(1, 0.5)
-                ToggleBox.BackgroundTransparency = 1
+                ToggleBox.BackgroundColor3 = Color3.fromRGB(65, 65, 65)
+                ToggleBox.BackgroundTransparency = 0.4
                 ToggleBox.Position = UDim2.fromScale(1, 0.5)
-                ToggleBox.Size = UDim2.fromOffset(20, 20)
-                ToggleBox.Image = "rbxassetid://10709790644"
-                ToggleBox.ImageColor3 = Color3.fromRGB(255, 255, 255)
-                ToggleBox.ImageTransparency = 1
-                ToggleBox.ScaleType = Enum.ScaleType.Fit
+                ToggleBox.Size = UDim2.fromOffset(36, 21)
+                Instance.new("UICorner", ToggleBox).CornerRadius = UDim.new(0, 15)
                 
-                local ToggleCircle = Instance.new("UIScale", ToggleBox)
-                ToggleCircle.Name = "scale"
-                ToggleCircle.Scale = 0
+                local ToggleCircle = Instance.new("Frame", ToggleBox)
+                ToggleCircle.ZIndex = 2
+                ToggleCircle.AnchorPoint = Vector2.new(0, 0.5)
+                ToggleCircle.BackgroundColor3 = Color3.fromRGB(34, 34, 34)
+                ToggleCircle.Position = UDim2.fromScale(0.05, 0.5)
+                ToggleCircle.Size = UDim2.fromOffset(17, 17)
+                Instance.new("UICorner", ToggleCircle).CornerRadius = UDim.new(0, 15)
 
-                -- EXE 5 Exponential toggle animation (0.35s)
                 MiniToggleData.Functions.Toggle = function(enabled, save, override)
                     if enabled and not MiniToggleData.Enabled or override or not enabled and MiniToggleData.Enabled then
                         MiniToggleData.Callback(MiniToggleData, enabled)
                     end
                     if enabled then
-                        TweenService:Create(ToggleBox, TweenInfo.new(0.35, Enum.EasingStyle.Exponential), {ImageTransparency = 0}):Play()
-                        TweenService:Create(ToggleCircle, TweenInfo.new(0.35, Enum.EasingStyle.Exponential), {Scale = 1}):Play()
+                        TweenService:Create(ToggleBox, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0, BackgroundColor3 = Color3.fromRGB(195, 195, 195)}):Play()
+                        TweenService:Create(ToggleCircle, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.fromScale(0.95, 0.5)}):Play()
                     else
-                        TweenService:Create(ToggleCircle, TweenInfo.new(0.35, Enum.EasingStyle.Exponential), {Scale = 0}):Play()
-                        TweenService:Create(ToggleBox, TweenInfo.new(0.35, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
+                        TweenService:Create(ToggleCircle, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.fromScale(0.05, 0.5)}):Play()
+                        TweenService:Create(ToggleBox, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.4, BackgroundColor3 = Color3.fromRGB(65, 65, 65)}):Play()
+
                     end
                     MiniToggleData.Enabled = enabled
 
@@ -3467,6 +3424,7 @@ do
                         MiniToggleData.Objects.MainInstance.Visible = false
                     end
                 end
+
                 
                 if MiniToggleData.Hide then
                     MiniToggleData.Functions.SetVisiblity(false)
@@ -3486,338 +3444,306 @@ do
                 local SliderData = {
                     Name = data and data.Name or "New Slider",
                     Description = data and data.Description or "Slider",
-                    ToolTip = data and data.Tooltip or "Slide to adjust value",
+                    ToolTip = data and data.Tooltip or "Slide the circle to edit value",
                     Min = data and tonumber(data.Min) or 0,
                     Max = data and tonumber(data.Max) or 100,
-                    Default = data and data.Default or 50,
+                    Default = data and data.Default or {Value1 = 50, Value2 = 100},
                     Decimals = data and tonumber(data.Decimals) or 0,
-                    Increment = data and tonumber(data.Increment) or (1 / (10 ^ (data and tonumber(data.Decimals) or 0))),
                     Multi = data and data.DoubleValue or false,
                     Flag = data and data.Flag or data and data.Name or "New Slider",
                     Hide = data and data.Hide or false,
                     Callback = data and data.Callback or function() end,
                     Type = "Sliders",
-                    Data = {Dragging = false, Dragging1 = false, Dragging2 = false},
+                    Data = {Dragging = false},
                     Tweens = {},
                     Objects = {},
                     Functions = {}
                 }
 
+
                 if SpaceUI.Config.Game.Sliders[SliderData.Flag] then
-                    SliderData.Default = SpaceUI.Config.Game.Sliders[SliderData.Flag]
+                    if typeof(SpaceUI.Config.Game.Sliders[SliderData.Flag]) == "table" then
+                        SliderData.Default = SpaceUI.Config.Game.Sliders[SliderData.Flag]
+                    elseif typeof(SpaceUI.Config.Game.Sliders[SliderData.Flag]) == "number" then
+                        SliderData.Default = {Value2 = SpaceUI.Config.Game.Sliders[SliderData.Flag]}
+                    end
+                else
+                    if typeof(SliderData.Default) == "number" then
+                        SliderData.Default = {Value2 = SliderData.Default}
+                    end
+                end
+
+                if not SliderData.Default.Value1 then
+                    SliderData.Default.Value1 = SliderData.Min
+                end
+                if not SliderData.Default.Value2 then
+                    SliderData.Default.Value2 = SliderData.Max
                 end
 
                 SliderData.Construction = ModuleData.Functions.ConstructSetting({
                     Name = SliderData.Name,
                     Description = SliderData.Description,
-                    Size = 78,
+                    Size = 100,
+                    Layout = false,
                     ToolTip = SliderData.ToolTip,
-                    Layout = true,
                     OnToolTipEdit = function(new: {ToolTip: string})
                         SliderData.ToolTip = new.ToolTip
                     end
                 })
 
                 SliderData.Objects.MainInstance = SliderData.Construction.Objects.MainInstance
-                SliderData.Objects.MainInstance.AutomaticSize = Enum.AutomaticSize.Y
+                if SliderData.Multi then
+                    SliderData.Construction.Functions.EditToolTip({ToolTip = "Slide a circle to edit the value"})
+                end
+                
                 SliderData.Functions.EditToolTip = SliderData.Construction.Functions.EditToolTip
 
-                -- Numbers Container (Displays current value)
                 local Numbers = Instance.new("Frame", SliderData.Objects.MainInstance)
-                Numbers.Name = "Numbers"
-                Numbers.AnchorPoint = Vector2.new(1, 0)
                 Numbers.BackgroundTransparency = 1
-                Numbers.Position = UDim2.new(1, -10, 0, 12)
-                Numbers.Size = UDim2.new(0, 100, 0, 20)
-                Numbers.AutomaticSize = Enum.AutomaticSize.X
+                Numbers.Position = UDim2.fromScale(0.59, 0.237)
+                Numbers.Size = UDim2.fromScale(0.409, 0.15)
+                Numbers.ZIndex = 2
 
-                local NumbersList = Instance.new("UIListLayout", Numbers)
-                NumbersList.FillDirection = Enum.FillDirection.Horizontal
-                NumbersList.HorizontalAlignment = Enum.HorizontalAlignment.Right
-                NumbersList.VerticalAlignment = Enum.VerticalAlignment.Center
-                NumbersList.Padding = UDim.new(0, 4)
+                local NumbersLayout = Instance.new("UIListLayout", Numbers)
+                NumbersLayout.Padding = UDim.new(0, 20)
+                NumbersLayout.FillDirection = Enum.FillDirection.Horizontal
+                NumbersLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+                NumbersLayout.SortOrder = Enum.SortOrder.LayoutOrder
 
+                local SliderValue1
                 local SliderValue2 = Instance.new("TextBox", Numbers)
-                SliderValue2.Name = "Value2"
+                SliderValue2.AnchorPoint = Vector2.new(0, 0.5)
                 SliderValue2.BackgroundTransparency = 1
-                SliderValue2.Size = UDim2.new(0, 0, 1, 0)
-                SliderValue2.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Medium)
-                SliderValue2.Text = tostring(if typeof(SliderData.Default) == "table" then SliderData.Default.Value2 or SliderData.Max else SliderData.Default)
+                SliderValue2.Size = UDim2.new(0.043, 0, 0, 15)
+                SliderValue2.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular)
+                SliderValue2.Text = tonumber(SliderData.Default.Value2)
                 SliderValue2.TextColor3 = Color3.fromRGB(255, 255, 255)
-                SliderValue2.TextSize = 14
+                SliderValue2.TextSize = 13
                 SliderValue2.TextTransparency = 0.2
                 SliderValue2.TextXAlignment = Enum.TextXAlignment.Right
                 SliderValue2.AutomaticSize = Enum.AutomaticSize.X
                 SliderValue2.LayoutOrder = 2
+                SliderValue2.ZIndex = 2
 
-                local SliderValue1 = nil
-                if SliderData.Multi then
-                    SliderValue1 = Instance.new("TextBox", Numbers)
-                    SliderValue1.Name = "Value1"
-                    SliderValue1.BackgroundTransparency = 1
-                    SliderValue1.Size = UDim2.new(0, 0, 1, 0)
-                    SliderValue1.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Medium)
-                    SliderValue1.Text = tostring(if typeof(SliderData.Default) == "table" then SliderData.Default.Value1 or SliderData.Min else SliderData.Min)
-                    SliderValue1.TextColor3 = Color3.fromRGB(255, 255, 255)
-                    SliderValue1.TextSize = 14
-                    SliderValue1.TextTransparency = 0.2
-                    SliderValue1.TextXAlignment = Enum.TextXAlignment.Right
-                    SliderValue1.AutomaticSize = Enum.AutomaticSize.X
-                    SliderValue1.LayoutOrder = 0
+                local SliderBox = Instance.new("Frame", SliderData.Objects.MainInstance)
+                SliderBox.AnchorPoint = Vector2.new(0, 0.5)
+                SliderBox.BackgroundColor3 = Color3.fromRGB(65, 65, 65)
+                SliderBox.BackgroundTransparency = 0.6
+                SliderBox.Position = UDim2.fromScale(0, 0.63)
+                SliderBox.Size = UDim2.fromScale(1, 0.05)
+                SliderBox.ZIndex = 2
+                Instance.new("UICorner", SliderBox).CornerRadius = UDim.new(0, 15)
 
-                    local ValueSplitIcon = Instance.new("ImageLabel", Numbers)
-                    ValueSplitIcon.BackgroundTransparency = 1
-                    ValueSplitIcon.Size = UDim2.fromOffset(14, 14)
-                    ValueSplitIcon.Image = "rbxassetid://11422155687"
-                    ValueSplitIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
-                    ValueSplitIcon.ImageTransparency = 0.6
-                    ValueSplitIcon.LayoutOrder = 1
-                end
-
-                -- EXE 5 (Build 517) Slider Container Component
-                local SliderFrame = Instance.new("Frame", SliderData.Objects.MainInstance)
-                SliderFrame.Name = "slider"
-                SliderFrame.AnchorPoint = Vector2.new(1, 0.5)
-                SliderFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-                SliderFrame.BackgroundTransparency = 0.6
-                SliderFrame.Position = UDim2.fromScale(0, 0.65)
-                SliderFrame.Size = UDim2.new(1, -10, 0, 36)
-                SliderFrame.LayoutOrder = 2
-                Instance.new("UICorner", SliderFrame).CornerRadius = UDim.new(0, 10)
-
-                local sliderPadding = Instance.new("UIPadding", SliderFrame)
-                sliderPadding.PaddingLeft = UDim.new(0, 14)
-                sliderPadding.PaddingRight = UDim.new(0, 14)
-                sliderPadding.PaddingTop = UDim.new(0, 6)
-                sliderPadding.PaddingBottom = UDim.new(0, 6)
-
-                local focusedBg = Instance.new("UIGradient", SliderFrame)
-                focusedBg.Name = "focused_bg"
-                focusedBg.Color = ColorSequence.new{
-                    ColorSequenceKeypoint.new(0, Color3.fromRGB(60, 60, 60)),
-                    ColorSequenceKeypoint.new(1, Color3.fromRGB(90, 90, 90))
-                }
-                focusedBg.Transparency = NumberSequence.new{
-                    NumberSequenceKeypoint.new(0, 0, 0),
-                    NumberSequenceKeypoint.new(1, 0.46875, 0)
-                }
-
-                -- EXE 5 Track Background Image (rbxassetid://16264857615)
-                local TrackBackground = Instance.new("ImageLabel", SliderFrame)
-                TrackBackground.Name = "Background"
-                TrackBackground.AnchorPoint = Vector2.new(0, 0.5)
-                TrackBackground.BackgroundTransparency = 1
-                TrackBackground.Position = UDim2.new(0, 0, 0.5, 0)
-                TrackBackground.Size = UDim2.new(1, 0, 0, 4)
-                TrackBackground.Image = "rbxassetid://16264857615"
-                TrackBackground.ImageColor3 = Color3.fromRGB(255, 255, 255)
-                TrackBackground.ImageTransparency = 0
-                TrackBackground.ZIndex = 1
-
-                -- Min & Max Labels
-                local minLabel = Instance.new("TextLabel", SliderFrame)
-                minLabel.Name = "min_value"
-                minLabel.AnchorPoint = Vector2.new(0, 1)
-                minLabel.BackgroundTransparency = 1
-                minLabel.Position = UDim2.new(0, 0, 0.35, 0)
-                minLabel.Size = UDim2.new(0, 40, 0, 14)
-                minLabel.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular)
-                minLabel.Text = tostring(SliderData.Min)
-                minLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-                minLabel.TextSize = 12
-                minLabel.TextTransparency = 0.5
-                minLabel.TextXAlignment = Enum.TextXAlignment.Left
-
-                local maxLabel = Instance.new("TextLabel", SliderFrame)
-                maxLabel.Name = "max_value"
-                maxLabel.AnchorPoint = Vector2.new(1, 1)
-                maxLabel.BackgroundTransparency = 1
-                maxLabel.Position = UDim2.new(1, 0, 0.35, 0)
-                maxLabel.Size = UDim2.new(0, 40, 0, 14)
-                maxLabel.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular)
-                maxLabel.Text = tostring(SliderData.Max)
-                maxLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-                maxLabel.TextSize = 12
-                maxLabel.TextTransparency = 0.5
-                maxLabel.TextXAlignment = Enum.TextXAlignment.Right
-
-                -- Fill Bar with gradient
-                local Fill = Instance.new("Frame", SliderFrame)
-                Fill.Name = "Fill"
+                local Fill = Instance.new("Frame", SliderBox)
                 Fill.AnchorPoint = Vector2.new(0, 0.5)
-                Fill.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-                Fill.BackgroundTransparency = 0.1
-                Fill.Position = UDim2.new(0, 0, 0.5, 0)
-                Fill.Size = UDim2.new(0.5, 0, 0, 4)
+                Fill.BackgroundColor3 = Color3.fromRGB(195, 195, 195)
+                Fill.Position = UDim2.fromScale(0, 0.5)
+                Fill.Size = UDim2.fromScale(math.clamp((tonumber(SliderValue2.Text)-SliderData.Min)/(SliderData.Max-SliderData.Min), 0, 1), 1)
                 Fill.ZIndex = 2
-                Instance.new("UICorner", Fill).CornerRadius = UDim.new(1, 0)
+                Instance.new("UICorner", Fill).CornerRadius = UDim.new(0, 15)
 
-                local fillGradient = Instance.new("UIGradient", Fill)
-                fillGradient.Color = ColorSequence.new{
-                    ColorSequenceKeypoint.new(0, Color3.fromRGB(180, 180, 180)),
-                    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))
-                }
+                local Circle2 = Instance.new("ImageButton", Fill)
+                Circle2.AutoButtonColor = false
+                Circle2.AnchorPoint = Vector2.new(0.5,0.5)
+                Circle2.BackgroundColor3 = Color3.fromRGB(195, 195, 195)
+                Circle2.Position = UDim2.fromScale(1, 0.5)
+                Circle2.Size = UDim2.fromOffset(10, 10)
+                Circle2.ImageTransparency = 1
+                Circle2.ZIndex = 2
+                Instance.new("UICorner", Circle2).CornerRadius = UDim.new(0, 15)
 
-                -- EXE 5 Slider Handle Button & Icon (rbxassetid://16294678871)
-                local SliderButton = Instance.new("TextButton", SliderFrame)
-                SliderButton.Name = "Slider"
-                SliderButton.BackgroundTransparency = 1
-                SliderButton.Size = UDim2.new(1, 0, 1, 0)
-                SliderButton.Text = ""
-                SliderButton.ZIndex = 3
+                SliderData.Functions.SetValue = function(value: number, save: boolean, target: number)
 
-                local handle2 = Instance.new("ImageLabel", SliderFrame)
-                handle2.Name = "handle"
-                handle2.AnchorPoint = Vector2.new(0.5, 0.5)
-                handle2.BackgroundTransparency = 1
-                handle2.Position = UDim2.new(0.5, 0, 0.5, 0)
-                handle2.Size = UDim2.fromOffset(18, 18)
-                handle2.Image = "rbxassetid://16294678871"
-                handle2.ImageColor3 = Color3.fromRGB(255, 255, 255)
-                handle2.ImageTransparency = 0
-                handle2.ZIndex = 4
-
-                local handleScale2 = Instance.new("UIScale", handle2)
-                handleScale2.Scale = 1.0
-
-                local handle1 = nil
-                local handleScale1 = nil
-                if SliderData.Multi then
-                    handle1 = Instance.new("ImageLabel", SliderFrame)
-                    handle1.Name = "handle1"
-                    handle1.AnchorPoint = Vector2.new(0.5, 0.5)
-                    handle1.BackgroundTransparency = 1
-                    handle1.Position = UDim2.new(0, 0, 0.5, 0)
-                    handle1.Size = UDim2.fromOffset(18, 18)
-                    handle1.Image = "rbxassetid://16294678871"
-                    handle1.ImageColor3 = Color3.fromRGB(255, 255, 255)
-                    handle1.ImageTransparency = 0
-                    handle1.ZIndex = 4
-                    handleScale1 = Instance.new("UIScale", handle1)
-                    handleScale1.Scale = 1.0
-                end
-
-                -- SetValue function with Exponential Tweens
-                SliderData.Functions.SetValue = function(value: any, save: boolean, target: number?)
-                    target = target or 2
-                    local val1 = tonumber(if SliderValue1 then SliderValue1.Text else SliderData.Min) or SliderData.Min
-                    local val2 = tonumber(SliderValue2.Text) or SliderData.Default
-
-                    if typeof(value) == "table" then
-                        val1 = value.Value1 or val1
-                        val2 = value.Value2 or val2
-                    elseif typeof(value) == "number" then
-                        if target == 1 and SliderData.Multi then
-                            val1 = math.clamp(value, SliderData.Min, val2)
-                        else
-                            val2 = math.clamp(value, if SliderData.Multi then val1 else SliderData.Min, SliderData.Max)
-                        end
-                    end
-
-                    local percent2 = math.clamp((val2 - SliderData.Min) / (SliderData.Max - SliderData.Min), 0, 1)
-                    local percent1 = if SliderData.Multi then math.clamp((val1 - SliderData.Min) / (SliderData.Max - SliderData.Min), 0, 1) else 0
-
-                    SliderValue2.Text = tostring(math.floor(val2 * (10 ^ SliderData.Decimals) + 0.5) / (10 ^ SliderData.Decimals))
-                    if SliderValue1 then
-                        SliderValue1.Text = tostring(math.floor(val1 * (10 ^ SliderData.Decimals) + 0.5) / (10 ^ SliderData.Decimals))
-                    end
-
-                    -- EXE 5 Exponential Tween animation for handle & fill
-                    TweenService:Create(handle2, TweenInfo.new(0.2, Enum.EasingStyle.Exponential), {
-                        Position = UDim2.new(percent2, 0, 0.5, 0)
-                    }):Play()
-
-                    if handle1 then
-                        TweenService:Create(handle1, TweenInfo.new(0.2, Enum.EasingStyle.Exponential), {
-                            Position = UDim2.new(percent1, 0, 0.5, 0)
-                        }):Play()
-                        TweenService:Create(Fill, TweenInfo.new(0.2, Enum.EasingStyle.Exponential), {
-                            Position = UDim2.new(percent1, 0, 0.5, 0),
-                            Size = UDim2.new(percent2 - percent1, 0, 0, 4)
-                        }):Play()
-                    else
-                        TweenService:Create(Fill, TweenInfo.new(0.2, Enum.EasingStyle.Exponential), {
-                            Position = UDim2.new(0, 0, 0.5, 0),
-                            Size = UDim2.new(percent2, 0, 0, 4)
-                        }):Play()
-                    end
-
-                    local exportVal = if SliderData.Multi then {Value1 = val1, Value2 = val2} else val2
-                    SliderData.Callback(SliderData, exportVal)
-
-                    if save then
-                        SpaceUI.Config.Game.Sliders[SliderData.Flag] = exportVal
-                        Assets.Config.Save(SpaceUI.GameSave, SpaceUI.Config.Game)
-                    end
-                end
-
-                -- Initialize default value
-                local initialVal = SliderData.Default
-                if typeof(initialVal) == "table" then
-                    SliderData.Functions.SetValue(initialVal, false)
-                else
-                    SliderData.Functions.SetValue(tonumber(initialVal) or 50, false, 2)
-                end
-
-                -- Dragging Logic with EXE 5 handle scaling animations
-                local function startDrag(targetNum)
-                    SliderData.Data.Dragging = true
-                    local targetHandleScale = if targetNum == 1 and handleScale1 then handleScale1 else handleScale2
-                    TweenService:Create(targetHandleScale, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {Scale = 1.2}):Play()
-
-                    SpaceUI.CurrntInputChangeCallback = function(input)
-                        if SliderData.Data.Dragging then
-                            local mouse = UserInputService:GetMouseLocation()
-                            local absPos = SliderFrame.AbsolutePosition.X + 14
-                            local absWidth = SliderFrame.AbsoluteSize.X - 28
-                            local percent = math.clamp((mouse.X - absPos) / absWidth, 0, 1)
-                            local rawVal = SliderData.Min + percent * (SliderData.Max - SliderData.Min)
-
-                            if SliderData.Increment and SliderData.Increment > 0 then
-                                rawVal = math.floor((rawVal - SliderData.Min) / SliderData.Increment + 0.5) * SliderData.Increment + SliderData.Min
+                    if value then
+                        local info = {Value1 = SliderData.Default.Value1, Value2 = value}
+                        if target == 2 then
+                            if SpaceUI.Config.Game.Sliders[SliderData.Flag] and typeof(SpaceUI.Config.Game.Sliders[SliderData.Flag]) == "table" and SpaceUI.Config.Game.Sliders[SliderData.Flag].Value1 then
+                                info = {Value1 = SpaceUI.Config.Game.Sliders[SliderData.Flag].Value1, Value2 = value}
                             end
 
-                            SliderData.Functions.SetValue(rawVal, true, targetNum)
+                        elseif target == 1 then
+                            info = {Value1 = value, Value2 = SliderData.Default.Value2}
+                            if SpaceUI.Config.Game.Sliders[SliderData.Flag] and typeof(SpaceUI.Config.Game.Sliders[SliderData.Flag]) == "table" and SpaceUI.Config.Game.Sliders[SliderData.Flag].Value2 then
+                                info = {Value1 = value, Value2 = SpaceUI.Config.Game.Sliders[SliderData.Flag].Value2}
+                            end
+                        else
+                            if typeof(value) == "table" then
+                                info = value
+                            end
                         end
-                    end
 
-                    SpaceUI.InputEndFunc = function(input)
-                        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                            SliderData.Data.Dragging = false
-                            SpaceUI.CurrntInputChangeCallback = function() end
-                            TweenService:Create(targetHandleScale, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {Scale = 1.0}):Play()
+                        if target == 1 and SliderData.Multi then
+                            if tonumber(SliderValue2.Text) < value then return end
+                            local val = math.clamp((tonumber(value)-SliderData.Min)/(SliderData.Max-SliderData.Min), 0, 1)
+                            local val2 = math.clamp((tonumber(SliderValue2.Text)-SliderData.Min)/(SliderData.Max-SliderData.Min) - val, 0, 1)
+                            TweenService:Create(Fill, TweenInfo.new(0.45), {Size = UDim2.fromScale(val2 , 1), Position = UDim2.fromScale(val, 0.5)}):Play()
+                            SliderValue1.Text = tostring(value)
+                        elseif target == 1 and not SliderData.Multi or target == 2 then
+                            if SliderData.Multi and value > tonumber(SliderValue1.Text) or not SliderData.Multi then
+                                TweenService:Create(Fill, TweenInfo.new(0.45), {Size = UDim2.fromScale(math.clamp((tonumber(value)-SliderData.Min)/(SliderData.Max-SliderData.Min) - Fill.Position.X.Scale, 0, 1), 1)}):Play()
+                                SliderValue2.Text = tostring(value)
+                            else
+                                return
+                            end
+                        elseif not target then
+                            if SliderData.Multi then
+                                if SliderData.Multi and info.Value2 > tonumber(SliderValue1.Text) or not SliderData.Multi then
+                                    TweenService:Create(Fill, TweenInfo.new(0.45), {Size = UDim2.fromScale(math.clamp((tonumber(info.Value2)-SliderData.Min)/(SliderData.Max-SliderData.Min) - Fill.Position.X.Scale, 0, 1), 1)}):Play()
+                                    SliderValue2.Text = tostring(info.Value2)
+                                end
+
+                                if tonumber(SliderValue2.Text) >= info.Value1 then
+                                    local val = math.clamp((tonumber(info.Value1)-SliderData.Min)/(SliderData.Max-SliderData.Min), 0, 1)
+                                    local val2 = math.clamp((tonumber(SliderValue2.Text)-SliderData.Min)/(SliderData.Max-SliderData.Min) - val, 0, 1)
+                                    TweenService:Create(Fill, TweenInfo.new(0.45), {Size = UDim2.fromScale(val2 , 1), Position = UDim2.fromScale(val, 0.5)}):Play()
+                                    SliderValue1.Text = tostring(info.Value1)
+                                end
+                            else
+                                TweenService:Create(Fill, TweenInfo.new(0.45), {Size = UDim2.fromScale(math.clamp((tonumber(info.Value2)-SliderData.Min)/(SliderData.Max-SliderData.Min) - Fill.Position.X.Scale, 0, 1), 1)}):Play()
+                                SliderValue2.Text = tostring(info.Value2)
+                            end
+                        end
+
+                        if SliderData.Multi then
+                            SliderData.Callback(SliderData, info)
+                        else
+                            SliderData.Callback(SliderData, tonumber(info.Value2))
+                        end
+
+                        if save then
+                            SpaceUI.Config.Game.Sliders[SliderData.Flag] = info
+                            Assets.Config.Save(SpaceUI.GameSave, SpaceUI.Config.Game)
                         end
                     end
                 end
 
-                local sliderClickCon = SliderButton.MouseButton1Down:Connect(function()
-                    if SliderData.Multi and handle1 then
-                        local mouse = UserInputService:GetMouseLocation()
-                        local dist1 = math.abs(mouse.X - handle1.AbsolutePosition.X)
-                        local dist2 = math.abs(mouse.X - handle2.AbsolutePosition.X)
-                        startDrag(if dist1 < dist2 then 1 else 2)
-                    else
-                        startDrag(2)
+                local Circle1
+                if SliderData.Multi then
+
+                    SliderValue1 = Instance.new("TextBox", Numbers)
+                    SliderValue1.AnchorPoint = Vector2.new(0, 0.5)
+                    SliderValue1.BackgroundTransparency = 1
+                    SliderValue1.Size = UDim2.new(0.044, 0, 0, 15)
+                    SliderValue1.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular)
+                    SliderValue1.Text = tonumber(SliderData.Default.Value1)
+                    SliderValue1.TextColor3 = Color3.fromRGB(255, 255, 255)
+                    SliderValue1.TextSize = 13
+                    SliderValue1.TextTransparency = 0.2
+                    SliderValue1.TextXAlignment = Enum.TextXAlignment.Left
+                    SliderValue1.AutomaticSize = Enum.AutomaticSize.X
+                    SliderValue1.LayoutOrder = 0
+                    SliderValue1.ZIndex = 2
+                    local ValueSplitIcon = Instance.new("ImageLabel", Numbers)
+                    ValueSplitIcon.BackgroundTransparency = 1
+                    ValueSplitIcon.Size = UDim2.fromOffset(15, 15)
+                    ValueSplitIcon.Image = "rbxassetid://136254264936851"
+                    ValueSplitIcon.ImageColor3 = Color3.fromRGB(255,255,255)
+                    ValueSplitIcon.ImageTransparency = 0.6
+                    ValueSplitIcon.ScaleType = Enum.ScaleType.Stretch
+                    ValueSplitIcon.LayoutOrder = 1
+                    ValueSplitIcon.ZIndex = 2
+
+                    Circle1 = Instance.new("ImageButton", Fill)
+                    Circle1.AutoButtonColor = false
+                    Circle1.AnchorPoint = Vector2.new(0.5,0.5)
+                    Circle1.BackgroundColor3 = Color3.fromRGB(195, 195, 195)
+                    Circle1.Position = UDim2.fromScale(0, 0.5)
+                    Circle1.Size = UDim2.fromOffset(10, 10)
+                    Circle1.ImageTransparency = 1
+                    Circle1.ZIndex = 2
+                    Instance.new("UICorner", Circle1).CornerRadius = UDim.new(0, 15)
+
+                    local sliderdragbuttonclickcon2 =  Circle1.MouseButton1Down:Connect(function()
+                        SpaceUI.CurrntInputChangeCallback = function(input)
+                            if SliderData.Data.Dragging then
+                                local mouse = UserInputService:GetMouseLocation()
+                                local relativePos = mouse-SliderBox.AbsolutePosition
+                                local percent = math.clamp(relativePos.X/(SliderBox.AbsoluteSize.X - 20), 0, 1)
+                                local value = math.floor(((((SliderData.Max - SliderData.Min) * percent) + SliderData.Min) * (10 ^ SliderData.Decimals)) + 0.5) / (10 ^ SliderData.Decimals) 
+
+                                SliderData.Functions.SetValue(value, true, 1)
+
+                            end
+                        end
+                        SliderData.Data.Dragging = true
+
+                        SpaceUI.InputEndFunc = function(input) 
+                            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                                SpaceUI.CurrntInputChangeCallback = function() end
+                                SliderData.Data.Dragging = false
+                            end
+                        end
+                    end)
+                    table.insert(SpaceUI.Connections, sliderdragbuttonclickcon2)
+                    table.insert(ModuleData.Connections, sliderdragbuttonclickcon2)                                
+                end
+
+                local sliderdragbuttonclickcon
+                if SpaceUI.Mobile and not SliderData.Multi then
+                    sliderdragbuttonclickcon = SliderData.Objects.MainInstance.MouseButton1Down:Connect(function()
+                        SpaceUI.CurrntInputChangeCallback = function(input)
+                            if SliderData.Data.Dragging then
+                                local mouse = UserInputService:GetMouseLocation()
+                                local relativePos = mouse-SliderBox.AbsolutePosition
+                                local percent = math.clamp(relativePos.X/(SliderBox.AbsoluteSize.X - 20), 0, 1)
+                                local value = math.floor(((((SliderData.Max - SliderData.Min) * percent) + SliderData.Min) * (10 ^ SliderData.Decimals)) + 0.5) / (10 ^ SliderData.Decimals) 
+
+                                SliderData.Functions.SetValue(value, true, 2)
+
+                            end
+                        end
+                        SliderData.Data.Dragging = true
+
+                        SpaceUI.InputEndFunc = function(input) 
+                            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                                SpaceUI.CurrntInputChangeCallback = function() end
+                                SliderData.Data.Dragging = false
+                            end
+                        end
+                    end)
+                else
+                    sliderdragbuttonclickcon = Circle2.MouseButton1Down:Connect(function()
+                        SpaceUI.CurrntInputChangeCallback = function(input)
+                            if SliderData.Data.Dragging then
+                                local mouse = UserInputService:GetMouseLocation()
+                                local relativePos = mouse-SliderBox.AbsolutePosition
+                                local percent = math.clamp(relativePos.X/(SliderBox.AbsoluteSize.X - 20), 0, 1)
+                                local value = math.floor(((((SliderData.Max - SliderData.Min) * percent) + SliderData.Min) * (10 ^ SliderData.Decimals)) + 0.5) / (10 ^ SliderData.Decimals) 
+
+                                SliderData.Functions.SetValue(value, true, 2)
+
+                            end
+                        end
+                        SliderData.Data.Dragging = true
+
+                        SpaceUI.InputEndFunc = function(input) 
+                            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                                SpaceUI.CurrntInputChangeCallback = function() end
+                                SliderData.Data.Dragging = false
+                            end
+                        end
+                    end)
+                end
+                table.insert(SpaceUI.Connections, sliderdragbuttonclickcon)
+                table.insert(ModuleData.Connections, sliderdragbuttonclickcon)
+            
+
+                local slidervaluetextchangecon = SliderValue2.FocusLost:Connect(function()
+                    if SliderValue2.Text and tonumber(SliderValue2.Text) then
+                        SliderData.Functions.SetValue(tonumber(SliderValue2.Text), true, 2)
                     end
                 end)
-                table.insert(SpaceUI.Connections, sliderClickCon)
-                table.insert(ModuleData.Connections, sliderClickCon)
+                table.insert(SpaceUI.Connections, slidervaluetextchangecon)
+                table.insert(ModuleData.Connections, slidervaluetextchangecon)
 
-                -- FocusLost manual text edit
-                local val2FocusCon = SliderValue2.FocusLost:Connect(function()
-                    local num = tonumber(SliderValue2.Text)
-                    if num then SliderData.Functions.SetValue(num, true, 2) end
-                end)
-                table.insert(SpaceUI.Connections, val2FocusCon)
-                table.insert(ModuleData.Connections, val2FocusCon)
-
-                if SliderValue1 then
-                    local val1FocusCon = SliderValue1.FocusLost:Connect(function()
-                        local num = tonumber(SliderValue1.Text)
-                        if num then SliderData.Functions.SetValue(num, true, 1) end
+                if SliderData.Multi then
+                    local slidervaluetextchangecon2 = SliderValue1.FocusLost:Connect(function()
+                        if SliderValue1.Text and tonumber(SliderValue1.Text) then
+                            SliderData.Functions.SetValue(tonumber(SliderValue1.Text), true, 1)
+                        end
                     end)
-                    table.insert(SpaceUI.Connections, val1FocusCon)
-                    table.insert(ModuleData.Connections, val1FocusCon)
+                    table.insert(SpaceUI.Connections, slidervaluetextchangecon2)
+                    table.insert(ModuleData.Connections, slidervaluetextchangecon2)
                 end
 
                 SliderData.Functions.SetVisiblity = function(enabled)
@@ -4165,7 +4091,7 @@ do
                 ButtonData.Construction = ModuleData.Functions.ConstructSetting({
                     Name = ButtonData.Name,
                     Description = ButtonData.Description,
-                    Size = 45,
+                    Size = 80,
                     Layout = false,
                     ToolTip = ButtonData.ToolTip,
                     OnToolTipEdit = function(new: {ToolTip: string})
@@ -4178,40 +4104,11 @@ do
                     ButtonData.Construction.Functions.EditToolTip({ToolTip = "Tap to toggle"})
                 end
 
-                local btnScale = Instance.new("UIScale", ButtonData.Objects.MainInstance)
-                btnScale.Scale = 1.0
-
-                ButtonData.Objects.MainInstance.MouseEnter:Connect(function()
-                    TweenService:Create(ButtonData.Objects.MainInstance, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {
-                        ImageTransparency = 0.4
-                    }):Play()
-                end)
-
-                ButtonData.Objects.MainInstance.MouseLeave:Connect(function()
-                    TweenService:Create(ButtonData.Objects.MainInstance, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {
-                        ImageTransparency = 0.6
-                    }):Play()
-                    TweenService:Create(btnScale, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
-                        Scale = 1.0
-                    }):Play()
-                end)
-
-                local ClickDownCon = ButtonData.Objects.MainInstance.MouseButton1Down:Connect(function()
-                    TweenService:Create(btnScale, TweenInfo.new(0.12, Enum.EasingStyle.Quad), {
-                        Scale = 0.96
-                    }):Play()
-                end)
-                table.insert(ButtonData.Connections, ClickDownCon)
-                table.insert(SpaceUI.Connections, ClickDownCon)
-
-                local ClickUpCon = ButtonData.Objects.MainInstance.MouseButton1Up:Connect(function()
-                    TweenService:Create(btnScale, TweenInfo.new(0.15, Enum.EasingStyle.Quad), {
-                        Scale = 1.0
-                    }):Play()
+                local ClickCon = ButtonData.Objects.MainInstance.MouseButton1Down:Connect(function()
                     ButtonData.Callback(ButtonData)
                 end)
-                table.insert(ButtonData.Connections, ClickUpCon)
-                table.insert(SpaceUI.Connections, ClickUpCon)
+                table.insert(ButtonData.Connections, ClickCon)
+                table.insert(SpaceUI.Connections, ClickCon)
 
                 ButtonData.Functions.SetVisiblity = function(enabled)
                     if enabled then
@@ -4603,189 +4500,6 @@ do
 
                 ModuleData.Settings[KeybindData.Flag] = KeybindData
                 return KeybindData
-            end
-
-            
-            -- 8. TagSelector (EXE 5 Global Ban PlayersInput)
-            ModuleData.Functions.Settings.TagSelector = function(data: {Name: string, Flag: string, Description: string, ToolTip: string, Default: {string}?, Hide: boolean, Callback: any})
-                local TagData = {
-                    Name = data and data.Name or "Tag Selector",
-                    Flag = data and data.Flag or "TagSelector",
-                    Description = data and data.Description or "Add/Remove Tags",
-                    ToolTip = data and data.ToolTip or "Enter text and press Enter to add tag",
-                    Default = data and data.Default or {},
-                    Tags = {},
-                    Hide = data and data.Hide or false,
-                    Callback = data and data.Callback or function() end,
-                    Type = "TagSelectors",
-                    Objects = {},
-                    Functions = {}
-                }
-
-                TagData.Construction = ModuleData.Functions.ConstructSetting({
-                    Name = TagData.Name,
-                    Description = TagData.Description,
-                    Size = 75,
-                    ToolTip = TagData.ToolTip,
-                    Layout = true,
-                    OnToolTipEdit = function(new) TagData.ToolTip = new.ToolTip end
-                })
-                TagData.Objects.MainInstance = TagData.Construction.Objects.MainInstance
-                TagData.Objects.MainInstance.AutomaticSize = Enum.AutomaticSize.Y
-
-                local container = Instance.new("Frame", TagData.Objects.MainInstance)
-                container.Name = "TagContainer"
-                container.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-                container.BackgroundTransparency = 0.5
-                container.Size = UDim2.new(1, -10, 0, 44)
-                container.AutomaticSize = Enum.AutomaticSize.Y
-                container.LayoutOrder = 2
-                Instance.new("UICorner", container).CornerRadius = UDim.new(0, 10)
-
-                local tagList = Instance.new("UIListLayout", container)
-                tagList.FillDirection = Enum.FillDirection.Horizontal
-                tagList.ItemLineAlignment = Enum.ItemLineAlignment.Center
-                tagList.HorizontalFlex = Enum.UIFlexAlignment.Grow
-                tagList.Padding = UDim.new(0, 6)
-
-                local tagPad = Instance.new("UIPadding", container)
-                tagPad.PaddingLeft = UDim.new(0, 10)
-                tagPad.PaddingRight = UDim.new(0, 10)
-                tagPad.PaddingTop = UDim.new(0, 8)
-                tagPad.PaddingBottom = UDim.new(0, 8)
-
-                local tagInput = Instance.new("TextBox", container)
-                tagInput.BackgroundTransparency = 1
-                tagInput.Size = UDim2.new(0, 120, 0, 26)
-                tagInput.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Medium)
-                tagInput.PlaceholderText = "Add tag..."
-                tagInput.PlaceholderColor3 = Color3.fromRGB(140, 140, 140)
-                tagInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-                tagInput.TextSize = 14
-                tagInput.Text = ""
-
-                local function addTag(tagName: string)
-                    if tagName == "" or table.find(TagData.Tags, tagName) then return end
-                    table.insert(TagData.Tags, tagName)
-                    
-                    local tagBtn = Instance.new("TextButton", container)
-                    tagBtn.Name = "tag_" .. tagName
-                    tagBtn.AutoButtonColor = false
-                    tagBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-                    tagBtn.BackgroundTransparency = 0.3
-                    tagBtn.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Medium)
-                    tagBtn.Text = tagName .. "  ✕"
-                    tagBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-                    tagBtn.TextSize = 13
-                    tagBtn.AutomaticSize = Enum.AutomaticSize.X
-                    tagBtn.Size = UDim2.new(0, 0, 0, 24)
-                    Instance.new("UICorner", tagBtn).CornerRadius = UDim.new(0, 6)
-                    
-                    local pad = Instance.new("UIPadding", tagBtn)
-                    pad.PaddingLeft = UDim.new(0, 8)
-                    pad.PaddingRight = UDim.new(0, 8)
-                    
-                    tagBtn.MouseButton1Click:Connect(function()
-                        local idx = table.find(TagData.Tags, tagName)
-                        if idx then table.remove(TagData.Tags, idx) end
-                        tagBtn:Destroy()
-                        TagData.Callback(TagData, TagData.Tags)
-                    end)
-                    
-                    tagInput.Text = ""
-                    TagData.Callback(TagData, TagData.Tags)
-                end
-
-                tagInput.FocusLost:Connect(function(enterPressed)
-                    if enterPressed and tagInput.Text ~= "" then
-                        addTag(tagInput.Text)
-                    end
-                end)
-
-                if TagData.Default and type(TagData.Default) == "table" then
-                    for _, t in ipairs(TagData.Default) do
-                        addTag(t)
-                    end
-                end
-
-                TagData.Functions.AddTag = addTag
-                TagData.Functions.GetTags = function() return TagData.Tags end
-
-                ModuleData.Settings[TagData.Flag] = TagData
-                return TagData
-            end
-
-            -- 9. IconSelector (EXE 5 Server Announcements IconSelector)
-            ModuleData.Functions.Settings.IconSelector = function(data: {Name: string, Flag: string, Description: string, Default: string?, Callback: any})
-                local IconData = {
-                    Name = data and data.Name or "Icon Selector",
-                    Flag = data and data.Flag or "IconSelector",
-                    Description = data and data.Description or "Choose an Icon",
-                    Selected = data and data.Default or "star",
-                    Callback = data and data.Callback or function() end,
-                    Type = "IconSelectors",
-                    Objects = {},
-                    Functions = {}
-                }
-
-                IconData.Construction = ModuleData.Functions.ConstructSetting({
-                    Name = IconData.Name,
-                    Description = IconData.Description,
-                    Size = 140,
-                    Layout = true,
-                    ToolTip = "Select an icon from the grid"
-                })
-                IconData.Objects.MainInstance = IconData.Construction.Objects.MainInstance
-
-                local gridScroll = Instance.new("ScrollingFrame", IconData.Objects.MainInstance)
-                gridScroll.Name = "IconGrid"
-                gridScroll.BackgroundTransparency = 1
-                gridScroll.Size = UDim2.new(1, -10, 0, 100)
-                gridScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-                gridScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-                gridScroll.ScrollBarThickness = 3
-
-                local grid = Instance.new("UIGridLayout", gridScroll)
-                grid.CellSize = UDim2.fromOffset(30, 30)
-                grid.CellPadding = UDim2.fromOffset(6, 6)
-
-                local icons = {
-                    star = "rbxassetid://11430231167", alarm = "rbxassetid://12967561554",
-                    warn = "rbxassetid://11419713314", lock = "rbxassetid://14187755345",
-                    info = "rbxassetid://11422155687", users = "rbxassetid://11432832657",
-                    message = "rbxassetid://11422929748", user = "rbxassetid://11295273292",
-                    bell = "rbxassetid://11295275950", camera = "rbxassetid://11326670865"
-                }
-
-                for iconName, assetId in pairs(icons) do
-                    local iconBtn = Instance.new("ImageButton", gridScroll)
-                    iconBtn.Name = iconName
-                    iconBtn.AutoButtonColor = false
-                    iconBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-                    iconBtn.BackgroundTransparency = if IconData.Selected == iconName then 0.2 else 0.8
-                    Instance.new("UICorner", iconBtn).CornerRadius = UDim.new(0, 6)
-                    
-                    local iconImg = Instance.new("ImageLabel", iconBtn)
-                    iconImg.AnchorPoint = Vector2.new(0.5, 0.5)
-                    iconImg.Position = UDim2.fromScale(0.5, 0.5)
-                    iconImg.Size = UDim2.fromOffset(18, 18)
-                    iconImg.BackgroundTransparency = 1
-                    iconImg.Image = assetId
-                    iconImg.ImageColor3 = Color3.fromRGB(255, 255, 255)
-                    
-                    iconBtn.MouseButton1Click:Connect(function()
-                        IconData.Selected = iconName
-                        for _, ch in ipairs(gridScroll:GetChildren()) do
-                            if ch:IsA("ImageButton") then
-                                ch.BackgroundTransparency = if ch.Name == iconName then 0.2 else 0.8
-                            end
-                        end
-                        IconData.Callback(IconData, iconName, assetId)
-                    end)
-                end
-
-                ModuleData.Settings[IconData.Flag] = IconData
-                return IconData
             end
 
             ModuleData.Functions.Destroy = function()
