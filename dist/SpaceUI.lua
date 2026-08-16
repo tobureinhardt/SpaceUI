@@ -6703,9 +6703,11 @@ end
 do
     SpaceUI.Peek = {
         Active = false,
-        Cards = {},        -- {Tab = tab | nil (nil = Dashboard), Frame = ActualTab/MainFrame, HitCatcher = ..., OriginalPosition = UDim2, OriginalSize = UDim2, OriginalZIndex = number}
-        Overlay = nil,      -- dim background Frame
-        MaxCards = 9,       -- giới hạn hợp lý (3x3) - vượt quá thì báo lỗi thay vì bóp méo layout
+        Cards = {},         -- {Tab, IsDashboard, Frame, Scale, HitCatcher, BaseOffsetX, OriginalPosition, OriginalSize, OriginalZIndex, OriginalAnchorPoint, SavedDescendantZIndex}
+        Overlay = nil,       -- input-catcher trong suốt phía sau (bấm ra ngoài = thoát, kéo ngang = cuộn)
+        Blur = nil,          -- BlurEffect làm mờ nét nền 3D
+        ScrollX = 0,         -- độ lệch cuộn ngang hiện tại (pixel, luôn <= 0), dùng khi > CARDS_PER_PAGE card
+        Connections = {},    -- connection riêng của phiên Peek hiện tại, disconnect sạch khi Exit
     }
 
     local TweenService = game:GetService("TweenService")
@@ -6713,15 +6715,34 @@ do
     local peekTweenInfo = TweenInfo.new(0.45, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
     local peekFastInfo = TweenInfo.new(0.3, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
 
-    -- Tính layout lưới (cols/rows) tự động theo số lượng card, ưu tiên gần hình
-    -- vuông nhất (giống Stage Manager: 2 card ngang, 4 card 2x2, 6 card 3x2...).
-    local function computeGrid(count)
-        local cols = math.ceil(math.sqrt(count))
-        local rows = math.ceil(count / cols)
-        return cols, rows
+    -- Ma trận cố định: tối đa 3 cột x 2 hàng = 6 card mỗi "trang". <=6 card thì vừa
+    -- khít 1 màn hình (tự chia hàng cân đối). >6 card thì layout 3x2 này kéo dài
+    -- thêm cột nhóm tiếp theo sang phải, bọc trong ScrollingFrame cuộn ngang vô hạn
+    -- (giống iPad app switcher), không còn giới hạn số tab tối đa nào cả.
+    local MAX_COLS = 3
+    local MAX_ROWS = 2
+    local CARDS_PER_PAGE = MAX_COLS * MAX_ROWS
+
+    -- Với N <= CARDS_PER_PAGE: chia thành số hàng ít nhất cần thiết (tối đa
+    -- MAX_COLS mỗi hàng), CÂN ĐỐI các hàng cho đều nhau thay vì lấp đầy hàng đầu
+    -- rồi dồn phần lẻ xuống hàng cuối. Vd: 5 -> {3,2}; 4 -> {4} (<=MAX_COLS nên 1
+    -- hàng); 7 -> không vào nhánh này (đã > CARDS_PER_PAGE, xử lý ở nhánh scroll).
+    local function computeRows(count)
+        if count <= MAX_COLS then
+            return {count}
+        end
+        local rowCount = math.ceil(count / MAX_COLS)
+        local base = math.floor(count / rowCount)
+        local remainder = count % rowCount
+        local rows = {}
+        for r = 1, rowCount do
+            -- Phân đều phần dư vào các hàng ĐẦU để hàng cuối không bị lẻ nhất
+            -- (vd 5 -> rowCount=2, base=2, remainder=1 -> {3,2})
+            rows[r] = base + (r <= remainder and 1 or 0)
+        end
+        return rows
     end
 
-    -- Trả về danh sách card (Dashboard trước, rồi các tab theo thứ tự CurrentOpenTab)
     local function collectPeekTargets()
         local targets = {}
         if SpaceUI.Background and SpaceUI.Background.Objects and SpaceUI.Background.Objects.MainFrame
@@ -6750,7 +6771,6 @@ do
             blur.Parent = Lighting
         end
 
-        -- Hit-catcher trong suốt tuyệt đối để bấm vùng trống ngoài card = thoát peek.
         local overlay = Instance.new("TextButton")
         overlay.Name = "PeekInputCatcher"
         overlay.Text = ""
@@ -6767,7 +6787,17 @@ do
         return overlay
     end
 
-    local function attachHitCatcher(card, zIndex)
+    -- HitCatcher nằm TRÊN CÙNG (ZIndex cao hơn hẳn nội dung đã boost), trong suốt
+    -- hoàn toàn (BackgroundTransparency = 1) để nhìn xuyên thấy nội dung thật bên
+    -- dưới, nhưng chặn TOÀN BỘ input thật của tab (nút, list...) trong lúc peek -
+    -- chỉ tồn tại trong lúc peek đang Active, bị Destroy ngay khi Exit. Đồng thời
+    -- là nơi bắt drag-scroll ngang: vì nó luôn ở TRÊN CÙNG, input bắt đầu từ bất
+    -- kỳ card nào (không chỉ vùng trống) đều phải qua đây trước - overlay phía
+    -- sau sẽ không bao giờ nhận được input nếu chỉ gắn ở overlay.
+    local PEEK_HITCATCHER_ZINDEX = 5000
+    local DRAG_THRESHOLD_PX = 8 -- di chuyển quá ngưỡng này mới coi là kéo (scroll), dưới đó là tap (chọn card)
+
+    local function attachHitCatcher(card)
         local hit = Instance.new("TextButton")
         hit.Name = "PeekHitCatcher"
         hit.Text = ""
@@ -6775,12 +6805,14 @@ do
         hit.BackgroundTransparency = 1
         hit.Size = UDim2.fromScale(1, 1)
         hit.Position = UDim2.fromScale(0, 0)
-        hit.ZIndex = zIndex
+        hit.ZIndex = PEEK_HITCATCHER_ZINDEX
         hit.Parent = card.Frame
         card.HitCatcher = hit
         return hit
     end
 
+    -- Nâng ZIndex từng GuiObject con thật lên cao hơn overlay dim (nhưng vẫn thấp
+    -- hơn HitCatcher ở trên cùng), để chữ/icon không bị lớp nào khác che khuất.
     local PEEK_CONTENT_ZINDEX_BOOST = 2000
 
     local function boostDescendantZIndex(root, savedList)
@@ -6801,9 +6833,147 @@ do
         table.clear(savedList)
     end
 
+    -- Gắn (hoặc tái sử dụng) 1 UIScale lên chính frame ngoài cùng của card. Size/
+    -- Position THẬT của frame KHÔNG hề bị đổi - chỉ UIScale.Scale thay đổi, giống
+    -- hệt cách macOS/iPadOS Stage Manager scale-down window thật chứ không resize.
+    -- Trả thêm "wasPreExisting": true nếu frame đã có sẵn UIScale từ trước (vd
+    -- TabScale của hệ thống mở/đóng tab, hay MainFrameScale của Dashboard) - Peek
+    -- chỉ được MƯỢN tạm UIScale đó, KHÔNG được Destroy khi Exit, vì đó là instance
+    -- sống lâu dài mà code animation mở/đóng gốc đang giữ tham chiếu (closure) -
+    -- Destroy nó thì animation gốc từ sau vĩnh viễn không còn tác dụng nữa dù
+    -- không hề báo lỗi gì (set Scale trên Instance đã bị Destroy là hợp lệ,
+    -- chỉ đơn giản là không còn hiển thị vì đã rời khỏi cây UI).
+    local function ensureUIScale(frame)
+        local scale = frame:FindFirstChildOfClass("UIScale")
+        if scale then
+            return scale, true
+        end
+        scale = Instance.new("UIScale")
+        scale.Scale = 1
+        scale.Parent = frame
+        return scale, false
+    end
+
+    local DRAG_TWEEN_INFO = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+    local function applyScrollX(instant)
+        local tweenInfo = instant and TweenInfo.new(0) or DRAG_TWEEN_INFO
+        for _, card in SpaceUI.Peek.Cards do
+            if card.BaseOffsetX and card.Frame and card.Frame.Parent then
+                local pos = card.Frame.Position
+                TweenService:Create(card.Frame, tweenInfo, {
+                    Position = UDim2.new(pos.X.Scale, card.BaseOffsetX + SpaceUI.Peek.ScrollX, pos.Y.Scale, pos.Y.Offset),
+                }):Play()
+            end
+        end
+    end
+
+    -- Toàn bộ input trong lúc Peek (chọn card / kéo cuộn ngang / bấm ra ngoài để
+    -- thoát) xử lý qua 1 state chung duy nhất, lắng nghe UserInputService toàn
+    -- cục thay vì event riêng trên từng Instance. Lý do: HitCatcher (ZIndex cao
+    -- nhất) luôn nhận input trước overlay phía sau, nên nếu chỉ gắn drag lên
+    -- overlay thì kéo bắt đầu từ TRÊN card (không phải vùng trống) sẽ không bao
+    -- giờ kích hoạt được - đây đúng là bug đã gặp trước đó.
+    local function attachPeekInput(overlay, maxScrollX)
+        local pressed = false
+        local dragging = false      -- vượt DRAG_THRESHOLD_PX -> true, khóa lại là kéo chứ không phải tap
+        local pressStartX = 0
+        local scrollStartX = 0
+
+        -- Dò card bằng point-in-rect thủ công theo AbsolutePosition/AbsoluteSize
+        -- của HitCatcher, KHÔNG dùng GetGuiObjectsAtPosition nữa. Lý do: hàm đó
+        -- phải gọi trên đúng 1 BasePlayerGui (PlayerGui/StarterGui), trong khi UI
+        -- của SpaceUI lại nằm dưới Assets.Functions.gethui() (CoreGui hoặc
+        -- container ẩn tuỳ executor) - KHÔNG chắc là đúng PlayerGui thật, nên dò
+        -- kiểu đó rất dễ không ra kết quả gì, khiến tap trúng card vẫn bị tính
+        -- như trúng vùng trống. Point-in-rect thủ công chỉ dựa theo toạ độ hiển
+        -- thị thật nên không phụ thuộc UI đang nằm dưới container nào cả. Duyệt
+        -- ngược mảng Cards để ưu tiên card có ZIndex cao hơn (thêm sau) nếu lỡ
+        -- chồng lấn nhau trong lúc đang tween vị trí.
+        local function findCardAtPosition(pos)
+            for i = #SpaceUI.Peek.Cards, 1, -1 do
+                local card = SpaceUI.Peek.Cards[i]
+                local hit = card.HitCatcher
+                if hit and hit.Parent then
+                    local topLeft = hit.AbsolutePosition
+                    local size = hit.AbsoluteSize
+                    if pos.X >= topLeft.X and pos.X <= topLeft.X + size.X
+                        and pos.Y >= topLeft.Y and pos.Y <= topLeft.Y + size.Y then
+                        return card
+                    end
+                end
+            end
+            return nil
+        end
+
+        local function onInputBegan(input, gameProcessed)
+            if input.UserInputType ~= Enum.UserInputType.MouseButton1
+                and input.UserInputType ~= Enum.UserInputType.Touch then
+                return
+            end
+            pressed = true
+            dragging = false
+            pressStartX = input.Position.X
+            scrollStartX = SpaceUI.Peek.ScrollX
+        end
+
+        local function onInputChanged(input)
+            if not pressed then return end
+            if input.UserInputType ~= Enum.UserInputType.MouseMovement
+                and input.UserInputType ~= Enum.UserInputType.Touch then
+                return
+            end
+            local delta = input.Position.X - pressStartX
+            if not dragging and math.abs(delta) >= DRAG_THRESHOLD_PX and maxScrollX > 0 then
+                dragging = true
+            end
+            if dragging then
+                local newScrollX = math.clamp(scrollStartX + delta, -maxScrollX, 0)
+                SpaceUI.Peek.ScrollX = newScrollX
+                applyScrollX(true)
+            end
+        end
+
+        local function onInputEnded(input)
+            if input.UserInputType ~= Enum.UserInputType.MouseButton1
+                and input.UserInputType ~= Enum.UserInputType.Touch then
+                return
+            end
+            if not pressed then return end
+            local wasDragging = dragging
+            pressed = false
+            dragging = false
+            if wasDragging then
+                -- Kết thúc kéo: chỉ dừng cuộn, không chọn card nào cả, dù ngón
+                -- tay đang thả ở đúng vị trí 1 card.
+                return
+            end
+            -- Không kéo (di chuyển dưới ngưỡng) => coi là tap thật. Chỉ thoát
+            -- Peek khi tap TRÚNG đúng 1 card (tự động focus tab đó luôn). Bấm ra
+            -- vùng trống/background KHÔNG còn tắt Peek nữa - muốn tắt Peek mà
+            -- không đổi tab thì bấm lại nút/keybind mở Peek (gọi thẳng
+            -- SpaceUI.Peek.Toggle(), không đi qua nhánh tap trong hàm này).
+            local pos = input.Position
+            local card = findCardAtPosition(pos)
+            if card then
+                SpaceUI.Peek.Exit(card)
+            end
+        end
+
+        table.insert(SpaceUI.Peek.Connections, UserInputService.InputBegan:Connect(onInputBegan))
+        table.insert(SpaceUI.Peek.Connections, UserInputService.InputChanged:Connect(onInputChanged))
+        table.insert(SpaceUI.Peek.Connections, UserInputService.InputEnded:Connect(onInputEnded))
+    end
+
     function SpaceUI.Peek.Exit(chosen)
         if not SpaceUI.Peek.Active then return end
         SpaceUI.Peek.Active = false
+
+        for _, conn in SpaceUI.Peek.Connections do
+            conn:Disconnect()
+        end
+        table.clear(SpaceUI.Peek.Connections)
+        SpaceUI.Peek.ScrollX = 0
 
         if SpaceUI.Peek.Blur then
             TweenService:Create(SpaceUI.Peek.Blur, peekFastInfo, {Size = 0}):Play()
@@ -6816,15 +6986,9 @@ do
             SpaceUI.Peek.Overlay = nil
         end
 
-        -- Focus card được chọn TRƯỚC vòng lặp trả-vị-trí bên dưới, để tránh tween
-        -- chồng property nếu card đó cũng được CaptureFocus/ZIndex đụng tới.
         if chosen then
             if chosen.Tab then
-                -- Tab con thường: dùng đúng hệ Leaflet sẵn có.
                 SpaceUI.Tabs.CaptureFocus(chosen.Tab)
-                -- Đảm bảo layer chứa toàn bộ tab (TabBackground) nổi trên MainFrame,
-                -- vì Leaflet chỉ quản lý ZIndex NỘI BỘ giữa các tab với nhau, không
-                -- biết gì về MainFrame (khác cây, ngoài phạm vi Leaflet).
                 if SpaceUI.Tabs.TabBackground then
                     SpaceUI.Tabs.TabBackground.ZIndex = 2
                 end
@@ -6832,10 +6996,6 @@ do
                     SpaceUI.Background.Objects.MainFrame.ZIndex = 1
                 end
             elseif chosen.IsDashboard then
-                -- Dashboard nằm ngoài hệ Leaflet (không có tab.Objects/CaptureFocus
-                -- tương ứng) nên phải tự đưa MainFrame lên trên thủ công: cao hơn
-                -- TabBackground (nơi chứa mọi ActualTab đang mở) để nó thực sự nổi
-                -- lên, đồng thời bỏ focus khỏi bất kỳ tab con nào đang giữ.
                 if SpaceUI.Tabs.FocusedTab then
                     SpaceUI.Tabs.RemoveFocus(SpaceUI.Tabs.FocusedTab)
                 end
@@ -6857,10 +7017,21 @@ do
             if frame and frame.Parent then
                 frame.ZIndex = card.OriginalZIndex or frame.ZIndex
                 restoreDescendantZIndex(card.SavedDescendantZIndex)
+                if card.Scale then
+                    TweenService:Create(card.Scale, peekTweenInfo, {Scale = 1}):Play()
+                end
+                frame.AnchorPoint = card.OriginalAnchorPoint or frame.AnchorPoint
                 TweenService:Create(frame, peekTweenInfo, {
                     Position = card.OriginalPosition,
                     Size = card.OriginalSize,
                 }):Play()
+                if card.ScaleOwnedByPeek then
+                    task.delay(peekTweenInfo.Time, function()
+                        if card.Scale and card.Scale.Parent then
+                            card.Scale:Destroy()
+                        end
+                    end)
+                end
             end
         end
 
@@ -6872,69 +7043,117 @@ do
 
         local targets = collectPeekTargets()
         if #targets == 0 then return false, "no_open_tabs" end
-        if #targets > SpaceUI.Peek.MaxCards then
-            return false, "too_many_tabs"
-        end
 
         SpaceUI.Peek.Active = true
+        SpaceUI.Peek.ScrollX = 0
         table.clear(SpaceUI.Peek.Cards)
+
+        local mainScreenGui = SpaceUI.Background.Objects.MainScreenGui
+        local screenSize = mainScreenGui.AbsoluteSize
 
         local overlay = ensureOverlay()
         SpaceUI.Peek.Blur.Size = 0
         TweenService:Create(SpaceUI.Peek.Blur, peekTweenInfo, {Size = 18}):Play()
 
-        local cols, rows = computeGrid(#targets)
-        local outerPad = 0.06   -- lề ngoài lưới (scale màn hình)
-        local gutter = 0.025    -- khoảng cách giữa các card (scale màn hình)
+        local outerPad = 0.06
+        local gutterPx = screenSize.X * 0.03
+        local gutterPxY = screenSize.Y * 0.03
 
-        local gridW = 1 - (outerPad * 2)
-        local gridH = 1 - (outerPad * 2)
-        local cardW = (gridW - gutter * (cols - 1)) / cols
-        local cardH = (gridH - gutter * (rows - 1)) / rows
+        local needsScroll = #targets > CARDS_PER_PAGE
 
-        for i, target in targets do
-            local frame = target.Frame
-            local card = {
-                Tab = target.Tab,
-                IsDashboard = target.IsDashboard,
-                Frame = frame,
-                OriginalPosition = frame.Position,
-                OriginalSize = frame.Size,
-                OriginalZIndex = frame.ZIndex,
-                SavedDescendantZIndex = {},
-            }
-            table.insert(SpaceUI.Peek.Cards, card)
+        local pageW = screenSize.X * (1 - outerPad * 2)
+        local pageH = screenSize.Y * (1 - outerPad * 2)
+        local cellW = (pageW - gutterPx * (MAX_COLS - 1)) / MAX_COLS
+        local cellH = (pageH - gutterPxY * (MAX_ROWS - 1)) / MAX_ROWS
 
-            local col = (i - 1) % cols
-            local row = math.floor((i - 1) / cols)
-
-            -- Căn giữa hàng cuối nếu không lấp đầy hết cols (giống Stage Manager)
-            local itemsInThisRow = math.min(cols, #targets - row * cols)
-            local rowOffset = (gridW - (itemsInThisRow * cardW + (itemsInThisRow - 1) * gutter)) / 2
-
-            local targetX = outerPad + rowOffset + col * (cardW + gutter) + cardW / 2
-            local targetY = outerPad + row * (cardH + gutter) + cardH / 2
-
-            frame.ZIndex = 500 + i
-            -- Nâng ZIndex TỪNG GuiObject con thật (Header, ScrollFrame, icon, từng
-            -- TextLabel...) lên cao hơn hẳn overlay dim, để không cái nào bị lấp -
-            -- không chỉ nâng 1 container cha rồi hy vọng con cháu tự nổi theo.
-            boostDescendantZIndex(frame, card.SavedDescendantZIndex)
-            attachHitCatcher(card, frame.ZIndex)
-
-            TweenService:Create(frame, peekTweenInfo, {
-                Position = UDim2.fromScale(targetX, targetY),
-                Size = UDim2.fromScale(cardW, cardH),
-            }):Play()
-
-            table.insert(SpaceUI.Connections, card.HitCatcher.MouseButton1Click:Connect(function()
-                SpaceUI.Peek.Exit(card)
-            end))
+        local pages = {}
+        if needsScroll then
+            local idx = 1
+            while idx <= #targets do
+                local pageTargets = {}
+                for k = idx, math.min(idx + CARDS_PER_PAGE - 1, #targets) do
+                    table.insert(pageTargets, targets[k])
+                end
+                table.insert(pages, pageTargets)
+                idx = idx + CARDS_PER_PAGE
+            end
+        else
+            pages = {targets}
         end
 
-        table.insert(SpaceUI.Connections, overlay.MouseButton1Click:Connect(function()
-            SpaceUI.Peek.Exit(nil)
-        end))
+        local globalIndex = 0
+        local maxPageWidthPx = 0
+
+        for pageIdx, pageTargets in pages do
+            local rows = computeRows(#pageTargets)
+            local pageOffsetXPx = needsScroll and ((pageIdx - 1) * (pageW + gutterPx)) or 0
+            local pageWidthPx = 0
+
+            -- Căn giữa theo chiều dọc: trước đây hàng luôn bắt đầu từ Y=0 của
+            -- pageH (như thể luôn có đủ MAX_ROWS hàng), nên khi trang chỉ có 1
+            -- hàng (dưới 3 tab) hoặc bất kỳ số hàng nào ít hơn MAX_ROWS, khối card
+            -- bị dồn lên phía trên thay vì nằm giữa. Tính offset để cả khối hàng
+            -- luôn nằm giữa pageH - khi đủ MAX_ROWS hàng thì offset = 0 (không đổi
+            -- hành vi cũ cho case đã đúng).
+            local numRows = #rows
+            local totalRowsHeightPx = numRows * cellH + (numRows - 1) * gutterPxY
+            local rowsOffsetYPx = (pageH - totalRowsHeightPx) / 2
+
+            local rowStartIdx = 1
+            for rowIdx, itemsInRow in rows do
+                local rowWidthPx = itemsInRow * cellW + (itemsInRow - 1) * gutterPx
+                pageWidthPx = math.max(pageWidthPx, rowWidthPx)
+                local rowOffsetXPx = (pageW - rowWidthPx) / 2
+
+                for c = 1, itemsInRow do
+                    globalIndex += 1
+                    local target = pageTargets[rowStartIdx + c - 1]
+                    local frame = target.Frame
+
+                    local card = {
+                        Tab = target.Tab,
+                        IsDashboard = target.IsDashboard,
+                        Frame = frame,
+                        OriginalPosition = frame.Position,
+                        OriginalSize = frame.Size,
+                        OriginalZIndex = frame.ZIndex,
+                        OriginalAnchorPoint = frame.AnchorPoint,
+                        SavedDescendantZIndex = {},
+                    }
+                    table.insert(SpaceUI.Peek.Cards, card)
+
+                    frame.ZIndex = 500 + globalIndex
+                    boostDescendantZIndex(frame, card.SavedDescendantZIndex)
+                    attachHitCatcher(card)
+
+                    local scaleInst, scaleWasPreExisting = ensureUIScale(frame)
+                    card.Scale = scaleInst
+                    card.ScaleOwnedByPeek = not scaleWasPreExisting
+                    local originalAbsSize = frame.AbsoluteSize
+                    local scaleFactor = 1
+                    if originalAbsSize.X > 0 and originalAbsSize.Y > 0 then
+                        scaleFactor = math.min(cellW / originalAbsSize.X, cellH / originalAbsSize.Y, 1)
+                    end
+                    TweenService:Create(scaleInst, peekTweenInfo, {Scale = scaleFactor}):Play()
+
+                    local cellCenterXPx = pageOffsetXPx + rowOffsetXPx + (c - 1) * (cellW + gutterPx) + cellW / 2
+                    local cellCenterYPx = rowsOffsetYPx + (rowIdx - 1) * (cellH + gutterPxY) + cellH / 2
+
+                    card.BaseOffsetX = cellCenterXPx
+
+                    frame.AnchorPoint = Vector2.new(0.5, 0.5)
+                    TweenService:Create(frame, peekTweenInfo, {
+                        Position = UDim2.new(outerPad, cellCenterXPx, outerPad, cellCenterYPx),
+                    }):Play()
+                end
+                rowStartIdx += itemsInRow
+            end
+
+            maxPageWidthPx = math.max(maxPageWidthPx, pageOffsetXPx + pageWidthPx)
+        end
+
+        local maxScrollX = needsScroll and math.max(0, maxPageWidthPx - pageW) or 0
+        attachPeekInput(overlay, maxScrollX)
 
         return true
     end
@@ -6946,9 +7165,9 @@ do
         end
         local ok, reason = SpaceUI.Peek.Enter()
         if not ok and Assets.Notifications and Assets.Notifications.Send then
-            if reason == "too_many_tabs" then
+            if reason == "no_open_tabs" then
                 Assets.Notifications.Send({
-                    Description = "Quá nhiều tab đang mở, không thể hiện Peek.",
+                    Description = "Không có tab nào đang mở để hiện Peek.",
                     Duration = 3,
                 })
             end
