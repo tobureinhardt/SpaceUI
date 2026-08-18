@@ -11192,13 +11192,16 @@ ModuleData.onToggles = {}
                 return TextBoxData
             end
 
-            -- ── 4. Dropdown (Chọn tại chỗ, cập nhật tick mượt mà & có mô tả) ──
+            -- ── 4. Dropdown (Hỗ trợ Single-Select & Multi-Select, cập nhật tick mượt mà & có mô tả) ──
             ModuleData.Functions.Settings.Dropdown = function(data)
+                local isMulti = (data and data.MultiSelect == true) or (data and data.SelectLimit and data.SelectLimit > 1) or (typeof(data and data.Default) == "table")
+
                 local DropdownData = {
                     Name = data and data.Name or "Dropdown",
                     Description = data and data.Description or nil,
-                    Default = data and data.Default or "",
-                    SelectLimit = data and data.SelectLimit or 1,
+                    Default = data and data.Default or (isMulti and {} or ""),
+                    SelectLimit = data and data.SelectLimit or (isMulti and 9999 or 1),
+                    MultiSelect = isMulti,
                     Options = data and data.Options or {},
                     Flag = data and data.Flag or "Dropdown",
                     Hide = data and data.Hide or false,
@@ -11209,13 +11212,34 @@ ModuleData.onToggles = {}
                     Buttons = {Selected = {}, Buttons = {}},
                 }
 
-                if SpaceUI.Config.Game.Dropdowns and SpaceUI.Config.Game.Dropdowns[DropdownData.Flag] then
+                if SpaceUI.Config.Game.Dropdowns and SpaceUI.Config.Game.Dropdowns[DropdownData.Flag] ~= nil then
                     DropdownData.Default = SpaceUI.Config.Game.Dropdowns[DropdownData.Flag]
                 end
 
-                local currentSelected = DropdownData.Default
-                if typeof(currentSelected) == "table" then
-                    currentSelected = table.concat(currentSelected, ", ")
+                -- Chuẩn hóa selectedList
+                local selectedList = {}
+                if typeof(DropdownData.Default) == "table" then
+                    for _, v in ipairs(DropdownData.Default) do
+                        table.insert(selectedList, tostring(v))
+                    end
+                elseif typeof(DropdownData.Default) == "string" and DropdownData.Default ~= "" then
+                    table.insert(selectedList, DropdownData.Default)
+                end
+
+                -- Format chuỗi hiển thị trên navRow button theo đúng yêu cầu:
+                -- 1 mục: "A"
+                -- 2 mục: "A, B"
+                -- > 2 mục: "A, B, ..."
+                local function formatDisplayText(list)
+                    if #list == 0 then
+                        return "None"
+                    elseif #list == 1 then
+                        return list[1]
+                    elseif #list == 2 then
+                        return list[1] .. ", " .. list[2]
+                    else
+                        return list[1] .. ", " .. list[2] .. ", ..."
+                    end
                 end
 
                 -- Row Button điều hướng
@@ -11243,7 +11267,7 @@ ModuleData.onToggles = {}
                 local titleLabel = Instance.new("TextLabel", navRow)
                 titleLabel.Name = "Title"
                 titleLabel.Text = DropdownData.Name
-                titleLabel.Size = UDim2.new(0.5, 0, 1, 0)
+                titleLabel.Size = UDim2.new(0.4, 0, 1, 0)
                 titleLabel.BackgroundTransparency = 1
                 titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
                 titleLabel.TextSize = 16
@@ -11252,10 +11276,11 @@ ModuleData.onToggles = {}
                 titleLabel.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular)
                 titleLabel.ZIndex = 2
 
+                -- Chừa chỗ cho tên hiển thị rộng rãi, không đè lên mũi tên >
                 local valueLabel = Instance.new("TextLabel", navRow)
                 valueLabel.Name = "CurrentValue"
-                valueLabel.Text = tostring(currentSelected)
-                valueLabel.Size = UDim2.new(0.5, -30, 1, 0)
+                valueLabel.Text = formatDisplayText(selectedList)
+                valueLabel.Size = UDim2.new(0.6, -30, 1, 0)
                 valueLabel.AnchorPoint = Vector2.new(1, 0.5)
                 valueLabel.Position = UDim2.new(1, -25, 0.5, 0)
                 valueLabel.BackgroundTransparency = 1
@@ -11397,10 +11422,14 @@ ModuleData.onToggles = {}
 
                 local renderedOptions = {}
 
-                local function updateItemsVisual(selectedVal)
+                local function isOptionSelected(optStr)
+                    return table.find(selectedList, optStr) ~= nil
+                end
+
+                local function updateItemsVisual()
                     local twInfo = TweenInfo.new(0.3, Enum.EasingStyle.Exponential)
                     for optText, itemData in pairs(renderedOptions) do
-                        local isSel = (optText == tostring(selectedVal))
+                        local isSel = isOptionSelected(optText)
                         if isSel then
                             TweenService:Create(itemData.Check, twInfo, {ImageTransparency = 0.2}):Play()
                             TweenService:Create(itemData.CheckScale, twInfo, {Scale = 1}):Play()
@@ -11416,20 +11445,44 @@ ModuleData.onToggles = {}
                 end
 
                 DropdownData.Functions.SetValue = function(NewData, Save)
-                    if NewData then
-                        local ret = NewData
-                        if typeof(NewData) == "string" then
-                            valueLabel.Text = NewData
-                        elseif typeof(NewData) == "table" then
-                            valueLabel.Text = table.concat(NewData, ", ")
+                    if NewData ~= nil then
+                        if isMulti then
+                            selectedList = {}
+                            if typeof(NewData) == "table" then
+                                for _, v in ipairs(NewData) do
+                                    table.insert(selectedList, tostring(v))
+                                end
+                            elseif typeof(NewData) == "string" and NewData ~= "" then
+                                table.insert(selectedList, NewData)
+                            end
+                            valueLabel.Text = formatDisplayText(selectedList)
+                            updateItemsVisual()
+                            DropdownData.Callback(DropdownData, selectedList)
+                            if Save then
+                                if not SpaceUI.Config.Game.Dropdowns then SpaceUI.Config.Game.Dropdowns = {} end
+                                SpaceUI.Config.Game.Dropdowns[DropdownData.Flag] = selectedList
+                                Assets.Config.Save(SpaceUI.GameSave, SpaceUI.Config.Game)
+                            end
+                        else
+                            local val = typeof(NewData) == "table" and (NewData[1] or "") or tostring(NewData)
+                            selectedList = val ~= "" and {val} or {}
+                            valueLabel.Text = formatDisplayText(selectedList)
+                            updateItemsVisual()
+                            DropdownData.Callback(DropdownData, val)
+                            if Save then
+                                if not SpaceUI.Config.Game.Dropdowns then SpaceUI.Config.Game.Dropdowns = {} end
+                                SpaceUI.Config.Game.Dropdowns[DropdownData.Flag] = val
+                                Assets.Config.Save(SpaceUI.GameSave, SpaceUI.Config.Game)
+                            end
                         end
-                        updateItemsVisual(valueLabel.Text)
-                        DropdownData.Callback(DropdownData, ret)
-                        if Save then
-                            if not SpaceUI.Config.Game.Dropdowns then SpaceUI.Config.Game.Dropdowns = {} end
-                            SpaceUI.Config.Game.Dropdowns[DropdownData.Flag] = ret
-                            Assets.Config.Save(SpaceUI.GameSave, SpaceUI.Config.Game)
-                        end
+                    end
+                end
+
+                DropdownData.Functions.GetValue = function()
+                    if isMulti then
+                        return selectedList
+                    else
+                        return selectedList[1] or ""
                     end
                 end
 
@@ -11491,7 +11544,7 @@ ModuleData.onToggles = {}
                             iPad.PaddingLeft = UDim.new(0, 20)
                             iPad.PaddingRight = UDim.new(0, 20)
 
-                            local isSel = (optStr == tostring(valueLabel.Text))
+                            local isSel = isOptionSelected(optStr)
 
                             local iLabel = Instance.new("TextLabel", itemBtn)
                             iLabel.Text = optStr
@@ -11525,7 +11578,30 @@ ModuleData.onToggles = {}
                             }
 
                             itemBtn.MouseButton1Click:Connect(function()
-                                DropdownData.Functions.SetValue(optStr, true)
+                                if isMulti then
+                                    local idx = table.find(selectedList, optStr)
+                                    if idx then
+                                        table.remove(selectedList, idx)
+                                    else
+                                        if #selectedList < DropdownData.SelectLimit then
+                                            table.insert(selectedList, optStr)
+                                        end
+                                    end
+                                    valueLabel.Text = formatDisplayText(selectedList)
+                                    updateItemsVisual()
+                                    DropdownData.Callback(DropdownData, selectedList)
+                                    if not SpaceUI.Config.Game.Dropdowns then SpaceUI.Config.Game.Dropdowns = {} end
+                                    SpaceUI.Config.Game.Dropdowns[DropdownData.Flag] = selectedList
+                                    Assets.Config.Save(SpaceUI.GameSave, SpaceUI.Config.Game)
+                                else
+                                    selectedList = {optStr}
+                                    valueLabel.Text = optStr
+                                    updateItemsVisual()
+                                    DropdownData.Callback(DropdownData, optStr)
+                                    if not SpaceUI.Config.Game.Dropdowns then SpaceUI.Config.Game.Dropdowns = {} end
+                                    SpaceUI.Config.Game.Dropdowns[DropdownData.Flag] = optStr
+                                    Assets.Config.Save(SpaceUI.GameSave, SpaceUI.Config.Game)
+                                end
                             end)
                         end
                     end
