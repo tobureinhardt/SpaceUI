@@ -11194,13 +11194,13 @@ ModuleData.onToggles = {}
 
             -- ── 4. Dropdown (Hỗ trợ Single-Select & Multi-Select, cập nhật tick mượt mà & có mô tả) ──
             ModuleData.Functions.Settings.Dropdown = function(data)
-                local isMulti = (data and data.MultiSelect == true) or (data and data.SelectLimit and data.SelectLimit > 1) or (typeof(data and data.Default) == "table")
+                local isMulti = (data and data.MultiSelect == true) or (data and data.SelectLimit and data.SelectLimit > 1) or (data and data.MaxLimit and data.MaxLimit > 1) or (typeof(data and data.Default) == "table")
 
                 local DropdownData = {
                     Name = data and data.Name or "Dropdown",
                     Description = data and data.Description or nil,
                     Default = data and data.Default or (isMulti and {} or ""),
-                    SelectLimit = data and data.SelectLimit or (isMulti and 9999 or 1),
+                    SelectLimit = data and (data.SelectLimit or data.MaxLimit) or (isMulti and 9999 or 1),
                     MultiSelect = isMulti,
                     Options = data and data.Options or {},
                     Flag = data and data.Flag or "Dropdown",
