@@ -10470,7 +10470,6 @@ ModuleData.onToggles = {}
 
 
             local togglebuttoncon = ToggleButton.MouseButton1Click:Connect(function()
-                -- Set flag để moduleclickcon bỏ qua event bubble-up này
                 _toggleJustClicked = true
                 ModuleData.Functions.Toggle(not ModuleData.Data.Enabled, false, true, true, true)
             end)
@@ -10524,6 +10523,9 @@ ModuleData.onToggles = {}
                 for i,v in ModuleData.Settings do
                     if not table.find(ModuleData.Data.ExcludeSettingsVisiblity, v) then
                         v.Objects.MainInstance.Visible = true
+                        if v.Objects.DescriptionLabel and v.Description and v.Description ~= "" then
+                            v.Objects.DescriptionLabel.Visible = true
+                        end
                     end
                 end
 
@@ -10579,6 +10581,9 @@ ModuleData.onToggles = {}
                 end
                 for i,v in ModuleData.Settings do
                     v.Objects.MainInstance.Visible = false
+                    if v.Objects.DescriptionLabel then
+                        v.Objects.DescriptionLabel.Visible = false
+                    end
                 end
                 for i,v in tab.Modules do
                     v.Objects.Module.Visible = true
@@ -10603,7 +10608,64 @@ ModuleData.onToggles = {}
             -- Pure EXE 5 Components (Parsed directly from Exe_5_Build_517__1_-1.rbxmx)
             -- ============================================================================
 
-            -- ── 1. Mini Toggle (Thanh ImageButton chuẩn EXE5 với Text đầu & Checkmark cuối) ──
+            local function attachComponentDescription(compData, compName)
+                ModuleData.Data.SettingOrder = (ModuleData.Data.SettingOrder or 0) + 1
+                compData.Objects.MainInstance.LayoutOrder = ModuleData.Data.SettingOrder
+
+                local descLabel = Instance.new("TextLabel", ModuleSettings)
+                descLabel.Name = "description_" .. compName
+                descLabel.Size = UDim2.new(1, 0, 0, 0)
+                descLabel.BackgroundTransparency = 1
+                descLabel.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular)
+                descLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                descLabel.TextSize = 12
+                descLabel.TextTransparency = 0.6
+                descLabel.TextWrapped = true
+                descLabel.AutomaticSize = Enum.AutomaticSize.Y
+                descLabel.TextXAlignment = Enum.TextXAlignment.Left
+                descLabel.TextYAlignment = Enum.TextYAlignment.Top
+                descLabel.ZIndex = 2
+                descLabel.Visible = false
+
+                ModuleData.Data.SettingOrder = (ModuleData.Data.SettingOrder or 0) + 1
+                descLabel.LayoutOrder = ModuleData.Data.SettingOrder
+
+                local descPad = Instance.new("UIPadding", descLabel)
+                descPad.PaddingLeft = UDim.new(0, 16)
+                descPad.PaddingRight = UDim.new(0, 16)
+                descPad.PaddingTop = UDim.new(0, 2)
+                descPad.PaddingBottom = UDim.new(0, 8)
+
+                compData.Objects.DescriptionLabel = descLabel
+
+                if compData.Description and tostring(compData.Description) ~= "" then
+                    descLabel.Text = tostring(compData.Description)
+                else
+                    descLabel.Text = ""
+                end
+
+                compData.Functions.SetDescription = function(descText)
+                    if descText and tostring(descText) ~= "" then
+                        compData.Description = tostring(descText)
+                        descLabel.Text = tostring(descText)
+                        if ModuleData.Data.SettingsOpen and compData.Objects.MainInstance.Visible and not table.find(ModuleData.Data.ExcludeSettingsVisiblity, compData) then
+                            descLabel.Visible = true
+                        end
+                    else
+                        compData.Description = nil
+                        descLabel.Text = ""
+                        descLabel.Visible = false
+                    end
+                end
+
+                compData.Functions.GetDescription = function()
+                    return compData.Description or ""
+                end
+
+                return descLabel
+            end
+
+            -- ── 1. Mini Toggle (Thanh ImageButton chuẩn EXE5 với Text đầu, Checkmark cuối & Mô tả) ──
             ModuleData.Functions.Settings.MiniToggle = function(data)
                 local MiniToggleData = {
                     Name = data and data.Name or "New MiniToggle",
@@ -10636,6 +10698,8 @@ ModuleData.onToggles = {}
                 toggleBtn.Visible = false
                 toggleBtn.ZIndex = 2
                 MiniToggleData.Objects.MainInstance = toggleBtn
+
+                local descLabel = attachComponentDescription(MiniToggleData, MiniToggleData.Flag)
 
                 local pad = Instance.new("UIPadding", toggleBtn)
                 pad.PaddingLeft = UDim.new(0, 20)
@@ -10702,12 +10766,16 @@ ModuleData.onToggles = {}
                         end
                         if ModuleData.Data.SettingsOpen then
                             toggleBtn.Visible = true
+                            if MiniToggleData.Description and MiniToggleData.Description ~= "" then
+                                descLabel.Visible = true
+                            end
                         end
                     else
                         if not table.find(ModuleData.Data.ExcludeSettingsVisiblity, MiniToggleData) then
                             table.insert(ModuleData.Data.ExcludeSettingsVisiblity, MiniToggleData)
                         end
                         toggleBtn.Visible = false
+                        descLabel.Visible = false
                     end
                 end
 
@@ -10741,7 +10809,7 @@ ModuleData.onToggles = {}
                 return MiniToggleData
             end
 
-            -- ── 2. Slider (Thanh trượt chuẩn với gradient sáng/tắt mượt mà, drag chuẩn 100% & padding mép trong) ──
+            -- ── 2. Slider (Thanh trượt chuẩn với gradient mượt, drag chuẩn & mô tả) ──
             ModuleData.Functions.Settings.Slider = function(data)
                 local SliderData = {
                     Name = data and data.Name or "New Slider",
@@ -10788,6 +10856,8 @@ ModuleData.onToggles = {}
                 sliderContainer.ZIndex = 2
                 Instance.new("UICorner", sliderContainer).CornerRadius = UDim.new(1, 0)
                 SliderData.Objects.MainInstance = sliderContainer
+
+                local descLabel = attachComponentDescription(SliderData, SliderData.Flag)
 
                 -- Bọc khít 100% bằng depth frame
                 local depthBg = Instance.new("ImageLabel", sliderContainer)
@@ -10961,12 +11031,18 @@ ModuleData.onToggles = {}
                         if table.find(ModuleData.Data.ExcludeSettingsVisiblity, SliderData) then
                             table.remove(ModuleData.Data.ExcludeSettingsVisiblity, table.find(ModuleData.Data.ExcludeSettingsVisiblity, SliderData))
                         end
-                        if ModuleData.Data.SettingsOpen then sliderContainer.Visible = true end
+                        if ModuleData.Data.SettingsOpen then
+                            sliderContainer.Visible = true
+                            if SliderData.Description and SliderData.Description ~= "" then
+                                descLabel.Visible = true
+                            end
+                        end
                     else
                         if not table.find(ModuleData.Data.ExcludeSettingsVisiblity, SliderData) then
                             table.insert(ModuleData.Data.ExcludeSettingsVisiblity, SliderData)
                         end
                         sliderContainer.Visible = false
+                        descLabel.Visible = false
                     end
                 end
 
@@ -10976,7 +11052,7 @@ ModuleData.onToggles = {}
                 return SliderData
             end
 
-            -- ── 3. TextBox Input (Ô nhập liệu với hiệu ứng gradient sáng dần & tắt êm) ──
+            -- ── 3. TextBox Input (Ô nhập liệu với gradient rực rỡ & mô tả) ──
             ModuleData.Functions.Settings.TextBox = function(data)
                 local TextBoxData = {
                     Name = data and data.Name or "Textbox",
@@ -11005,6 +11081,8 @@ ModuleData.onToggles = {}
                 inputFrame.ZIndex = 2
                 Instance.new("UICorner", inputFrame).CornerRadius = UDim.new(1, 0)
                 TextBoxData.Objects.MainInstance = inputFrame
+
+                local descLabel = attachComponentDescription(TextBoxData, TextBoxData.Flag)
 
                 -- Bọc khít toàn bộ bằng depth frame
                 local depth = Instance.new("ImageLabel", inputFrame)
@@ -11088,12 +11166,18 @@ ModuleData.onToggles = {}
                         if table.find(ModuleData.Data.ExcludeSettingsVisiblity, TextBoxData) then
                             table.remove(ModuleData.Data.ExcludeSettingsVisiblity, table.find(ModuleData.Data.ExcludeSettingsVisiblity, TextBoxData))
                         end
-                        if ModuleData.Data.SettingsOpen then inputFrame.Visible = true end
+                        if ModuleData.Data.SettingsOpen then
+                            inputFrame.Visible = true
+                            if TextBoxData.Description and TextBoxData.Description ~= "" then
+                                descLabel.Visible = true
+                            end
+                        end
                     else
                         if not table.find(ModuleData.Data.ExcludeSettingsVisiblity, TextBoxData) then
                             table.insert(ModuleData.Data.ExcludeSettingsVisiblity, TextBoxData)
                         end
                         inputFrame.Visible = false
+                        descLabel.Visible = false
                     end
                 end
 
@@ -11103,7 +11187,7 @@ ModuleData.onToggles = {}
                 return TextBoxData
             end
 
-            -- ── 4. Dropdown (Chọn tại chỗ, hiệu ứng dấu tick & font mượt mà như MiniToggle) ──
+            -- ── 4. Dropdown (Chọn tại chỗ, cập nhật tick mượt mà & có mô tả) ──
             ModuleData.Functions.Settings.Dropdown = function(data)
                 local DropdownData = {
                     Name = data and data.Name or "Dropdown",
@@ -11144,6 +11228,8 @@ ModuleData.onToggles = {}
                 navRow.Visible = false
                 navRow.ZIndex = 2
                 DropdownData.Objects.MainInstance = navRow
+
+                local descLabel = attachComponentDescription(DropdownData, DropdownData.Flag)
 
                 local pad = Instance.new("UIPadding", navRow)
                 pad.PaddingLeft = UDim.new(0, 20)
@@ -11449,12 +11535,18 @@ ModuleData.onToggles = {}
                         if table.find(ModuleData.Data.ExcludeSettingsVisiblity, DropdownData) then
                             table.remove(ModuleData.Data.ExcludeSettingsVisiblity, table.find(ModuleData.Data.ExcludeSettingsVisiblity, DropdownData))
                         end
-                        if ModuleData.Data.SettingsOpen then navRow.Visible = true end
+                        if ModuleData.Data.SettingsOpen then
+                            navRow.Visible = true
+                            if DropdownData.Description and DropdownData.Description ~= "" then
+                                descLabel.Visible = true
+                            end
+                        end
                     else
                         if not table.find(ModuleData.Data.ExcludeSettingsVisiblity, DropdownData) then
                             table.insert(ModuleData.Data.ExcludeSettingsVisiblity, DropdownData)
                         end
                         navRow.Visible = false
+                        descLabel.Visible = false
                     end
                 end
 
@@ -11464,10 +11556,11 @@ ModuleData.onToggles = {}
                 return DropdownData
             end
 
-            -- ── 5. Action Button (Nút bấm thanh chuẩn EXE5) ──
+            -- ── 5. Action Button (Nút bấm thanh chuẩn EXE5 kèm mô tả) ──
             ModuleData.Functions.Settings.Button = function(data)
                 local ButtonData = {
                     Name = data and data.Name or "Button",
+                    Description = data and data.Description or nil,
                     Flag = data and data.Flag or "Button",
                     Hide = data and data.Hide or false,
                     Callback = data and data.Callback or function() end,
@@ -11489,6 +11582,8 @@ ModuleData.onToggles = {}
                 btn.Visible = false
                 btn.ZIndex = 2
                 ButtonData.Objects.MainInstance = btn
+
+                local descLabel = attachComponentDescription(ButtonData, ButtonData.Flag)
 
                 local pad = Instance.new("UIPadding", btn)
                 pad.PaddingLeft = UDim.new(0, 20)
@@ -11514,12 +11609,18 @@ ModuleData.onToggles = {}
                         if table.find(ModuleData.Data.ExcludeSettingsVisiblity, ButtonData) then
                             table.remove(ModuleData.Data.ExcludeSettingsVisiblity, table.find(ModuleData.Data.ExcludeSettingsVisiblity, ButtonData))
                         end
-                        if ModuleData.Data.SettingsOpen then btn.Visible = true end
+                        if ModuleData.Data.SettingsOpen then
+                            btn.Visible = true
+                            if ButtonData.Description and ButtonData.Description ~= "" then
+                                descLabel.Visible = true
+                            end
+                        end
                     else
                         if not table.find(ModuleData.Data.ExcludeSettingsVisiblity, ButtonData) then
                             table.insert(ModuleData.Data.ExcludeSettingsVisiblity, ButtonData)
                         end
                         btn.Visible = false
+                        descLabel.Visible = false
                     end
                 end
 
@@ -11532,21 +11633,53 @@ ModuleData.onToggles = {}
             -- ── 6. Description / Label (Dòng chữ giải thích/mô tả thuần EXE5) ──
             ModuleData.Functions.Settings.Description = function(data)
                 local text = typeof(data) == "string" and data or (data and (data.Text or data.Description or data.Name)) or ""
+                local descData = {
+                    Text = text,
+                    Objects = {},
+                    Functions = {}
+                }
+
+                ModuleData.Data.SettingOrder = (ModuleData.Data.SettingOrder or 0) + 1
+
                 local descLabel = Instance.new("TextLabel", ModuleSettings)
                 descLabel.Name = "description"
-                descLabel.Size = UDim2.new(1, -20, 0, 0)
+                descLabel.Size = UDim2.new(1, 0, 0, 0)
                 descLabel.AutomaticSize = Enum.AutomaticSize.Y
                 descLabel.BackgroundTransparency = 1
                 descLabel.Text = text
                 descLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-                descLabel.TextSize = 14
-                descLabel.TextTransparency = 0.5
+                descLabel.TextSize = 12
+                descLabel.TextTransparency = 0.6
                 descLabel.TextWrapped = true
                 descLabel.TextXAlignment = Enum.TextXAlignment.Left
+                descLabel.TextYAlignment = Enum.TextYAlignment.Top
                 descLabel.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular)
                 descLabel.Visible = false
                 descLabel.ZIndex = 2
-                return descLabel
+                descLabel.LayoutOrder = ModuleData.Data.SettingOrder
+
+                local descPad = Instance.new("UIPadding", descLabel)
+                descPad.PaddingLeft = UDim.new(0, 16)
+                descPad.PaddingRight = UDim.new(0, 16)
+                descPad.PaddingTop = UDim.new(0, 2)
+                descPad.PaddingBottom = UDim.new(0, 8)
+
+                descData.Objects.MainInstance = descLabel
+
+                descData.Functions.SetDescription = function(newText)
+                    descData.Text = tostring(newText or "")
+                    descLabel.Text = descData.Text
+                end
+
+                descData.Functions.SetVisiblity = function(enabled)
+                    if ModuleData.Data.SettingsOpen then
+                        descLabel.Visible = enabled
+                    else
+                        descLabel.Visible = false
+                    end
+                end
+
+                return descData
             end
 
             -- ── 7. NewSection Title (Tiêu đề phân đoạn) ──
@@ -11554,8 +11687,11 @@ ModuleData.onToggles = {}
                 local SectionData = {
                     Name = Data and Data.Name or "Section",
                     Flag = Data and Data.Flag or "Flag", 
-                    Objects = {}
+                    Objects = {},
+                    Functions = {}
                 }
+
+                ModuleData.Data.SettingOrder = (ModuleData.Data.SettingOrder or 0) + 1
 
                 local secLabel = Instance.new("TextLabel", ModuleSettings)
                 secLabel.BackgroundTransparency = 1
@@ -11568,16 +11704,26 @@ ModuleData.onToggles = {}
                 secLabel.TextXAlignment = Enum.TextXAlignment.Left
                 secLabel.Visible = false
                 secLabel.ZIndex = 2
+                secLabel.LayoutOrder = ModuleData.Data.SettingOrder
                 SectionData.Objects.MainInstance = secLabel
+
+                SectionData.Functions.SetVisiblity = function(enabled)
+                    if ModuleData.Data.SettingsOpen then
+                        secLabel.Visible = enabled
+                    else
+                        secLabel.Visible = false
+                    end
+                end
 
                 ModuleData.Settings[SectionData.Flag] = SectionData
                 return SectionData
             end
 
-            -- ── 8. Keybind Setting ──
+            -- ── 8. Keybind Setting (Cài đặt phím bấm kèm mô tả) ──
             ModuleData.Functions.Settings.Keybind = function(Data)
                 local KeybindData = {
                     Name = Data and Data.Name or "Keybind",
+                    Description = Data and Data.Description or nil,
                     Default = Data and Data.Default or "",
                     Flag = Data and Data.Flag or "FlagKeybind", 
                     Hide = Data and Data.Hide or false,
@@ -11606,6 +11752,8 @@ ModuleData.onToggles = {}
                 keybindRow.Visible = false
                 keybindRow.ZIndex = 2
                 KeybindData.Objects.MainInstance = keybindRow
+
+                local descLabel = attachComponentDescription(KeybindData, KeybindData.Flag)
 
                 local pad = Instance.new("UIPadding", keybindRow)
                 pad.PaddingLeft = UDim.new(0, 20)
@@ -11675,7 +11823,12 @@ ModuleData.onToggles = {}
                         if table.find(ModuleData.Data.ExcludeSettingsVisiblity, KeybindData) then
                             table.remove(ModuleData.Data.ExcludeSettingsVisiblity, table.find(ModuleData.Data.ExcludeSettingsVisiblity, KeybindData))
                         end
-                        if ModuleData.Data.SettingsOpen then keybindRow.Visible = true end
+                        if ModuleData.Data.SettingsOpen then
+                            keybindRow.Visible = true
+                            if KeybindData.Description and KeybindData.Description ~= "" then
+                                descLabel.Visible = true
+                            end
+                        end
                     else
                         if not table.find(ModuleData.Data.ExcludeSettingsVisiblity, KeybindData) then
                             table.insert(ModuleData.Data.ExcludeSettingsVisiblity, KeybindData)
