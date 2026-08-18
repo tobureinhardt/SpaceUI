@@ -6441,7 +6441,7 @@ function Shortcut.Init()
                 :setLabel("Shortcuts")
                 :setCaption("Open Shortcuts Menu")
                 :oneClick(true)
-                :align("Right")
+                :align("Left")
                 :setEnabled(enabledState)
             scIcon.selected:Connect(function()
                 if MenuVisible then CloseInterface() else OpenInterface() end
@@ -6631,6 +6631,24 @@ if not getgenv().SpaceUI then
         GameSave = "GameSave",
         Dev = false,
     }
+
+    -- Auto-scale theo mobile: ported từ Loader.lua gốc (Night). Khi thiết bị là
+    -- mobile, đổi Size mặc định của dashboard cho vừa màn hình dọc, và tính Scale
+    -- theo ViewportSize.X thực tế thay vì luôn dùng Scale = 1 cố định (nguyên nhân
+    -- UI hiện to/lệch trên mobile giống hệt PC).
+    if getgenv().SpaceUI.Mobile then
+        getgenv().SpaceUI.Config.UI.Size = {X = 0.7, Y = 0.9}
+
+        local AutoScaleCamera = workspace.CurrentCamera
+        if AutoScaleCamera then
+            local vpX = AutoScaleCamera.ViewportSize.X
+            if 0.4 >= (vpX / 1000) - 0.1 then
+                getgenv().SpaceUI.Config.UI.Scale = 0.4
+            else
+                getgenv().SpaceUI.Config.UI.Scale = (vpX / 1000) - 0.1
+            end
+        end
+    end
 end
 -- Gán vào biến SpaceUI đã forward-declare ở đầu file (không dùng `local` lại ở đây,
 -- nếu không sẽ tạo 1 local mới che khuất upvalue mà các hàm phía trên đã capture).
@@ -6665,8 +6683,11 @@ do
 
         SpaceUI.Tabs.FocusedTab = tab
         tab.Objects.ActualTab.ZIndex = 2
-        -- Tab được focus: đục đúng theo config gốc (không solid), shadow hiện ra.
-        playFocusTween(tab, SpaceUI.Config.UI.TabTransparency, 0.1)
+        -- Tab được focus: đục đúng theo config gốc (không solid). Shadow LUÔN giữ
+        -- ẩn (1, không phải 0.1 như trước) - hiệu ứng shadow khi focus không hợp
+        -- thẩm mỹ theo yêu cầu, bỏ hẳn dù logic ZIndex/ImageTransparency chính vẫn
+        -- giữ nguyên.
+        playFocusTween(tab, SpaceUI.Config.UI.TabTransparency, 1)
 
         for i, v in SpaceUI.Tabs.ActiveTabs do
             if v ~= tab then
@@ -6675,14 +6696,33 @@ do
         end
     end
 
-    function SpaceUI.Tabs.RemoveFocus(tab)
+    function SpaceUI.Tabs.RemoveFocus(tab, skipTween)
         if not tab or not tab.Objects or not tab.Objects.ActualTab then return end
         if SpaceUI.Tabs.FocusedTab == tab then
             SpaceUI.Tabs.FocusedTab = nil
         end
         tab.Objects.ActualTab.ZIndex = 1
-        -- Tab mất focus: solid hoàn toàn (hết xuyên thấu), shadow tắt hẳn.
-        playFocusTween(tab, 0, 1)
+
+        -- Auto-skip tween khi tab đang đóng hoặc đã đóng: close animation
+        -- đang tween ImageTransparency → 1, nếu ta tween → 0 ở đây sẽ
+        -- tạo 2 tween chạy song song trên cùng property theo hướng ngược
+        -- nhau, khiến tab khựng/flash ở cuối animation đóng.
+        if not skipTween and tab.Opened == false then
+            skipTween = true
+        end
+
+        if skipTween then
+            if tabFocusTweens[tab] then
+                for _, t in tabFocusTweens[tab] do
+                    t:Cancel()
+                end
+                tabFocusTweens[tab] = nil
+            end
+            tab.Objects.TabFocusShadow.ImageTransparency = 1
+        else
+            -- Tab mất focus: solid hoàn toàn (hết xuyên thấu), shadow tắt hẳn.
+            playFocusTween(tab, 0, 1)
+        end
     end
 
     function SpaceUI.Tabs.ActivateTab(tab)
@@ -6706,7 +6746,8 @@ do
         Cards = {},         -- {Tab, IsDashboard, Frame, Scale, HitCatcher, BaseOffsetX, OriginalPosition, OriginalSize, OriginalZIndex, OriginalAnchorPoint, SavedDescendantZIndex}
         Overlay = nil,       -- input-catcher trong suốt phía sau (bấm ra ngoài = thoát, kéo ngang = cuộn)
         Blur = nil,          -- BlurEffect làm mờ nét nền 3D
-        ScrollX = 0,         -- độ lệch cuộn ngang hiện tại (pixel, luôn <= 0), dùng khi > CARDS_PER_PAGE card
+        ScrollX = 0,         -- độ lệch cuộn ngang hiện tại (pixel viewport thật, luôn <= 0), dùng khi > CARDS_PER_PAGE card
+        PosScaleCompensate = 1, -- 1/Config.UI.Scale tại lần Enter() gần nhất - bù Offset trước khi gán Position (xem giải thích ở Enter)
         Connections = {},    -- connection riêng của phiên Peek hiện tại, disconnect sạch khi Exit
     }
 
@@ -6817,7 +6858,15 @@ do
 
     local function boostDescendantZIndex(root, savedList)
         for _, obj in root:GetDescendants() do
-            if obj:IsA("GuiObject") and obj.Name ~= "PeekHitCatcher" then
+            -- TabFocusShadow là hiệu ứng viền mờ TRANG TRÍ của Leaflet focus system
+            -- (ZIndex = -10 cố định, nằm dưới cùng theo thiết kế gốc để tạo shadow mờ
+            -- phía sau tab đang focus - xem CaptureFocus/RemoveFocus). Nó không chứa
+            -- chữ/nội dung cần đọc nên không cần "nổi lên" trong Peek. Boost ZIndex nó
+            -- +2000 làm nó nhảy từ -10 lên ~1990 (rất cao, NỔI HẲN LÊN TRÊN thay vì làm
+            -- nền mờ phía dưới) - đây chính là "viền đậm màu dính trong tab" đã gặp.
+            -- Loại trừ nó khỏi savedList/boost hoàn toàn: giữ nguyên ZIndex=-10 xuyên
+            -- suốt Peek, không cần restore vì chưa từng bị đổi.
+            if obj:IsA("GuiObject") and obj.Name ~= "PeekHitCatcher" and obj.Name ~= "TabFocusShadow" then
                 table.insert(savedList, {Object = obj, ZIndex = obj.ZIndex})
                 obj.ZIndex = obj.ZIndex + PEEK_CONTENT_ZINDEX_BOOST
             end
@@ -6858,11 +6907,12 @@ do
 
     local function applyScrollX(instant)
         local tweenInfo = instant and TweenInfo.new(0) or DRAG_TWEEN_INFO
+        local compensate = SpaceUI.Peek.PosScaleCompensate or 1
         for _, card in SpaceUI.Peek.Cards do
             if card.BaseOffsetX and card.Frame and card.Frame.Parent then
                 local pos = card.Frame.Position
                 TweenService:Create(card.Frame, tweenInfo, {
-                    Position = UDim2.new(pos.X.Scale, card.BaseOffsetX + SpaceUI.Peek.ScrollX, pos.Y.Scale, pos.Y.Offset),
+                    Position = UDim2.new(pos.X.Scale, (card.BaseOffsetX + SpaceUI.Peek.ScrollX) * compensate, pos.Y.Scale, pos.Y.Offset),
                 }):Play()
             end
         end
@@ -6986,6 +7036,80 @@ do
             SpaceUI.Peek.Overlay = nil
         end
 
+        -- Khôi phục Parent theo ĐÚNG THỨ TỰ ỔN ĐỊNH (Dashboard trước, rồi theo thứ
+        -- tự SpaceUI.CurrentOpenTab) thay vì thứ tự ngẫu nhiên của SpaceUI.Peek.Cards
+        -- (vốn chỉ theo thứ tự globalIndex lúc dựng lưới Peek, có thể khác thứ tự
+        -- gốc), để Children list của TabBackground/MainScreenGui được tái tạo đúng
+        -- thứ tự tương đối như trước khi vào Peek.
+        local restoreOrder = {}
+        if SpaceUI.Background and SpaceUI.Background.Objects and SpaceUI.Background.Objects.MainFrame then
+            for _, card in SpaceUI.Peek.Cards do
+                if card.IsDashboard then
+                    table.insert(restoreOrder, card)
+                end
+            end
+        end
+        if SpaceUI.CurrentOpenTab then
+            for _, tab in SpaceUI.CurrentOpenTab do
+                for _, card in SpaceUI.Peek.Cards do
+                    if card.Tab == tab then
+                        table.insert(restoreOrder, card)
+                        break
+                    end
+                end
+            end
+        end
+        -- An toàn: bất kỳ card nào lọt lưới ở trên (không khớp Dashboard/CurrentOpenTab
+        -- vì lý do gì đó) vẫn được thêm vào cuối, không bị bỏ sót khỏi vòng lặp restore.
+        for _, card in SpaceUI.Peek.Cards do
+            local found = false
+            for _, c in restoreOrder do
+                if c == card then found = true break end
+            end
+            if not found then
+                table.insert(restoreOrder, card)
+            end
+        end
+
+        -- BƯỚC 1: trả TẤT CẢ frame về đúng Parent/Position/Size/ZIndex GỐC trước -
+        -- kể cả card sẽ được chọn (chosen). CaptureFocus/RemoveFocus (BƯỚC 2, xem
+        -- dưới) sẽ chạy SAU KHI toàn bộ cây UI đã ổn định lại đúng vị trí ban đầu,
+        -- không còn ai đang nằm ở MainScreenGui nữa - đây là điểm mấu chốt: gọi
+        -- CaptureFocus TRƯỚC khi trả Parent (như code cũ) khiến ZIndex=2 được set
+        -- trong lúc frame còn ở sai cây UI, rồi bị cuốn theo vòng lặp trả Parent
+        -- phía sau ghi đè mất hiệu lực.
+        for _, card in restoreOrder do
+            if card.HitCatcher then
+                card.HitCatcher:Destroy()
+                card.HitCatcher = nil
+            end
+            local frame = card.Frame
+            if frame and frame.Parent then
+                if card.OriginalParent then
+                    frame.Parent = card.OriginalParent
+                end
+                frame.ZIndex = card.OriginalZIndex or frame.ZIndex
+                if card.Scale then
+                    TweenService:Create(card.Scale, peekTweenInfo, {Scale = 1}):Play()
+                end
+                frame.AnchorPoint = card.OriginalAnchorPoint or frame.AnchorPoint
+                TweenService:Create(frame, peekTweenInfo, {
+                    Position = card.OriginalPosition,
+                    Size = card.OriginalSize,
+                }):Play()
+                if card.ScaleOwnedByPeek then
+                    task.delay(peekTweenInfo.Time, function()
+                        if card.Scale and card.Scale.Parent then
+                            card.Scale:Destroy()
+                        end
+                    end)
+                end
+            end
+        end
+
+        -- BƯỚC 2: CaptureFocus/RemoveFocus chạy SAU CÙNG, khi mọi frame đã ở đúng
+        -- Parent/ZIndex gốc ổn định - set lại ZIndex=2 cho card được chọn ĐÚNG LÚC,
+        -- không còn ai phía sau ghi đè lại nữa.
         if chosen then
             if chosen.Tab then
                 SpaceUI.Tabs.CaptureFocus(chosen.Tab)
@@ -7008,34 +7132,33 @@ do
             end
         end
 
-        for _, card in SpaceUI.Peek.Cards do
-            if card.HitCatcher then
-                card.HitCatcher:Destroy()
-                card.HitCatcher = nil
-            end
-            local frame = card.Frame
-            if frame and frame.Parent then
-                frame.ZIndex = card.OriginalZIndex or frame.ZIndex
-                restoreDescendantZIndex(card.SavedDescendantZIndex)
-                if card.Scale then
-                    TweenService:Create(card.Scale, peekTweenInfo, {Scale = 1}):Play()
-                end
-                frame.AnchorPoint = card.OriginalAnchorPoint or frame.AnchorPoint
-                TweenService:Create(frame, peekTweenInfo, {
-                    Position = card.OriginalPosition,
-                    Size = card.OriginalSize,
-                }):Play()
-                if card.ScaleOwnedByPeek then
-                    task.delay(peekTweenInfo.Time, function()
-                        if card.Scale and card.Scale.Parent then
-                            card.Scale:Destroy()
-                        end
-                    end)
+        table.clear(SpaceUI.Peek.Cards)
+    end
+
+    -- Tự sửa các TabFocusShadow đã bị kẹt ZIndex cao từ NHỮNG LẦN PEEK TRƯỚC khi
+    -- có fix loại trừ TabFocusShadow khỏi boostDescendantZIndex (xem hàm đó). Nếu
+    -- Peek từng chạy trong phiên hiện tại bằng code cũ, restoreDescendantZIndex có
+    -- thể không khớp đúng thứ tự khiến ZIndex của nó kẹt vĩnh viễn ở mức cao
+    -- (~1990+) thay vì -10 như thiết kế gốc. Quét 1 lần mỗi khi Enter() được gọi,
+    -- chỉ sửa những cái đang lệch bất thường (> 100, ngưỡng an toàn - shadow hợp
+    -- lệ theo thiết kế gốc luôn là số âm, không đụng tới bất kỳ tab nào đang đúng).
+    local function healStuckFocusShadows()
+        if not SpaceUI.CurrentOpenTab then return end
+        for _, tab in SpaceUI.CurrentOpenTab do
+            if tab and tab.Objects and tab.Objects.TabFocusShadow then
+                local shadow = tab.Objects.TabFocusShadow
+                if shadow.ZIndex > 100 then
+                    shadow.ZIndex = -10
                 end
             end
         end
-
-        table.clear(SpaceUI.Peek.Cards)
+        if SpaceUI.Background and SpaceUI.Background.Objects and SpaceUI.Background.Objects.MainFrame then
+            local mainFrame = SpaceUI.Background.Objects.MainFrame
+            local shadow = mainFrame:FindFirstChild("TabFocusShadow")
+            if shadow and shadow.ZIndex > 100 then
+                shadow.ZIndex = -10
+            end
+        end
     end
 
     function SpaceUI.Peek.Enter()
@@ -7044,14 +7167,42 @@ do
         local targets = collectPeekTargets()
         if #targets == 0 then return false, "no_open_tabs" end
 
+        healStuckFocusShadows()
+
         SpaceUI.Peek.Active = true
         SpaceUI.Peek.ScrollX = 0
         table.clear(SpaceUI.Peek.Cards)
 
         local mainScreenGui = SpaceUI.Background.Objects.MainScreenGui
+        -- screenSize = viewport THẬT (mainScreenGui.AbsoluteSize), không chia/nhân gì
+        -- với uiScale. scaleFactor (bên dưới, trong vòng lặp dựng UI) được tính từ
+        -- designSize - kích thước THIẾT KẾ GỐC của từng frame, suy trực tiếp từ
+        -- frame.Size (UDim2) * screenSize, KHÔNG đọc frame.AbsoluteSize. Lý do: mọi
+        -- frame ở đây (ActualTab, MainFrame) đều có sẵn 1 UIScale riêng (TabScale,
+        -- MainFrameScale - dùng cho animation mở/đóng khác) mà ensureUIScale() sẽ MƯỢN
+        -- tạm; AbsoluteSize phụ thuộc chặt vào giá trị hiện tại của UIScale đó TẠI ĐÚNG
+        -- THỜI ĐIỂM đọc - có thể đang dở dang animation (1.2 -> 1) nên không ổn định.
+        -- frame.Size (đặt bởi code UI, không đổi bởi UIScale) + screenSize (cố định)
+        -- loại bỏ hoàn toàn phụ thuộc timing/UIScale này - designSize luôn đúng, và
+        -- vì Peek GHI ĐÈ TUYỆT ĐỐI Scale = scaleFactor (không cộng dồn), giá trị Scale
+        -- cũ của UIScale mượn được trước đó không còn quan trọng nữa.
+        --
+        -- Position (Offset pixel cellCenterXPx/cellCenterYPx) thì khác: nó không hề
+        -- "chứa sẵn" uiScale như cách AbsoluteSize từng có, nên khi MainScreenGuiScale
+        -- nhân thêm uiScale lúc render (sau khi frame re-parent thẳng vào MainScreenGui,
+        -- con trực tiếp), kết quả BỊ CO THẬT về góc trên-trái theo đúng tỉ lệ uiScale -
+        -- đây là bug "lệch lên trên" khi uiScale < 1 (mobile). Phải bù NGƯỢC 1/uiScale
+        -- vào cellCenterXPx/Y trước khi gán Position (xem posScaleCompensate bên dưới)
+        -- để MainScreenGuiScale nhân lại đúng 1 lần, ra đúng pixel thật mong muốn -
+        -- độc lập hoàn toàn với cách tính scaleFactor ở trên.
+        local uiScale = SpaceUI.Config.UI.Scale
+        if not uiScale or uiScale <= 0 then uiScale = 1 end
+        local posScaleCompensate = 1 / uiScale
+        SpaceUI.Peek.PosScaleCompensate = posScaleCompensate
         local screenSize = mainScreenGui.AbsoluteSize
 
         local overlay = ensureOverlay()
+
         SpaceUI.Peek.Blur.Size = 0
         TweenService:Create(SpaceUI.Peek.Blur, peekTweenInfo, {Size = 18}):Play()
 
@@ -7085,7 +7236,31 @@ do
         local maxPageWidthPx = 0
 
         for pageIdx, pageTargets in pages do
-            local rows = computeRows(#pageTargets)
+            -- Tính designSize (kích thước THIẾT KẾ GỐC, hoàn toàn không phụ thuộc bất kỳ
+            -- UIScale nào - kể cả UIScale có sẵn trên frame như TabScale/MainFrameScale
+            -- mà ensureUIScale() sẽ MƯỢN tạm bên dưới) trực tiếp từ frame.Size (UDim2)
+            -- nhân với screenSize (viewport thật). KHÔNG dùng frame.AbsoluteSize: giá trị
+            -- đó phụ thuộc chặt vào ĐÚNG THỜI ĐIỂM đọc (có thể đọc giữa lúc TabScale/
+            -- MainFrameScale đang tween dở dang do animation mở/đóng tab khác, hoặc đã
+            -- bị chính UIScale đó co sẵn) - dùng nó làm scaleFactor không ổn định, có
+            -- lúc cho ra scaleFactor quá lớn (kẹp trần ở 1, card không co đủ, tràn cạnh/
+            -- đụng nhau đúng như đã quan sát). frame.Size (UDim2, đặt bởi code UI, không
+            -- đổi bởi bất kỳ UIScale nào) + screenSize (cố định, đọc 1 lần) loại bỏ hoàn
+            -- toàn sự phụ thuộc vào timing/UIScale runtime này. Parent của mọi frame ở
+            -- đây (TabBackground cho tab thường, MainScreenGui cho Dashboard) đều
+            -- fromScale(1,1) full màn hình, nên %Scale của frame.Size nhân thẳng với
+            -- screenSize (viewport thật) là đúng, không cần quy đổi qua parent trung gian.
+            local pageDesignSizes = {}
+            for k, target in pageTargets do
+                local sz = target.Frame.Size
+                pageDesignSizes[k] = Vector2.new(
+                    sz.X.Scale * screenSize.X + sz.X.Offset,
+                    sz.Y.Scale * screenSize.Y + sz.Y.Offset
+                )
+            end
+
+            local baseRows = computeRows(#pageTargets)
+            local rows = baseRows
             local pageOffsetXPx = needsScroll and ((pageIdx - 1) * (pageW + gutterPx)) or 0
             local pageWidthPx = 0
 
@@ -7101,6 +7276,10 @@ do
 
             local rowStartIdx = 1
             for rowIdx, itemsInRow in rows do
+                -- cellW cố định theo lưới MAX_COLS (không phải theo itemsInRow của hàng
+                -- này) - card CO NHỎ TỰ DO để vừa cellW x cellH (xem scaleFactor bên dưới),
+                -- không xuống hàng khi to. Layout hàng/cột (số card mỗi hàng) luôn cố định
+                -- theo computeRows, độc lập với kích thước thật của card.
                 local rowWidthPx = itemsInRow * cellW + (itemsInRow - 1) * gutterPx
                 pageWidthPx = math.max(pageWidthPx, rowWidthPx)
                 local rowOffsetXPx = (pageW - rowWidthPx) / 2
@@ -7110,10 +7289,16 @@ do
                     local target = pageTargets[rowStartIdx + c - 1]
                     local frame = target.Frame
 
+                    -- Dùng lại giá trị đã tính ở pageDesignSizes (đọc frame.Size 1 lần duy
+                    -- nhất, trước khi bất kỳ frame nào trong trang bị re-parent hay UIScale
+                    -- nào bị đổi) - xem giải thích đầy đủ ở chỗ tính pageDesignSizes.
+                    local designSize = pageDesignSizes[rowStartIdx + c - 1]
+
                     local card = {
                         Tab = target.Tab,
                         IsDashboard = target.IsDashboard,
                         Frame = frame,
+                        OriginalParent = frame.Parent,
                         OriginalPosition = frame.Position,
                         OriginalSize = frame.Size,
                         OriginalZIndex = frame.ZIndex,
@@ -7122,28 +7307,61 @@ do
                     }
                     table.insert(SpaceUI.Peek.Cards, card)
 
+                    -- Re-parent frame ra thẳng MainScreenGui trong lúc Peek: frame gốc
+                    -- (ActualTab, MainFrame) tính Position/Size theo % của PARENT THẬT của
+                    -- nó (TabBackground/dashboard - nhỏ hơn nhiều so với toàn màn hình), nhưng
+                    -- lưới Peek tính cellCenterXPx/outerPad theo screenSize = viewport thật
+                    -- (mainScreenGui.AbsoluteSize, không chia/nhân uiScale gì cả). Hai hệ quy
+                    -- chiếu khác nhau khiến card bị lệch góc trên-trái và chồng lấn nếu không
+                    -- re-parent - phải đưa frame ra đúng hệ quy chiếu MainScreenGui trước khi
+                    -- áp Position kiểu pixel-tuyệt-đối. Không cần layer/UIScale bù riêng nào cả:
+                    -- MainScreenGuiScale (uiScale) sẽ tự nhân lên Position/Size pixel-tuyệt-đối
+                    -- này lúc render - đây là hành vi ĐÚNG và CẦN THIẾT (không phải bug): nó quy
+                    -- đổi pixel-viewport-thật sang đúng không gian hiển thị cuối cùng trên màn
+                    -- hình mobile đã bị scale UI xuống, y hệt cách MainFrame gốc vẫn luôn hiển
+                    -- thị đúng dù nằm dưới MainScreenGuiScale.
+                    frame.Parent = SpaceUI.Background.Objects.MainScreenGui
+
                     frame.ZIndex = 500 + globalIndex
-                    boostDescendantZIndex(frame, card.SavedDescendantZIndex)
+                    -- KHÔNG còn gọi boostDescendantZIndex ở đây nữa: với
+                    -- ZIndexBehavior = Sibling đã bật cho MainScreenGui, HitCatcher
+                    -- (ZIndex=5000, con trực tiếp của frame) tự động nổi trên mọi
+                    -- anh em khác trong cùng frame mà không cần đụng ZIndex của
+                    -- chúng. Trước đây boost +2000 vào TOÀN BỘ descendants (bao gồm
+                    -- cả bên trong 1 tab con nếu Dashboard/MainFrame cũng nằm trong
+                    -- targets) từng gây kẹt ZIndex ở mức hàng nghìn sau khi restore,
+                    -- vô hiệu hóa cơ chế so sánh 1 vs 2 của CaptureFocus.
                     attachHitCatcher(card)
 
                     local scaleInst, scaleWasPreExisting = ensureUIScale(frame)
                     card.Scale = scaleInst
                     card.ScaleOwnedByPeek = not scaleWasPreExisting
-                    local originalAbsSize = frame.AbsoluteSize
                     local scaleFactor = 1
-                    if originalAbsSize.X > 0 and originalAbsSize.Y > 0 then
-                        scaleFactor = math.min(cellW / originalAbsSize.X, cellH / originalAbsSize.Y, 1)
+                    if designSize.X > 0 and designSize.Y > 0 then
+                        scaleFactor = math.min(cellW / designSize.X, cellH / designSize.Y, 1)
                     end
                     TweenService:Create(scaleInst, peekTweenInfo, {Scale = scaleFactor}):Play()
 
                     local cellCenterXPx = pageOffsetXPx + rowOffsetXPx + (c - 1) * (cellW + gutterPx) + cellW / 2
                     local cellCenterYPx = rowsOffsetYPx + (rowIdx - 1) * (cellH + gutterPxY) + cellH / 2
 
+                    -- BaseOffsetX lưu ở "không gian viewport thật" (CHƯA bù posScaleCompensate)
+                    -- - khớp đơn vị với SpaceUI.Peek.ScrollX (tính trực tiếp từ input.Position.X,
+                    -- luôn là pixel màn hình thật) và maxScrollX (tính từ pageW cũng viewport
+                    -- thật). Bù posScaleCompensate chỉ áp DUY NHẤT lúc gán vào Position thật sự
+                    -- (ở đây và trong applyScrollX bên trên) - không lưu sẵn vào BaseOffsetX, để
+                    -- (BaseOffsetX + ScrollX) cộng đúng trong cùng 1 không gian trước khi bù.
                     card.BaseOffsetX = cellCenterXPx
 
                     frame.AnchorPoint = Vector2.new(0.5, 0.5)
+                    -- Nhân bù posScaleCompensate (1/uiScale) vào Offset trước khi gán Position:
+                    -- MainScreenGuiScale sẽ nhân lại đúng 1 lần uiScale lúc render, đưa Offset
+                    -- hiển thị cuối cùng về đúng pixel thật mong muốn (xem giải thích đầy đủ ở
+                    -- chỗ khai báo posScaleCompensate, đầu hàm Enter). Component Scale (outerPad)
+                    -- của UDim2 KHÔNG cần bù - nó tính theo % kích thước MainScreenGui, vốn đã là
+                    -- viewport thật và không bị UIScale của chính nó tự áp lên chính nó.
                     TweenService:Create(frame, peekTweenInfo, {
-                        Position = UDim2.new(outerPad, cellCenterXPx, outerPad, cellCenterYPx),
+                        Position = UDim2.new(outerPad, cellCenterXPx * posScaleCompensate, outerPad, cellCenterYPx * posScaleCompensate),
                     }):Play()
                 end
                 rowStartIdx += itemsInRow
@@ -7677,6 +7895,37 @@ do
         InitInfo.Objects.MainScreenGui.ResetOnSpawn = false
         InitInfo.Objects.MainScreenGui.IgnoreGuiInset = true
         InitInfo.Objects.MainScreenGui.DisplayOrder = 10000
+        -- QUAN TRỌNG: Roblox mặc định ZIndexBehavior = Global (KHÔNG phải Sibling).
+        -- Ở chế độ Global, ZIndex so sánh TUYỆT ĐỐI xuyên suốt toàn bộ cây GUI, không
+        -- giới hạn trong phạm vi anh em cùng cha - nghĩa là 1 con cháu sâu bên trong
+        -- có ZIndex cao (vd TabPrism=1000, TabDragCanvas=10000000) sẽ đè lên MỌI thứ
+        -- khác có ZIndex thấp hơn dù ở NHÁNH CÂY HOÀN TOÀN KHÁC, kể cả tab đang được
+        -- CaptureFocus set ZIndex=2 để bring-to-front. Đặt Sibling để ZIndex chỉ so
+        -- sánh giữa các con TRỰC TIẾP cùng 1 cha (đúng như cách CaptureFocus/RemoveFocus
+        -- (ZIndex 1 vs 2 giữa các ActualTab cùng cha TabBackground) được thiết kế để
+        -- hoạt động).
+        InitInfo.Objects.MainScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+        -- Ép force auto-scale mobile NGAY TẠI ĐÂY, tại đúng điểm Scale/Size thực sự
+        -- được dùng để tạo UI - ghi đè bất kỳ giá trị Config.UI.Scale/Size nào đã tồn
+        -- tại từ trước (config đã lưu từ lần chạy cũ, giá trị mặc định static, hoặc do
+        -- đoạn set sớm ở đầu file không chạy vì lý do thứ tự/gate khác). Không phụ
+        -- thuộc bất kỳ điều kiện "chỉ set nếu chưa tồn tại" nào nữa.
+        if SpaceUI.Mobile then
+            SpaceUI.Config.UI.Size = {X = 0.7, Y = 0.9}
+            local ForceScaleCamera = workspace.CurrentCamera
+            if ForceScaleCamera then
+                local vpX = ForceScaleCamera.ViewportSize.X
+                if 0.4 >= (vpX / 1000) - 0.1 then
+                    SpaceUI.Config.UI.Scale = 0.4
+                else
+                    SpaceUI.Config.UI.Scale = (vpX / 1000) - 0.1
+                end
+            else
+                SpaceUI.Config.UI.Scale = 0.4
+            end
+        end
+
         InitInfo.Objects.MainScreenGuiScale = Instance.new("UIScale", InitInfo.Objects.MainScreenGui)
         InitInfo.Objects.MainScreenGuiScale.Scale = SpaceUI.Config.UI.Scale
             
@@ -7703,6 +7952,17 @@ do
         InitInfo.Objects.PageHolder.Size = UDim2.fromScale(1, 1)
         InitInfo.Objects.PageHolder.Position = UDim2.fromScale(0.5, 0.5)
         InitInfo.Objects.PageHolder.ClipsDescendants = true
+        -- PageHolder đã ClipsDescendants=true (cắt các trang/panel con) nhưng bản thân
+        -- nó là hình chữ nhật vuông - không có UICorner nên cắt VUÔNG, không theo đúng
+        -- góc bo 20px của MainFrame (mainframecorner ở trên). MainFrame tự nó không
+        -- ClipsDescendants (không thể bật, vì DropShadow là con trực tiếp của MainFrame
+        -- và CỐ Ý tràn ra ngoài 88px mỗi chiều để đổ bóng lan rộng - bật clip trên
+        -- MainFrame sẽ cắt cụt luôn DropShadow). Thêm UICorner cùng bán kính ngay trên
+        -- PageHolder: nội dung bên trong (panel/tab) giờ bị cắt đúng theo góc bo tròn,
+        -- không còn lòi 4 góc vuông ra ngoài viền MainFrame nữa - không đụng DropShadow.
+        local pageHolderCorner = Instance.new("UICorner", InitInfo.Objects.PageHolder)
+        pageHolderCorner.CornerRadius = UDim.new(0, 20)
+        table.insert(SpaceUI.Corners, pageHolderCorner)
     
         do
             -- TopbarPlus được tạo trong Main.Load
@@ -7909,6 +8169,17 @@ do
                 Assets.Config.Save("UI", SpaceUI.Config.UI)
             end
         end))
+
+        -- API để chỉnh Scale UI bằng tay (vd sau khi auto-scale mobile đã set giá trị
+        -- ban đầu, người dùng hoặc script khác vẫn có thể ép lại 1 giá trị cụ thể).
+        -- Dùng chung khoảng clamp 0.4 - 3 với scroll wheel để nhất quán.
+        Assets.Functions.SetScale = function(value: number)
+            value = math.clamp(value, 0.4, 3)
+            SpaceUI.Config.UI.Scale = value
+            InitInfo.Objects.MainScreenGuiScale.Scale = value
+            Assets.Config.Save("UI", SpaceUI.Config.UI)
+            return value
+        end
     
         InitInfo.Objects.NavigationButtons = Instance.new("Frame", InitInfo.Objects.MainFrame)
         InitInfo.Objects.NavigationButtons.BackgroundTransparency = 1
@@ -8836,17 +9107,39 @@ do
         end
 
         if not SpaceUI.Tabs.TabBackground then
-            SpaceUI.Tabs.TabBackground = Instance.new("ImageButton", SpaceUI.Background.Objects.MainScreenGui)
+            -- Parent PHẢI là Background.Objects.MainFrame (dashboard), không phải
+            -- MainScreenGui (toàn màn hình). So bản gốc Init_lua: TabBackground được
+            -- tạo với Night.Background.Objects.MainFrame làm cha, để Size=fromScale(1,1)
+            -- tính theo 100% dashboard chứ không phải 100% viewport. Parent sai khiến
+            -- ActualTab (0.8, 0.8 theo % của TabBackground) to/lệch hẳn so với dashboard,
+            -- và khiến hiệu ứng dim (vốn set trên TabBackground) không nằm đúng layer để
+            -- người dùng nhìn thấy nó phủ lên dashboard.
+            SpaceUI.Tabs.TabBackground = Instance.new("ImageButton", SpaceUI.Background.Objects.MainFrame)
             SpaceUI.Tabs.TabBackground.AnchorPoint = Vector2.new(0.5, 0.5)
             SpaceUI.Tabs.TabBackground.BackgroundTransparency = 1
             SpaceUI.Tabs.TabBackground.Position = UDim2.fromScale(0.5, 0.5)
             SpaceUI.Tabs.TabBackground.Size = UDim2.fromScale(1, 1)
-            SpaceUI.Tabs.TabBackground.Image = ""
+            -- Image PHẢI có asset ID thật, không được để rỗng: ImageTransparency chỉ
+            -- tạo hiệu ứng thị giác khi có Image thật để làm mờ - Image="" khiến toàn
+            -- bộ logic dim (đúng property, đúng parent, đúng Visible) không hiện ra
+            -- bất kỳ thứ gì nhìn thấy được, dù mọi giá trị bên dưới đều đổi đúng.
+            -- Asset ID lấy nguyên từ bản gốc Init_lua (Night.Tabs.TabBackground.Image).
+            SpaceUI.Tabs.TabBackground.Image = "rbxassetid://16286761786"
+            SpaceUI.Tabs.TabBackground.ScaleType = Enum.ScaleType.Stretch
             SpaceUI.Tabs.TabBackground.ImageTransparency = 1
             SpaceUI.Tabs.TabBackground.Visible = false
             SpaceUI.Tabs.TabBackground.Active = false
             SpaceUI.Tabs.TabBackground.AutoButtonColor = false
             SpaceUI.Tabs.TabBackground.ZIndex = 1
+
+            -- TabBackground là hình chữ nhật vuông góc (không tự thừa hưởng UICorner
+            -- 20px của MainFrame) - khi Image hiện lên làm lớp dim, nó tràn ra ngoài
+            -- 4 góc bo tròn của MainFrame/PageHolder, trông như 1 khối vuông chồng
+            -- lên khung Dashboard đã bo góc. Thêm UICorner cùng bán kính (giống hệt
+            -- mainframecorner/pageHolderCorner) để lớp dim khớp đúng viền Dashboard.
+            local tabBackgroundCorner = Instance.new("UICorner", SpaceUI.Tabs.TabBackground)
+            tabBackgroundCorner.CornerRadius = UDim.new(0, 20)
+            table.insert(SpaceUI.Corners, tabBackgroundCorner)
         end
 
         tab.Objects.ActualTab = Instance.new("ImageButton", SpaceUI.Tabs.TabBackground)
@@ -8881,6 +9174,8 @@ do
         PrismStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
         PrismStroke.Color = Color3.fromRGB(255, 255, 255)
         PrismStroke.Transparency = 0.85
+        tab.Objects.TabPrism = TabPrism
+        tab.Objects.PrismStroke = PrismStroke
 
         -- Shadow chỉ hiện khi tab được focus (xem CaptureFocus/RemoveFocus). Copy y
         -- hệt property của DropShadow gốc (InitInfo.Objects.DropShadow) - chỉ khác
@@ -8909,6 +9204,19 @@ do
         table.insert(SpaceUI.Connections, tab.Objects.ActualTab.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or
                input.UserInputType == Enum.UserInputType.Touch then
+                -- Bỏ qua khi Peek đang Active: theo hành vi Roblox đã xác nhận
+                -- ("GUIs Sink Input Even When Covered"), InputBegan trên GuiObject
+                -- này vẫn bắn dù bị PeekHitCatcher (con, ZIndex cao hơn) che phía
+                -- trên khi Peek đang mở - nếu không chặn, CaptureFocus(tab) sẽ chạy
+                -- SỚM và SAI THỜI ĐIỂM (lúc frame.Parent còn là MainScreenGui, chưa
+                -- được Peek trả về TabBackground), khiến SpaceUI.Tabs.FocusedTab bị
+                -- set trước - làm CaptureFocus gọi ĐÚNG LÚC trong Peek.Exit (sau khi
+                -- Parent đã ổn định) bị early-return vì FocusedTab đã trùng sẵn, và
+                -- tab được chọn trong Peek không thực sự bring-to-front được nữa.
+                -- Việc chọn card trong Peek đi qua HitCatcher/attachPeekInput riêng,
+                -- tự gọi CaptureFocus đúng cách - chặn nhánh này không ảnh hưởng gì
+                -- tới việc bấm chọn tab bên trong Peek.
+                if SpaceUI.Peek and SpaceUI.Peek.Active then return end
                 SpaceUI.Tabs.CaptureFocus(tab)
             end
         end))
@@ -8965,7 +9273,12 @@ do
         tab.Functions.Drag = function(mouseStart: Vector2 | Vector3 | nil, frameStart: UDim2, input: InputObject?)
             pcall(function()
                 if UserCamera then
-                    local Viewport = UserCamera.ViewportSize
+                    -- Dùng AbsoluteSize của PARENT THẬT (TabBackground) thay vì
+                    -- UserCamera.ViewportSize: Position scale của ActualTab là %
+                    -- theo parent, không phải % theo màn hình. Nếu TabBackground
+                    -- nhỏ hơn viewport, chia cho ViewportSize làm tab di chuyển
+                    -- chậm hơn tay/chuột thật. Cùng pattern với ResizeTab bên dưới.
+                    local Viewport = tab.Objects.ActualTab.Parent.AbsoluteSize
                     local Delta = Vector2.new(0, 0)
                     if mouseStart and input then
                         Delta = (Vector2.new(input.Position.X, input.Position.Y) - Vector2.new(mouseStart.X, mouseStart.Y))
@@ -8975,6 +9288,30 @@ do
                     local newY = frameStart.Y.Scale + (Delta.Y / Viewport.Y)
         
                     tab.Objects.ActualTab.Position = UDim2.fromScale(newX, newY)
+
+                    -- Dim dashboard (chỉ hiệu ứng mờ ImageTransparency) khi tab con nằm
+                    -- trong vùng dashboard, mờ hẳn khi tab bị kéo ra rìa/ngoài. KHÔNG còn
+                    -- đổi ZIndex xuống -100 nữa: Dashboard (PageHolder) phải LUÔN nằm dưới
+                    -- mọi tab con, không có ngoại lệ dù tab nằm trong hay ngoài rìa - việc
+                    -- hạ ZIndex TabBackground xuống -100 từng làm Dashboard nổi lên đè cả
+                    -- tab con khi không còn tab nào nằm trong vùng Dashboard nữa.
+                    local flagged = false
+                    for i,v in SpaceUI.Tabs.Tabs do
+                        if v.Objects and v.Objects.ActualTab then
+                            local Tab = v.Objects.ActualTab
+                            local TabPos = Tab.Position
+                            if TabPos.X.Scale > 0.9 or 0 > TabPos.X.Scale or TabPos.Y.Scale >= 0.95 or 0 > TabPos.Y.Scale then
+                                if not flagged then
+                                    TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
+                                end
+                            else
+                                if v.Objects.ActualTab.Visible then
+                                    TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 0.5}):Play()
+                                    flagged = true
+                                end
+                            end
+                        end
+                    end
 
                     if not SpaceUI.Config.Game.Other.TabPos then
                         SpaceUI.Config.Game.Other.TabPos = {}
@@ -8988,12 +9325,6 @@ do
         table.insert(SpaceUI.Connections, tab.Objects.DragButton.InputBegan:Connect(function(input)
             if (input.UserInputType == Enum.UserInputType.MouseButton1) or (input.UserInputType == Enum.UserInputType.Touch) then
                 SpaceUI.Tabs.CaptureFocus(tab)
-                -- Ẩn TabBackground một lần duy nhất lúc bắt đầu kéo (không cần chạy mỗi
-                -- frame di chuyển chuột như code cũ — điều đó khiến TweenService nhận
-                -- hàng chục tween chồng nhau mỗi giây và không bao giờ hội tụ, gây kẹt dim).
-                if SpaceUI.Tabs.TabBackground.ImageTransparency < 1 then
-                    TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
-                end
                 tab.Data.Dragging, InputStarting, FrameStarting = true, input.Position, tab.Objects.ActualTab.Position
                 SpaceUI.CurrntInputChangeCallback = function(input)
                     if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then  
@@ -9354,6 +9685,8 @@ do
                         tab.Objects.ActualTab.ImageTransparency = 1
                         tab.Objects.ContentCanvas.GroupTransparency = 1
                         TabScale.Scale = 1.2
+                        if tab.Objects.TabPrism then tab.Objects.TabPrism.ImageTransparency = 1 end
+                        if tab.Objects.PrismStroke then tab.Objects.PrismStroke.Transparency = 1 end
 
                         if SpaceUI.Tabs.TabBackground.ImageTransparency < 1 then
                             TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
@@ -9366,6 +9699,16 @@ do
                         table.insert(activeFadeTweens, fadeInActualTab)
                         table.insert(activeFadeTweens, fadeInContent)
                         table.insert(activeFadeTweens, scaleInTween)
+                        if tab.Objects.TabPrism then
+                            local fadeInPrism = TweenService:Create(tab.Objects.TabPrism, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 0.8})
+                            table.insert(activeFadeTweens, fadeInPrism)
+                            fadeInPrism:Play()
+                        end
+                        if tab.Objects.PrismStroke then
+                            local fadeInStroke = TweenService:Create(tab.Objects.PrismStroke, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {Transparency = 0.85})
+                            table.insert(activeFadeTweens, fadeInStroke)
+                            fadeInStroke:Play()
+                        end
                         fadeInActualTab:Play()
                         fadeInContent:Play()
                         scaleInTween:Play()
@@ -9377,6 +9720,9 @@ do
                         SpaceUI.IsAllowedToHoverTabButton = true
                         TabScale.Scale = 1
                         tab.Objects.ActualTab.ImageTransparency = SpaceUI.Config.UI.TabTransparency
+                        tab.Objects.ContentCanvas.GroupTransparency = 0
+                        if tab.Objects.TabPrism then tab.Objects.TabPrism.ImageTransparency = 0.8 end
+                        if tab.Objects.PrismStroke then tab.Objects.PrismStroke.Transparency = 0.85 end
                     end
                 else
                     if not reopen then
@@ -9386,7 +9732,9 @@ do
                         end
                     end
                     if SpaceUI.Tabs.FocusedTab == tab then
-                        SpaceUI.Tabs.RemoveFocus(tab)
+                        -- skipTween = true: cancel focus tweens mà không tạo tween
+                        -- ImageTransparency → 0, tránh conflict với close animation.
+                        SpaceUI.Tabs.RemoveFocus(tab, true)
                     end
                     SpaceUI.IsAllowedToHoverTabButton = false
                     CloseButton.Visible = false
@@ -9405,36 +9753,73 @@ do
                     if anim and SpaceUI.Config.UI.Anim  then
                         local info = TweenInfo.new(.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
                         local fadeOutActualTab = TweenService:Create(tab.Objects.ActualTab, info, {ImageTransparency = 1})
-                        local fadeOutContent = TweenService:Create(tab.Objects.ContentCanvas, TweenInfo.new(.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {GroupTransparency = 1})
+                        local fadeOutContent = TweenService:Create(tab.Objects.ContentCanvas, info, {GroupTransparency = 1})
                         local scaleOutTween = TweenService:Create(TabScale, info, {Scale = 1.2})
                         table.insert(activeFadeTweens, fadeOutActualTab)
                         table.insert(activeFadeTweens, fadeOutContent)
                         table.insert(activeFadeTweens, scaleOutTween)
+                        if tab.Objects.TabPrism then
+                            local fadeOutPrism = TweenService:Create(tab.Objects.TabPrism, info, {ImageTransparency = 1})
+                            table.insert(activeFadeTweens, fadeOutPrism)
+                            fadeOutPrism:Play()
+                        end
+                        if tab.Objects.PrismStroke then
+                            local fadeOutStroke = TweenService:Create(tab.Objects.PrismStroke, info, {Transparency = 1})
+                            table.insert(activeFadeTweens, fadeOutStroke)
+                            fadeOutStroke:Play()
+                        end
                         fadeOutActualTab:Play()
                         fadeOutContent:Play()
                         scaleOutTween:Play()
 
-                        if SpaceUI.Tabs.TabBackground.ImageTransparency < 1 then
-                            TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
+                        local flagged = false
+                        for i,v in SpaceUI.Tabs.Tabs do
+                            if v.Objects and v.Objects.ActualTab then
+                                local Tab = v.Objects.ActualTab
+                                local TabPos = Tab.Position
+                                if TabPos.X.Scale > 0.9 or 0 > TabPos.X.Scale or TabPos.Y.Scale >= 0.95 or 0 > TabPos.Y.Scale then
+                                    if not flagged then
+                                        TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
+                                        SpaceUI.IsAllowedToHoverTabButton = false
+                                    end
+                                else
+                                    if v.Objects.ActualTab.Visible and v ~= tab then
+                                        TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 0.5}):Play()
+                                        SpaceUI.IsAllowedToHoverTabButton = true
+                                        flagged = true
+                                    end
+                                end
+                            end
                         end
-                        SpaceUI.IsAllowedToHoverTabButton = true
 
-                        -- Port dung cau truc rbxmx: file goc (exe_main_module.lua) luon tween
-                        -- GroupTransparency cua CAC CanvasGroup con (dashboard_frame, main_frame,
-                        -- credits_frame, window_controls) song song voi frame cha. ContentCanvas
-                        -- la CanvasGroup con tuong duong trong SpaceUI (dong 1744) nhung truoc day
-                        -- chua bao gio duoc tween - do la ly do noi dung tab dung nguyen ro net
-                        -- roi cat phut, thay vi mo dan giong file goc. task.wait giu nguyen 0.8s.
-                        task.wait(0.8)
+                        task.wait(0.25)
                         tab.Objects.ActualTab.Visible = false
                         tab.Objects.ScrollFrame.Visible = false
                     else
                         TabScale.Scale = 1.2
                         tab.Objects.ActualTab.ImageTransparency = 1
-                        if SpaceUI.Tabs.TabBackground.ImageTransparency < 1 then
-                            TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
+                        tab.Objects.ContentCanvas.GroupTransparency = 1
+                        if tab.Objects.TabPrism then tab.Objects.TabPrism.ImageTransparency = 1 end
+                        if tab.Objects.PrismStroke then tab.Objects.PrismStroke.Transparency = 1 end
+                        local flagged = false
+                        for i,v in SpaceUI.Tabs.Tabs do
+                            if v.Objects and v.Objects.ActualTab then
+                                local Tab = v.Objects.ActualTab
+                                local TabPos = Tab.Position
+                                if TabPos.X.Scale > 0.9 or 0 > TabPos.X.Scale or TabPos.Y.Scale >= 0.95 or 0 > TabPos.Y.Scale then
+                                    if not flagged then
+                                        TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
+                                        SpaceUI.IsAllowedToHoverTabButton = false
+                                    end
+                                else
+                                    if v.Objects.ActualTab.Visible and v ~= tab then
+                                        TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 0.5}):Play()
+                                        SpaceUI.IsAllowedToHoverTabButton = true
+                                        flagged = true
+                                    end
+                                end
+                            end
                         end
-                        SpaceUI.IsAllowedToHoverTabButton = true
                         -- Không anim: ẩn ngay lập tức như hành vi cũ.
                         tab.Objects.ActualTab.Visible = false
                         tab.Objects.ScrollFrame.Visible = false
@@ -12792,6 +13177,13 @@ do
             if IsToggleAnimating then repeat task.wait() until not IsToggleAnimating end
             IsToggleAnimating = true
 
+            -- Cancel any leftover tweens from previous toggle and clear the table
+            -- so the completedTweens counter can correctly match #ToggleTweens.
+            for _, tw in ToggleTweens do
+                tw:Cancel()
+            end
+            table.clear(ToggleTweens)
+
             local tweenInfo = TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
             if visible then
                 if not SpaceUI.Background.Objects.MainFrame.Visible then  
@@ -12893,6 +13285,7 @@ do
 
                 task.wait(0.8)
                 SpaceUI.Background.Objects.MainFrame.Visible = false
+                IsToggleAnimating = false
             end
         end
     end
