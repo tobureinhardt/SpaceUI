@@ -9112,23 +9112,11 @@ do
         end
 
         if not SpaceUI.Tabs.TabBackground then
-            -- Parent PHẢI là Background.Objects.MainFrame (dashboard), không phải
-            -- MainScreenGui (toàn màn hình). So bản gốc Init_lua: TabBackground được
-            -- tạo với Night.Background.Objects.MainFrame làm cha, để Size=fromScale(1,1)
-            -- tính theo 100% dashboard chứ không phải 100% viewport. Parent sai khiến
-            -- ActualTab (0.8, 0.8 theo % của TabBackground) to/lệch hẳn so với dashboard,
-            -- và khiến hiệu ứng dim (vốn set trên TabBackground) không nằm đúng layer để
-            -- người dùng nhìn thấy nó phủ lên dashboard.
-            SpaceUI.Tabs.TabBackground = Instance.new("ImageButton", SpaceUI.Background.Objects.MainFrame)
+            SpaceUI.Tabs.TabBackground = Instance.new("ImageButton", SpaceUI.Background.Objects.MainScreenGui)
             SpaceUI.Tabs.TabBackground.AnchorPoint = Vector2.new(0.5, 0.5)
             SpaceUI.Tabs.TabBackground.BackgroundTransparency = 1
             SpaceUI.Tabs.TabBackground.Position = UDim2.fromScale(0.5, 0.5)
             SpaceUI.Tabs.TabBackground.Size = UDim2.fromScale(1, 1)
-            -- Image PHẢI có asset ID thật, không được để rỗng: ImageTransparency chỉ
-            -- tạo hiệu ứng thị giác khi có Image thật để làm mờ - Image="" khiến toàn
-            -- bộ logic dim (đúng property, đúng parent, đúng Visible) không hiện ra
-            -- bất kỳ thứ gì nhìn thấy được, dù mọi giá trị bên dưới đều đổi đúng.
-            -- Asset ID lấy nguyên từ bản gốc Init_lua (Night.Tabs.TabBackground.Image).
             SpaceUI.Tabs.TabBackground.Image = "rbxassetid://16286761786"
             SpaceUI.Tabs.TabBackground.ScaleType = Enum.ScaleType.Stretch
             SpaceUI.Tabs.TabBackground.ImageTransparency = 1
@@ -9136,15 +9124,6 @@ do
             SpaceUI.Tabs.TabBackground.Active = false
             SpaceUI.Tabs.TabBackground.AutoButtonColor = false
             SpaceUI.Tabs.TabBackground.ZIndex = 1
-
-            -- TabBackground là hình chữ nhật vuông góc (không tự thừa hưởng UICorner
-            -- 20px của MainFrame) - khi Image hiện lên làm lớp dim, nó tràn ra ngoài
-            -- 4 góc bo tròn của MainFrame/PageHolder, trông như 1 khối vuông chồng
-            -- lên khung Dashboard đã bo góc. Thêm UICorner cùng bán kính (giống hệt
-            -- mainframecorner/pageHolderCorner) để lớp dim khớp đúng viền Dashboard.
-            local tabBackgroundCorner = Instance.new("UICorner", SpaceUI.Tabs.TabBackground)
-            tabBackgroundCorner.CornerRadius = UDim.new(0, 20)
-            table.insert(SpaceUI.Corners, tabBackgroundCorner)
         end
 
         tab.Objects.ActualTab = Instance.new("ImageButton", SpaceUI.Tabs.TabBackground)
@@ -11194,13 +11173,13 @@ ModuleData.onToggles = {}
 
             -- ── 4. Dropdown (Hỗ trợ Single-Select & Multi-Select, cập nhật tick mượt mà & có mô tả) ──
             ModuleData.Functions.Settings.Dropdown = function(data)
-                local isMulti = (data and data.MultiSelect == true) or (data and data.SelectLimit and data.SelectLimit > 1) or (data and data.MaxLimit and data.MaxLimit > 1) or (typeof(data and data.Default) == "table")
+                local isMulti = (data and data.MultiSelect == true) or (data and data.SelectLimit and data.SelectLimit > 1) or (typeof(data and data.Default) == "table")
 
                 local DropdownData = {
                     Name = data and data.Name or "Dropdown",
                     Description = data and data.Description or nil,
                     Default = data and data.Default or (isMulti and {} or ""),
-                    SelectLimit = data and (data.SelectLimit or data.MaxLimit) or (isMulti and 9999 or 1),
+                    SelectLimit = data and data.SelectLimit or (isMulti and 9999 or 1),
                     MultiSelect = isMulti,
                     Options = data and data.Options or {},
                     Flag = data and data.Flag or "Dropdown",
