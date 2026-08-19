@@ -6682,7 +6682,10 @@ do
         if SpaceUI.Tabs.FocusedTab == tab then return end
 
         SpaceUI.Tabs.FocusedTab = tab
-        tab.Objects.ActualTab.ZIndex = 2
+        if tab.Objects.ActualTab.Parent == SpaceUI.Tabs.TabBackground then
+            tab.Objects.ActualTab.Parent = nil
+            tab.Objects.ActualTab.Parent = SpaceUI.Tabs.TabBackground
+        end
         -- Tab được focus: đục đúng theo config gốc (không solid). Shadow LUÔN giữ
         -- ẩn (1, không phải 0.1 như trước) - hiệu ứng shadow khi focus không hợp
         -- thẩm mỹ theo yêu cầu, bỏ hẳn dù logic ZIndex/ImageTransparency chính vẫn
@@ -6701,7 +6704,6 @@ do
         if SpaceUI.Tabs.FocusedTab == tab then
             SpaceUI.Tabs.FocusedTab = nil
         end
-        tab.Objects.ActualTab.ZIndex = 1
 
         -- Auto-skip tween khi tab đang đóng hoặc đã đóng: close animation
         -- đang tween ImageTransparency → 1, nếu ta tween → 0 ở đây sẽ
@@ -6835,7 +6837,7 @@ do
     -- là nơi bắt drag-scroll ngang: vì nó luôn ở TRÊN CÙNG, input bắt đầu từ bất
     -- kỳ card nào (không chỉ vùng trống) đều phải qua đây trước - overlay phía
     -- sau sẽ không bao giờ nhận được input nếu chỉ gắn ở overlay.
-    local PEEK_HITCATCHER_ZINDEX = 5000
+    local PEEK_HITCATCHER_ZINDEX = 100
     local DRAG_THRESHOLD_PX = 8 -- di chuyển quá ngưỡng này mới coi là kéo (scroll), dưới đó là tap (chọn card)
 
     local function attachHitCatcher(card)
@@ -7113,21 +7115,9 @@ do
         if chosen then
             if chosen.Tab then
                 SpaceUI.Tabs.CaptureFocus(chosen.Tab)
-                if SpaceUI.Tabs.TabBackground then
-                    SpaceUI.Tabs.TabBackground.ZIndex = 2
-                end
-                if SpaceUI.Background and SpaceUI.Background.Objects and SpaceUI.Background.Objects.MainFrame then
-                    SpaceUI.Background.Objects.MainFrame.ZIndex = 1
-                end
             elseif chosen.IsDashboard then
                 if SpaceUI.Tabs.FocusedTab then
                     SpaceUI.Tabs.RemoveFocus(SpaceUI.Tabs.FocusedTab)
-                end
-                if SpaceUI.Background and SpaceUI.Background.Objects and SpaceUI.Background.Objects.MainFrame then
-                    SpaceUI.Background.Objects.MainFrame.ZIndex = 2
-                end
-                if SpaceUI.Tabs.TabBackground then
-                    SpaceUI.Tabs.TabBackground.ZIndex = 1
                 end
             end
         end
@@ -7322,7 +7312,7 @@ do
                     -- thị đúng dù nằm dưới MainScreenGuiScale.
                     frame.Parent = SpaceUI.Background.Objects.MainScreenGui
 
-                    frame.ZIndex = 500 + globalIndex
+                    frame.ZIndex = 1
                     -- KHÔNG còn gọi boostDescendantZIndex ở đây nữa: với
                     -- ZIndexBehavior = Sibling đã bật cho MainScreenGui, HitCatcher
                     -- (ZIndex=5000, con trực tiếp của frame) tự động nổi trên mọi
@@ -7909,7 +7899,7 @@ do
         -- sánh giữa các con TRỰC TIẾP cùng 1 cha (đúng như cách CaptureFocus/RemoveFocus
         -- (ZIndex 1 vs 2 giữa các ActualTab cùng cha TabBackground) được thiết kế để
         -- hoạt động).
-        InitInfo.Objects.MainScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+        InitInfo.Objects.MainScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
 
         -- Ép force auto-scale mobile NGAY TẠI ĐÂY, tại đúng điểm Scale/Size thực sự
         -- được dùng để tạo UI - ghi đè bất kỳ giá trị Config.UI.Scale/Size nào đã tồn
@@ -7945,6 +7935,7 @@ do
         InitInfo.Objects.MainFrame.ImageTransparency = 1
         InitInfo.Objects.MainFrame.ScaleType = Enum.ScaleType.Crop
         InitInfo.Objects.MainFrame.Visible = false
+        InitInfo.Objects.MainFrame.ZIndex = 1
         local mainframecorner = Instance.new("UICorner", InitInfo.Objects.MainFrame)
         mainframecorner.CornerRadius = UDim.new(0, 20)
         InitInfo.Objects.MainFrameScale = Instance.new("UIScale", InitInfo.Objects.MainFrame)
@@ -7979,7 +7970,7 @@ do
         InitInfo.Objects.DashboardDim.Image = "rbxassetid://16286761786"
         InitInfo.Objects.DashboardDim.ScaleType = Enum.ScaleType.Stretch
         InitInfo.Objects.DashboardDim.ImageTransparency = 1
-        InitInfo.Objects.DashboardDim.ZIndex = 50
+        InitInfo.Objects.DashboardDim.ZIndex = 2
         local dashboardDimCorner = Instance.new("UICorner", InitInfo.Objects.DashboardDim)
         dashboardDimCorner.CornerRadius = UDim.new(0, 20)
         table.insert(SpaceUI.Corners, dashboardDimCorner)
@@ -8035,7 +8026,7 @@ do
                 MobileButtonInfo.Instances.MainBG.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular)
                 MobileButtonInfo.Instances.MainBG.Text = MobileButtonInfo.Name
                 MobileButtonInfo.Instances.MainBG.TextScaled = true
-                MobileButtonInfo.Instances.MainBG.ZIndex = 1000000
+                MobileButtonInfo.Instances.MainBG.ZIndex = 1000
                 MobileButtonInfo.Instances.MainBG.TextColor3 = Color3.fromRGB(255,255,255)
                 MobileButtonInfo.Instances.MainBG.Draggable = true
     
@@ -8045,7 +8036,7 @@ do
                 button.AnchorPoint = Vector2.new(0.5, 0.5)
                 button.Size = UDim2.fromScale(1, 1)
                 button.Position = UDim2.fromScale(0.5, 0.5)
-                button.ZIndex = 10000000
+                button.ZIndex = 1001
                 button.ImageTransparency = 1
                 button.BackgroundTransparency = 1
     
@@ -8168,7 +8159,7 @@ do
         local ZoomFrame = Instance.new("Frame", InitInfo.Objects.MainFrame)
         ZoomFrame.Size = UDim2.fromScale(1, 1)
         ZoomFrame.BackgroundTransparency = 1
-        ZoomFrame.ZIndex = 100000
+        ZoomFrame.ZIndex = 6
         table.insert(SpaceUI.Connections, ZoomFrame.MouseWheelForward:Connect(function()
             if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) or UserInputService:IsKeyDown(Enum.KeyCode.RightControl) and SpaceUI.Background.Objects.MainFrame.Visible then
                 SpaceUI.Config.UI.Scale = SpaceUI.Config.UI.Scale + 0.05
@@ -9139,7 +9130,7 @@ do
             SpaceUI.Tabs.TabBackground.Visible = false
             SpaceUI.Tabs.TabBackground.Active = false
             SpaceUI.Tabs.TabBackground.AutoButtonColor = false
-            SpaceUI.Tabs.TabBackground.ZIndex = 1
+            SpaceUI.Tabs.TabBackground.ZIndex = 3
         end
 
         local defaultTabW = (SpaceUI.Config.UI.Size and SpaceUI.Config.UI.Size.X or 0.7) * 0.8
@@ -9160,7 +9151,7 @@ do
         tab.Objects.ActualTab.SliceScale = 0.1
         tab.Objects.ActualTab.AutoButtonColor = false
         tab.Objects.ActualTab.Visible = false
-        tab.Objects.ActualTab.ZIndex = 1
+        tab.Objects.ActualTab.ZIndex = 3
 
         -- Viền glow cố định quanh mọi tab, luôn hiện bất kể focus/unfocus (nguyên bản
         -- gốc bị mất trong quá trình sửa ZIndex trước đó - khôi phục y hệt).
@@ -9169,7 +9160,7 @@ do
         TabPrism.BackgroundTransparency = 1
         TabPrism.Position = UDim2.fromScale(0.5, 0.5)
         TabPrism.Size = UDim2.new(1, 20, 1, 20)
-        TabPrism.ZIndex = 1000
+        TabPrism.ZIndex = 3
         TabPrism.Image = "rbxassetid://16255699706"
         TabPrism.ImageColor3 = Color3.fromRGB(143, 143, 143)
         TabPrism.ImageTransparency = 0.8
@@ -9232,7 +9223,7 @@ do
         tab.Objects.ContentCanvas.BackgroundTransparency = 1
         tab.Objects.ContentCanvas.Position = UDim2.fromScale(0.5, 0.5)
         tab.Objects.ContentCanvas.Size = UDim2.fromScale(1, 1)
-        tab.Objects.ContentCanvas.ZIndex = 1
+        tab.Objects.ContentCanvas.ZIndex = 3
 
         if not SpaceUI.Config.Game.Other.TabPos then 
             SpaceUI.Config.Game.Other.TabPos = {}
@@ -9253,7 +9244,7 @@ do
         tab.Objects.TabDragCanvas.BackgroundTransparency = 1
         tab.Objects.TabDragCanvas.Position = UDim2.fromScale(0.5, 0.5)
         tab.Objects.TabDragCanvas.Size = UDim2.fromScale(1, 1)
-        tab.Objects.TabDragCanvas.ZIndex = 10000000
+        tab.Objects.TabDragCanvas.ZIndex = 10
 
         tab.Objects.DragButton = Instance.new("ImageButton", tab.Objects.TabDragCanvas)
         tab.Objects.DragButton.AnchorPoint = Vector2.new(0.5, 0)
@@ -9499,7 +9490,7 @@ do
         TabHeader.TextColor3 = Color3.fromRGB(255, 255, 255)
         TabHeader.TextSize = 22
         TabHeader.TextTransparency = 0.1
-        TabHeader.ZIndex = 2
+        TabHeader.ZIndex = 5
 
         local CloseButton = Instance.new("ImageButton", tab.Objects.ContentCanvas)
         CloseButton.AnchorPoint = Vector2.new(1, 0)
@@ -9507,7 +9498,7 @@ do
         CloseButton.Position = UDim2.new(1, -5, 0, 5)
         CloseButton.Size = UDim2.fromOffset(30, 30)
         CloseButton.AutoButtonColor = false
-        CloseButton.ZIndex = 2
+        CloseButton.ZIndex = 5
         Instance.new("UICorner", CloseButton).CornerRadius = UDim.new(1, 0)
         tab.Objects.CloseButton = CloseButton
 
@@ -9518,7 +9509,7 @@ do
         CloseButtonIcon.Size = UDim2.fromOffset(16, 16)
         CloseButtonIcon.Image = "rbxassetid://11293981586"
         CloseButtonIcon.ImageTransparency = 0.2
-        CloseButtonIcon.ZIndex = 2
+        CloseButtonIcon.ZIndex = 6
         CloseButtonIcon.ScaleType = Enum.ScaleType.Fit
 
         tab.Objects.ScrollFrame = Instance.new("ScrollingFrame", tab.Objects.ContentCanvas)
@@ -9532,7 +9523,7 @@ do
         tab.Objects.ScrollFrame.ScrollingDirection = Enum.ScrollingDirection.Y
         tab.Objects.ScrollFrame.VerticalScrollBarPosition = Enum.VerticalScrollBarPosition.Right
         tab.Objects.ScrollFrame.BorderSizePixel = 0
-        tab.Objects.ScrollFrame.ZIndex = 2
+        tab.Objects.ScrollFrame.ZIndex = 5
 
         local ScrollFrameList = Instance.new("UIListLayout", tab.Objects.ScrollFrame)
         ScrollFrameList.SortOrder = Enum.SortOrder.LayoutOrder
@@ -9545,7 +9536,7 @@ do
         ScrollFramePad.PaddingRight = UDim.new(0, 15)
 
         local SearchBar = Instance.new("Frame", tab.Objects.ScrollFrame)
-        SearchBar.ZIndex = 2
+        SearchBar.ZIndex = 5
         SearchBar.AnchorPoint = Vector2.new(0.5, 0)
         SearchBar.BackgroundTransparency = 0.7
         SearchBar.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
@@ -9570,7 +9561,7 @@ do
         SearchBarDepth.ImageColor3 = Color3.fromRGB(255, 255, 255)
         SearchBarDepth.ScaleType = Enum.ScaleType.Slice
         SearchBarDepth.SliceCenter = Rect.new(206, 206, 206, 206)
-        SearchBarDepth.ZIndex = 2
+        SearchBarDepth.ZIndex = 5
 
         local MainSearchBarTextBox = Instance.new("TextBox", SearchBar)
         MainSearchBarTextBox.BackgroundTransparency = 1
@@ -9585,7 +9576,7 @@ do
         MainSearchBarTextBox.TextXAlignment = Enum.TextXAlignment.Left
         MainSearchBarTextBox.Text = ""
         MainSearchBarTextBox.ClearTextOnFocus = false
-        MainSearchBarTextBox.ZIndex = 2
+        MainSearchBarTextBox.ZIndex = 5
 
         local SearchBarIcon = Instance.new("ImageLabel", SearchBar)
         SearchBarIcon.AnchorPoint = Vector2.new(0, 0.5)
@@ -9596,7 +9587,7 @@ do
         SearchBarIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
         SearchBarIcon.ImageTransparency = 0.5
         SearchBarIcon.ScaleType = Enum.ScaleType.Fit
-        SearchBarIcon.ZIndex = 2
+        SearchBarIcon.ZIndex = 5
 
         local SearchBarClear = Instance.new("ImageButton", SearchBar)
         SearchBarClear.AnchorPoint = Vector2.new(1, 0.5)
@@ -9604,7 +9595,7 @@ do
         SearchBarClear.Position = UDim2.fromScale(1, 0.5)
         SearchBarClear.Size = UDim2.fromOffset(40, 40)
         SearchBarClear.AutoButtonColor = false
-        SearchBarClear.ZIndex = 2
+        SearchBarClear.ZIndex = 5
 
         local SearchBarClearIcon = Instance.new("ImageLabel", SearchBarClear)
         SearchBarClearIcon.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -9615,6 +9606,7 @@ do
         SearchBarClearIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
         SearchBarClearIcon.ImageTransparency = 0.5
         SearchBarClearIcon.ScaleType = Enum.ScaleType.Fit
+        SearchBarClearIcon.ZIndex = 6
 
         local SearchBarClearScale = Instance.new("UIScale", SearchBarClearIcon)
         SearchBarClearScale.Scale = 0
@@ -9799,7 +9791,7 @@ do
                             end
                         end
 
-                        task.wait(0.25)
+                        task.wait(0.20)
                         tab.Objects.ActualTab.Visible = false
                         tab.Objects.ScrollFrame.Visible = false
                     else
@@ -9958,7 +9950,7 @@ do
             ModuleData.Objects.Module.AutoButtonColor = false
             ModuleData.Objects.Module.BackgroundTransparency = 0.95
             ModuleData.Objects.Module.Size = UDim2.new(1, 0, 0, 65)
-            ModuleData.Objects.Module.ZIndex = 2
+            ModuleData.Objects.Module.ZIndex = 5
             ModuleData.Objects.Module.ImageTransparency = 1
             ModuleData.Objects.Module.ClipsDescendants = true
             Instance.new("UICorner", ModuleData.Objects.Module).CornerRadius = UDim.new(0, 15)
@@ -9977,7 +9969,7 @@ do
             ModuleIcon.Image = ModuleData.Icon
             ModuleIcon.ImageColor3 = Color3.fromRGB(255,255,255)
             ModuleIcon.ScaleType = Enum.ScaleType.Fit
-            ModuleIcon.ZIndex = 2
+            ModuleIcon.ZIndex = 5
 
             local ModuleDetails = Instance.new("Frame", ModuleData.Objects.Module)
             ModuleDetails.BackgroundTransparency = 1
@@ -9992,7 +9984,7 @@ do
             local NameText = Instance.new("TextLabel", ModuleDetails)
             NameText.BackgroundTransparency = 1
             NameText.Size = UDim2.fromScale(1, 0.35)
-            NameText.ZIndex = 2
+            NameText.ZIndex = 5
             NameText.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Medium)
             NameText.Text = ModuleData.Name
             NameText.TextColor3 = Color3.fromRGB(255,255,255)
@@ -10005,7 +9997,7 @@ do
             KeybindInfoText.AnchorPoint = Vector2.new(0.5, 1)
             KeybindInfoText.BackgroundTransparency = 1
             KeybindInfoText.Size = UDim2.new(0.9, 0, 0, 15)
-            KeybindInfoText.ZIndex = 2
+            KeybindInfoText.ZIndex = 5
             KeybindInfoText.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular)
             KeybindInfoText.Text = "No Keybind Set"
             KeybindInfoText.TextColor3 = Color3.fromRGB(255,255,255)
@@ -10026,7 +10018,7 @@ do
             KeybindInfoIcon.ImageColor3 = Color3.fromRGB(255,255,255)
             KeybindInfoIcon.ImageTransparency = 0.5
             KeybindInfoIcon.ScaleType = Enum.ScaleType.Fit
-            KeybindInfoIcon.ZIndex = 2
+            KeybindInfoIcon.ZIndex = 5
 
             local Requirements = Instance.new("Frame", ModuleData.Objects.Module)
             Requirements.AnchorPoint = Vector2.new(0.5, 0)
@@ -10047,7 +10039,7 @@ do
             ToggleButton.BackgroundColor3 = Color3.fromRGB(43, 43, 43)
             ToggleButton.Position = UDim2.fromOffset(0, 55)
             ToggleButton.Size = UDim2.fromOffset(40, 40)
-            ToggleButton.ZIndex = 2
+            ToggleButton.ZIndex = 5
             Instance.new("UICorner", ToggleButton).CornerRadius = UDim.new(1, 0)
 
             local ToggleButtonPadding = Instance.new("UIPadding", ToggleButton)
@@ -10057,7 +10049,7 @@ do
             ToggleButtonEnabledIcon.BackgroundTransparency = 1
             ToggleButtonEnabledIcon.Position = UDim2.fromScale(0, 0.25)
             ToggleButtonEnabledIcon.Size = UDim2.fromOffset(20, 20)
-            ToggleButtonEnabledIcon.ZIndex = 2
+            ToggleButtonEnabledIcon.ZIndex = 6
             ToggleButtonEnabledIcon.Image = "rbxassetid://3926305904"
             ToggleButtonEnabledIcon.ImageColor3 = Color3.fromRGB(255,255,255)
             ToggleButtonEnabledIcon.ImageRectOffset = Vector2.new(284, 4)
@@ -10087,7 +10079,7 @@ do
             SettingsButton.TextSize = 16
             SettingsButton.TextTransparency = 0.2
             SettingsButton.TextXAlignment = Enum.TextXAlignment.Left
-            SettingsButton.ZIndex = 2
+            SettingsButton.ZIndex = 5
             SettingsButton.Visible = false
             Instance.new("UICorner", SettingsButton).CornerRadius = UDim.new(0, 12)
 
@@ -10105,14 +10097,14 @@ do
             SettingsButtonIcon.ImageColor3 = Color3.fromRGB(255,255,255)
             SettingsButtonIcon.ImageTransparency = 0.5
             SettingsButtonIcon.ScaleType = Enum.ScaleType.Fit
-            SettingsButtonIcon.ZIndex = 2
+            SettingsButtonIcon.ZIndex = 6
 
             local Backbutton = Instance.new("ImageButton", tab.Objects.ContentCanvas)
             Backbutton.BackgroundColor3 = Color3.fromRGB(SpaceUI.Config.UI.TabColor.value1 + 20, SpaceUI.Config.UI.TabColor.value2 + 20, SpaceUI.Config.UI.TabColor.value3 + 20)
             Backbutton.Position = UDim2.new(1.8, 0, 0, 5)
             Backbutton.Size = UDim2.fromOffset(30, 30)
             Backbutton.AutoButtonColor = false
-            Backbutton.ZIndex = 2
+            Backbutton.ZIndex = 5
             Backbutton.Visible = false
             Instance.new("UICorner", Backbutton).CornerRadius = UDim.new(1, 0)
             ModuleData.Objects.BackButton = Backbutton
@@ -10124,7 +10116,7 @@ do
             BackButtonIcon.Size = UDim2.fromOffset(16, 16)
             BackButtonIcon.Image = "rbxassetid://11293981980"
             BackButtonIcon.ImageTransparency = 0.2
-            BackButtonIcon.ZIndex = 2
+            BackButtonIcon.ZIndex = 6
             BackButtonIcon.ScaleType = Enum.ScaleType.Fit
 
             local ModuleSettingsList = Instance.new("UIListLayout", nil)
@@ -10141,7 +10133,7 @@ do
             KeyBindButton.BackgroundTransparency = SpaceUI.Config.UI.KeybindTransparency
             KeyBindButton.Position = UDim2.new(0.5,0,1,-20)
             KeyBindButton.Size = UDim2.new(1, -40, 0, 45)
-            KeyBindButton.ZIndex = 2
+            KeyBindButton.ZIndex = 5
             KeyBindButton.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.SemiBold)
             KeyBindButton.Text = "CLICK TO BIND"
             KeyBindButton.TextColor3 = Color3.fromRGB(255,255,255)
@@ -10572,7 +10564,7 @@ ModuleData.onToggles = {}
                 end
                 Backbutton.Visible = false
                 CloseButton.Visible = true
-                ModuleData.Objects.Module.ZIndex = 2
+                ModuleData.Objects.Module.ZIndex = 5
                 tab.Objects.ScrollFrame.Position = UDim2.new(-1.8, 0, 0.04, 50)
                 TabHeader.Position = UDim2.fromScale(-1.8, 0.04)
                 ModuleSettingsList.Parent = nil
@@ -10632,7 +10624,7 @@ ModuleData.onToggles = {}
                 descLabel.AutomaticSize = Enum.AutomaticSize.Y
                 descLabel.TextXAlignment = Enum.TextXAlignment.Left
                 descLabel.TextYAlignment = Enum.TextYAlignment.Top
-                descLabel.ZIndex = 2
+                descLabel.ZIndex = 5
                 descLabel.Visible = false
 
                 ModuleData.Data.SettingOrder = (ModuleData.Data.SettingOrder or 0) + 1
@@ -10704,7 +10696,7 @@ ModuleData.onToggles = {}
                 toggleBtn.SliceScale = 0.05
                 toggleBtn.AutoButtonColor = false
                 toggleBtn.Visible = false
-                toggleBtn.ZIndex = 2
+                toggleBtn.ZIndex = 5
                 MiniToggleData.Objects.MainInstance = toggleBtn
 
                 local descLabel = attachComponentDescription(MiniToggleData, MiniToggleData.Flag)
@@ -10726,7 +10718,7 @@ ModuleData.onToggles = {}
                 label.TextXAlignment = Enum.TextXAlignment.Left
                 label.TextYAlignment = Enum.TextYAlignment.Center
                 label.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular)
-                label.ZIndex = 2
+                label.ZIndex = 5
 
                 local checkIcon = Instance.new("ImageLabel", toggleBtn)
                 checkIcon.Name = "check"
@@ -10737,7 +10729,7 @@ ModuleData.onToggles = {}
                 checkIcon.BackgroundTransparency = 1
                 checkIcon.ImageTransparency = MiniToggleData.Default and 0.2 or 1
                 checkIcon.ScaleType = Enum.ScaleType.Fit
-                checkIcon.ZIndex = 3
+                checkIcon.ZIndex = 6
 
                 local checkScale = Instance.new("UIScale", checkIcon)
                 checkScale.Scale = MiniToggleData.Default and 1 or 0.6
@@ -10861,7 +10853,7 @@ ModuleData.onToggles = {}
                 sliderContainer.BorderSizePixel = 0
                 sliderContainer.ClipsDescendants = false
                 sliderContainer.Visible = false
-                sliderContainer.ZIndex = 2
+                sliderContainer.ZIndex = 5
                 Instance.new("UICorner", sliderContainer).CornerRadius = UDim.new(1, 0)
                 SliderData.Objects.MainInstance = sliderContainer
 
@@ -10877,7 +10869,7 @@ ModuleData.onToggles = {}
                 depthBg.Image = "rbxassetid://16264857615"
                 depthBg.ScaleType = Enum.ScaleType.Slice
                 depthBg.SliceCenter = Rect.new(206, 206, 206, 206)
-                depthBg.ZIndex = 2
+                depthBg.ZIndex = 5
 
                 -- Hiệu ứng gradient chuyển động mượt mà
                 local sliderGradient = Instance.new("UIGradient", sliderContainer)
@@ -10897,7 +10889,7 @@ ModuleData.onToggles = {}
                 minLabel.TextSize = 14
                 minLabel.TextXAlignment = Enum.TextXAlignment.Left
                 minLabel.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular)
-                minLabel.ZIndex = 3
+                minLabel.ZIndex = 6
 
                 local maxLabel = Instance.new("TextLabel", sliderContainer)
                 maxLabel.Name = "max_value"
@@ -10911,7 +10903,7 @@ ModuleData.onToggles = {}
                 maxLabel.TextSize = 14
                 maxLabel.TextXAlignment = Enum.TextXAlignment.Right
                 maxLabel.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular)
-                maxLabel.ZIndex = 3
+                maxLabel.ZIndex = 6
 
                 local currentValLabel = Instance.new("TextLabel", sliderContainer)
                 currentValLabel.Name = "current_value"
@@ -10922,7 +10914,7 @@ ModuleData.onToggles = {}
                 currentValLabel.TextSize = 15
                 currentValLabel.TextXAlignment = Enum.TextXAlignment.Center
                 currentValLabel.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Medium)
-                currentValLabel.ZIndex = 3
+                currentValLabel.ZIndex = 6
 
                 -- Nút kéo Thumb Handle căn lề padding mép trong
                 local thumb = Instance.new("TextButton", sliderContainer)
@@ -10933,7 +10925,7 @@ ModuleData.onToggles = {}
                 thumb.BackgroundTransparency = 0.1
                 thumb.Text = ""
                 thumb.AutoButtonColor = false
-                thumb.ZIndex = 4
+                thumb.ZIndex = 7
                 Instance.new("UICorner", thumb).CornerRadius = UDim.new(1, 0)
 
                 local currentVal = tonumber(SliderData.Default.Value2) or SliderData.Min
@@ -11086,7 +11078,7 @@ ModuleData.onToggles = {}
                 inputFrame.BackgroundTransparency = 0.7
                 inputFrame.BorderSizePixel = 0
                 inputFrame.Visible = false
-                inputFrame.ZIndex = 2
+                inputFrame.ZIndex = 5
                 Instance.new("UICorner", inputFrame).CornerRadius = UDim.new(1, 0)
                 TextBoxData.Objects.MainInstance = inputFrame
 
@@ -11103,7 +11095,7 @@ ModuleData.onToggles = {}
                 depth.ImageColor3 = Color3.fromRGB(255, 255, 255)
                 depth.ScaleType = Enum.ScaleType.Slice
                 depth.SliceCenter = Rect.new(206, 206, 206, 206)
-                depth.ZIndex = 2
+                depth.ZIndex = 5
 
                 -- Hiệu ứng gradient chuyển động rực rỡ
                 local focusedBg = Instance.new("UIGradient", inputFrame)
@@ -11126,7 +11118,7 @@ ModuleData.onToggles = {}
                 tb.TextSize = 16
                 tb.TextTransparency = 0.2
                 tb.TextXAlignment = Enum.TextXAlignment.Left
-                tb.ZIndex = 3
+                tb.ZIndex = 6
 
                 local tbLoopTween
                 local tbFadeTween
@@ -11258,7 +11250,7 @@ ModuleData.onToggles = {}
                 navRow.SliceScale = 0.05
                 navRow.AutoButtonColor = false
                 navRow.Visible = false
-                navRow.ZIndex = 2
+                navRow.ZIndex = 5
                 DropdownData.Objects.MainInstance = navRow
 
                 local descLabel = attachComponentDescription(DropdownData, DropdownData.Flag)
@@ -11277,7 +11269,7 @@ ModuleData.onToggles = {}
                 titleLabel.TextTransparency = 0.2
                 titleLabel.TextXAlignment = Enum.TextXAlignment.Left
                 titleLabel.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular)
-                titleLabel.ZIndex = 2
+                titleLabel.ZIndex = 5
 
                 -- Chừa chỗ cho tên hiển thị rộng rãi, không đè lên mũi tên >
                 local valueLabel = Instance.new("TextLabel", navRow)
@@ -11291,7 +11283,7 @@ ModuleData.onToggles = {}
                 valueLabel.TextSize = 14
                 valueLabel.TextXAlignment = Enum.TextXAlignment.Right
                 valueLabel.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular)
-                valueLabel.ZIndex = 2
+                valueLabel.ZIndex = 5
 
                 -- Icon mũi tên > giống widget settings button
                 local arrowIcon = Instance.new("ImageLabel", navRow)
@@ -11304,7 +11296,7 @@ ModuleData.onToggles = {}
                 arrowIcon.BackgroundTransparency = 1
                 arrowIcon.ImageTransparency = 0.5
                 arrowIcon.ScaleType = Enum.ScaleType.Fit
-                arrowIcon.ZIndex = 2
+                arrowIcon.ZIndex = 5
 
                 -- Subpage nằm trong ContentCanvas
                 local subpage = Instance.new("Frame", tab.Objects.ContentCanvas)
@@ -11664,7 +11656,7 @@ ModuleData.onToggles = {}
                 btn.SliceScale = 0.05
                 btn.AutoButtonColor = false
                 btn.Visible = false
-                btn.ZIndex = 2
+                btn.ZIndex = 5
                 ButtonData.Objects.MainInstance = btn
 
                 local descLabel = attachComponentDescription(ButtonData, ButtonData.Flag)
@@ -11682,7 +11674,7 @@ ModuleData.onToggles = {}
                 label.TextTransparency = 0.2
                 label.TextXAlignment = Enum.TextXAlignment.Left
                 label.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Medium)
-                label.ZIndex = 2
+                label.ZIndex = 5
 
                 btn.MouseButton1Click:Connect(function()
                     ButtonData.Callback(ButtonData)
@@ -11739,7 +11731,7 @@ ModuleData.onToggles = {}
                 descLabel.TextYAlignment = Enum.TextYAlignment.Top
                 descLabel.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular)
                 descLabel.Visible = false
-                descLabel.ZIndex = 2
+                descLabel.ZIndex = 5
                 descLabel.LayoutOrder = ModuleData.Data.SettingOrder
 
                 local descPad = Instance.new("UIPadding", descLabel)
@@ -11787,7 +11779,7 @@ ModuleData.onToggles = {}
                 secLabel.TextTransparency = 0.4
                 secLabel.TextXAlignment = Enum.TextXAlignment.Left
                 secLabel.Visible = false
-                secLabel.ZIndex = 2
+                secLabel.ZIndex = 5
                 secLabel.LayoutOrder = ModuleData.Data.SettingOrder
                 SectionData.Objects.MainInstance = secLabel
 
@@ -11834,7 +11826,7 @@ ModuleData.onToggles = {}
                 keybindRow.SliceScale = 0.05
                 keybindRow.AutoButtonColor = false
                 keybindRow.Visible = false
-                keybindRow.ZIndex = 2
+                keybindRow.ZIndex = 5
                 KeybindData.Objects.MainInstance = keybindRow
 
                 local descLabel = attachComponentDescription(KeybindData, KeybindData.Flag)
@@ -11852,7 +11844,7 @@ ModuleData.onToggles = {}
                 nameLabel.TextTransparency = 0.2
                 nameLabel.TextXAlignment = Enum.TextXAlignment.Left
                 nameLabel.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular)
-                nameLabel.ZIndex = 2
+                nameLabel.ZIndex = 5
 
                 local bindBox = Instance.new("TextButton", keybindRow)
                 bindBox.AnchorPoint = Vector2.new(1, 0.5)
@@ -11866,7 +11858,7 @@ ModuleData.onToggles = {}
                 bindBox.TextSize = 13
                 bindBox.TextTransparency = 0.2
                 bindBox.AutoButtonColor = false
-                bindBox.ZIndex = 3
+                bindBox.ZIndex = 6
                 Instance.new("UICorner", bindBox).CornerRadius = UDim.new(0, 6)
 
                 bindBox.MouseButton1Click:Connect(function()
@@ -11989,7 +11981,7 @@ ModuleData.onToggles = {}
                 container.BorderSizePixel = 0
                 container.ClipsDescendants = false
                 container.Visible = false
-                container.ZIndex = 2
+                container.ZIndex = 5
                 Instance.new("UICorner", container).CornerRadius = UDim.new(1, 0)
                 ColorPickerData.Objects.MainInstance = container
 
@@ -12005,7 +11997,7 @@ ModuleData.onToggles = {}
                 depthBg.Image = "rbxassetid://16264857615"
                 depthBg.ScaleType = Enum.ScaleType.Slice
                 depthBg.SliceCenter = Rect.new(206, 206, 206, 206)
-                depthBg.ZIndex = 2
+                depthBg.ZIndex = 5
 
                 -- Dải màu RGB Spectrum (ẩn khi thả ra, hiện sáng rực rỡ khi hold/kéo)
                 local rgbSpectrumFrame = Instance.new("Frame", container)
@@ -12016,7 +12008,7 @@ ModuleData.onToggles = {}
                 rgbSpectrumFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
                 rgbSpectrumFrame.BackgroundTransparency = 1
                 rgbSpectrumFrame.BorderSizePixel = 0
-                rgbSpectrumFrame.ZIndex = 2
+                rgbSpectrumFrame.ZIndex = 5
                 Instance.new("UICorner", rgbSpectrumFrame).CornerRadius = UDim.new(1, 0)
 
                 local rainbowGradient = Instance.new("UIGradient", rgbSpectrumFrame)
@@ -12046,7 +12038,7 @@ ModuleData.onToggles = {}
                 currentValLabel.TextTransparency = 0
                 currentValLabel.TextXAlignment = Enum.TextXAlignment.Center
                 currentValLabel.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Medium)
-                currentValLabel.ZIndex = 3
+                currentValLabel.ZIndex = 6
 
                 -- Nút kéo Thumb Handle
                 local thumb = Instance.new("TextButton", container)
@@ -12057,7 +12049,7 @@ ModuleData.onToggles = {}
                 thumb.BackgroundTransparency = 0
                 thumb.Text = ""
                 thumb.AutoButtonColor = false
-                thumb.ZIndex = 4
+                thumb.ZIndex = 7
                 Instance.new("UICorner", thumb).CornerRadius = UDim.new(1, 0)
 
                 local thumbStroke = Instance.new("UIStroke", thumb)
