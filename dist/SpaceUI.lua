@@ -7968,6 +7968,22 @@ do
         local pageHolderCorner = Instance.new("UICorner", InitInfo.Objects.PageHolder)
         pageHolderCorner.CornerRadius = UDim.new(0, 20)
         table.insert(SpaceUI.Corners, pageHolderCorner)
+
+        -- DashboardDim: Lớp làm tối (dim) chỉ phủ riêng trên Dashboard khi có tab con đè lên
+        InitInfo.Objects.DashboardDim = Instance.new("ImageLabel", InitInfo.Objects.MainFrame)
+        InitInfo.Objects.DashboardDim.Name = "DashboardDim"
+        InitInfo.Objects.DashboardDim.AnchorPoint = Vector2.new(0.5, 0.5)
+        InitInfo.Objects.DashboardDim.BackgroundTransparency = 1
+        InitInfo.Objects.DashboardDim.Position = UDim2.fromScale(0.5, 0.5)
+        InitInfo.Objects.DashboardDim.Size = UDim2.fromScale(1, 1)
+        InitInfo.Objects.DashboardDim.Image = "rbxassetid://16286761786"
+        InitInfo.Objects.DashboardDim.ScaleType = Enum.ScaleType.Stretch
+        InitInfo.Objects.DashboardDim.ImageTransparency = 1
+        InitInfo.Objects.DashboardDim.ZIndex = 50
+        local dashboardDimCorner = Instance.new("UICorner", InitInfo.Objects.DashboardDim)
+        dashboardDimCorner.CornerRadius = UDim.new(0, 20)
+        table.insert(SpaceUI.Corners, dashboardDimCorner)
+        SpaceUI.Tabs.DashboardDim = InitInfo.Objects.DashboardDim
     
         do
             -- TopbarPlus được tạo trong Main.Load
@@ -9117,7 +9133,7 @@ do
             SpaceUI.Tabs.TabBackground.BackgroundTransparency = 1
             SpaceUI.Tabs.TabBackground.Position = UDim2.fromScale(0.5, 0.5)
             SpaceUI.Tabs.TabBackground.Size = UDim2.fromScale(1, 1)
-            SpaceUI.Tabs.TabBackground.Image = "rbxassetid://16286761786"
+            SpaceUI.Tabs.TabBackground.Image = ""
             SpaceUI.Tabs.TabBackground.ScaleType = Enum.ScaleType.Stretch
             SpaceUI.Tabs.TabBackground.ImageTransparency = 1
             SpaceUI.Tabs.TabBackground.Visible = false
@@ -9291,11 +9307,15 @@ do
                             local TabPos = Tab.Position
                             if TabPos.X.Scale > 0.9 or 0 > TabPos.X.Scale or TabPos.Y.Scale >= 0.95 or 0 > TabPos.Y.Scale then
                                 if not flagged then
-                                    TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
+                                    if SpaceUI.Tabs.DashboardDim then
+                                        TweenService:Create(SpaceUI.Tabs.DashboardDim, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
+                                    end
                                 end
                             else
                                 if v.Objects.ActualTab.Visible then
-                                    TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 0.5}):Play()
+                                    if SpaceUI.Tabs.DashboardDim then
+                                        TweenService:Create(SpaceUI.Tabs.DashboardDim, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 0.5}):Play()
+                                    end
                                     flagged = true
                                 end
                             end
@@ -9677,8 +9697,8 @@ do
                         if tab.Objects.TabPrism then tab.Objects.TabPrism.ImageTransparency = 1 end
                         if tab.Objects.PrismStroke then tab.Objects.PrismStroke.Transparency = 1 end
 
-                        if SpaceUI.Tabs.TabBackground.ImageTransparency < 1 then
-                            TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
+                        if SpaceUI.Tabs.DashboardDim and SpaceUI.Tabs.DashboardDim.ImageTransparency < 1 then
+                            TweenService:Create(SpaceUI.Tabs.DashboardDim, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
                         end
                         SpaceUI.IsAllowedToHoverTabButton = true
 
@@ -9703,8 +9723,8 @@ do
                         scaleInTween:Play()
                         task.wait(0.8)
                     else
-                        if SpaceUI.Tabs.TabBackground.ImageTransparency < 1 then
-                            TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
+                        if SpaceUI.Tabs.DashboardDim and SpaceUI.Tabs.DashboardDim.ImageTransparency < 1 then
+                            TweenService:Create(SpaceUI.Tabs.DashboardDim, TweenInfo.new(0.8, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 1}):Play()
                         end
                         SpaceUI.IsAllowedToHoverTabButton = true
                         TabScale.Scale = 1
@@ -9768,12 +9788,16 @@ do
                                 local TabPos = Tab.Position
                                 if TabPos.X.Scale > 0.9 or 0 > TabPos.X.Scale or TabPos.Y.Scale >= 0.95 or 0 > TabPos.Y.Scale then
                                     if not flagged then
-                                        TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
+                                        if SpaceUI.Tabs.DashboardDim then
+                                            TweenService:Create(SpaceUI.Tabs.DashboardDim, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
+                                        end
                                         SpaceUI.IsAllowedToHoverTabButton = false
                                     end
                                 else
                                     if v.Objects.ActualTab.Visible and v ~= tab then
-                                        TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 0.5}):Play()
+                                        if SpaceUI.Tabs.DashboardDim then
+                                            TweenService:Create(SpaceUI.Tabs.DashboardDim, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 0.5}):Play()
+                                        end
                                         SpaceUI.IsAllowedToHoverTabButton = true
                                         flagged = true
                                     end
@@ -9797,12 +9821,16 @@ do
                                 local TabPos = Tab.Position
                                 if TabPos.X.Scale > 0.9 or 0 > TabPos.X.Scale or TabPos.Y.Scale >= 0.95 or 0 > TabPos.Y.Scale then
                                     if not flagged then
-                                        TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
+                                        if SpaceUI.Tabs.DashboardDim then
+                                            TweenService:Create(SpaceUI.Tabs.DashboardDim, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
+                                        end
                                         SpaceUI.IsAllowedToHoverTabButton = false
                                     end
                                 else
                                     if v.Objects.ActualTab.Visible and v ~= tab then
-                                        TweenService:Create(SpaceUI.Tabs.TabBackground, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 0.5}):Play()
+                                        if SpaceUI.Tabs.DashboardDim then
+                                            TweenService:Create(SpaceUI.Tabs.DashboardDim, TweenInfo.new(0.8, Enum.EasingStyle.Exponential), {ImageTransparency = 0.5}):Play()
+                                        end
                                         SpaceUI.IsAllowedToHoverTabButton = true
                                         flagged = true
                                     end
