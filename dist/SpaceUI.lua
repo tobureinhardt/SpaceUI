@@ -9126,11 +9126,16 @@ do
             SpaceUI.Tabs.TabBackground.ZIndex = 1
         end
 
+        local defaultTabW = (SpaceUI.Config.UI.Size and SpaceUI.Config.UI.Size.X or 0.7) * 0.8
+        local defaultTabH = (SpaceUI.Config.UI.Size and SpaceUI.Config.UI.Size.Y or 0.9) * 0.8
+        local defaultPosX = SpaceUI.Config.UI.Position and SpaceUI.Config.UI.Position.X or 0.5
+        local defaultPosY = SpaceUI.Config.UI.Position and SpaceUI.Config.UI.Position.Y or 0.5
+
         tab.Objects.ActualTab = Instance.new("ImageButton", SpaceUI.Tabs.TabBackground)
         tab.Objects.ActualTab.AnchorPoint = Vector2.new(0.5, 0.5)
         tab.Objects.ActualTab.BackgroundTransparency = 1
-        tab.Objects.ActualTab.Position = UDim2.fromScale(0.5, 0.5)
-        tab.Objects.ActualTab.Size = UDim2.fromScale(0.8, 0.8)
+        tab.Objects.ActualTab.Position = UDim2.fromScale(defaultPosX, defaultPosY)
+        tab.Objects.ActualTab.Size = UDim2.fromScale(defaultTabW, defaultTabH)
         tab.Objects.ActualTab.Image = "rbxassetid://16286719854"
         tab.Objects.ActualTab.ImageColor3 = Color3.fromRGB(SpaceUI.Config.UI.TabColor.value1, SpaceUI.Config.UI.TabColor.value2, SpaceUI.Config.UI.TabColor.value3)
         tab.Objects.ActualTab.ImageTransparency = SpaceUI.Config.UI.TabTransparency
