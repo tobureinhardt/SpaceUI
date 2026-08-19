@@ -7704,7 +7704,7 @@ do
         local flag = NotificationData.Flag or NotificationData.Description
         for i, v in SpaceUI.Notifications.Active do
             if v.Objects.Notification then
-                TweenService:Create(v.Objects.Notification, TweenInfo.new(0.1, Enum.EasingStyle.Linear, Enum.EasingDirection.Out), {Position = UDim2.new(v.Objects.Notification.Position.X.Scale, v.Objects.Notification.Position.X.Offset, v.Objects.Notification.Position.Y.Scale, v.Objects.Notification.Position.Y.Offset + 50)}):Play()
+                TweenService:Create(v.Objects.Notification, TweenInfo.new(0.4, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {Position = UDim2.new(v.Objects.Notification.Position.X.Scale, v.Objects.Notification.Position.X.Offset, v.Objects.Notification.Position.Y.Scale, v.Objects.Notification.Position.Y.Offset + 50)}):Play()
             end
         end
         
@@ -7715,7 +7715,7 @@ do
         NotificationData.Objects.Notification.AutomaticSize = Enum.AutomaticSize.X
         NotificationData.Objects.Notification.BackgroundColor3 = Color3.fromRGB(79, 79, 79)
         NotificationData.Objects.Notification.BackgroundTransparency = 0.05
-        NotificationData.Objects.Notification.Position = UDim2.new(0.5, 0, -1, 30)
+        NotificationData.Objects.Notification.Position = UDim2.new(0.5, 0, 0, -60)
         NotificationData.Objects.Notification.Size = UDim2.new(0, 0, 0, 40)
         NotificationData.Objects.Notification.ZIndex = 10
         NotificationData.Objects.Notification.Image = "rbxassetid://16294030997"
@@ -7796,22 +7796,27 @@ do
 
             for i, v in SpaceUI.Notifications.Active do
                 if v.Objects.Notification and v.Objects.Notification.Position.Y.Offset > NotificationData.Objects.Notification.Position.Y.Offset then
-                    TweenService:Create(v.Objects.Notification, TweenInfo.new(0.1, Enum.EasingStyle.Linear, Enum.EasingDirection.Out), {Position = UDim2.new(v.Objects.Notification.Position.X.Scale, v.Objects.Notification.Position.X.Offset, v.Objects.Notification.Position.Y.Scale, v.Objects.Notification.Position.Y.Offset - 50)}):Play()
+                    TweenService:Create(v.Objects.Notification, TweenInfo.new(0.4, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {Position = UDim2.new(v.Objects.Notification.Position.X.Scale, v.Objects.Notification.Position.X.Offset, v.Objects.Notification.Position.Y.Scale, v.Objects.Notification.Position.Y.Offset - 50)}):Play()
                 end
             end
 
             if anim then
-                TweenService:Create(TimeLineBar, TweenInfo.new(0.15), {ImageTransparency = 1}):Play()
+                TweenService:Create(TimeLineBar, TweenInfo.new(0.2), {ImageTransparency = 1}):Play()
                 for i,v in NotificationData.Objects.Notification:GetChildren() do
                     if v:IsA("ImageButton") or v:IsA("ImageLabel") then
-                        TweenService:Create(v, TweenInfo.new(0.15), {ImageTransparency = 1, BackgroundTransparency = 1}):Play()
+                        TweenService:Create(v, TweenInfo.new(0.25), {ImageTransparency = 1, BackgroundTransparency = 1}):Play()
                     elseif v:IsA("TextLabel") then
-                        TweenService:Create(v, TweenInfo.new(0.15), {TextTransparency = 1}):Play()
+                        TweenService:Create(v, TweenInfo.new(0.25), {TextTransparency = 1}):Play()
+                    elseif v:IsA("UIStroke") then
+                        TweenService:Create(v, TweenInfo.new(0.25), {Transparency = 1}):Play()
                     end
                 end
-                task.wait(0.05)
-                TweenService:Create(NotificationData.Objects.Notification, TweenInfo.new(0.2), {ImageTransparency = 1, BackgroundTransparency = 1}):Play()
-                task.wait(0.22)
+                TweenService:Create(NotificationData.Objects.Notification, TweenInfo.new(0.4, Enum.EasingStyle.Exponential, Enum.EasingDirection.In), {
+                    Position = UDim2.new(0.5, 0, 0, -60),
+                    ImageTransparency = 1,
+                    BackgroundTransparency = 1
+                }):Play()
+                task.wait(0.42)
             end
 
             NotificationData.Objects.Notification:Destroy()
@@ -7837,7 +7842,7 @@ do
         table.insert(SpaceUI.Connections, NotificationData.Connections.unconhover)
         table.insert(SpaceUI.Connections, NotificationData.Connections.closecon)
 
-        TweenService:Create(NotificationData.Objects.Notification, TweenInfo.new(0.15, Enum.EasingStyle.Linear, Enum.EasingDirection.Out), {Position = UDim2.new(0.5, 0, 0, 30)}):Play()
+        TweenService:Create(NotificationData.Objects.Notification, TweenInfo.new(0.5, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {Position = UDim2.new(0.5, 0, 0, 30)}):Play()
         if SpaceUI.Notifications.Active[flag] then
             flag = NotificationData.Description..tostring(math.random(0, 1000000000))
             SpaceUI.Notifications.Active[flag] = NotificationData
@@ -9107,23 +9112,11 @@ do
         end
 
         if not SpaceUI.Tabs.TabBackground then
-            -- Parent PHẢI là Background.Objects.MainFrame (dashboard), không phải
-            -- MainScreenGui (toàn màn hình). So bản gốc Init_lua: TabBackground được
-            -- tạo với Night.Background.Objects.MainFrame làm cha, để Size=fromScale(1,1)
-            -- tính theo 100% dashboard chứ không phải 100% viewport. Parent sai khiến
-            -- ActualTab (0.8, 0.8 theo % của TabBackground) to/lệch hẳn so với dashboard,
-            -- và khiến hiệu ứng dim (vốn set trên TabBackground) không nằm đúng layer để
-            -- người dùng nhìn thấy nó phủ lên dashboard.
-            SpaceUI.Tabs.TabBackground = Instance.new("ImageButton", SpaceUI.Background.Objects.MainFrame)
+            SpaceUI.Tabs.TabBackground = Instance.new("ImageButton", SpaceUI.Background.Objects.MainScreenGui)
             SpaceUI.Tabs.TabBackground.AnchorPoint = Vector2.new(0.5, 0.5)
             SpaceUI.Tabs.TabBackground.BackgroundTransparency = 1
             SpaceUI.Tabs.TabBackground.Position = UDim2.fromScale(0.5, 0.5)
             SpaceUI.Tabs.TabBackground.Size = UDim2.fromScale(1, 1)
-            -- Image PHẢI có asset ID thật, không được để rỗng: ImageTransparency chỉ
-            -- tạo hiệu ứng thị giác khi có Image thật để làm mờ - Image="" khiến toàn
-            -- bộ logic dim (đúng property, đúng parent, đúng Visible) không hiện ra
-            -- bất kỳ thứ gì nhìn thấy được, dù mọi giá trị bên dưới đều đổi đúng.
-            -- Asset ID lấy nguyên từ bản gốc Init_lua (Night.Tabs.TabBackground.Image).
             SpaceUI.Tabs.TabBackground.Image = "rbxassetid://16286761786"
             SpaceUI.Tabs.TabBackground.ScaleType = Enum.ScaleType.Stretch
             SpaceUI.Tabs.TabBackground.ImageTransparency = 1
@@ -9131,15 +9124,6 @@ do
             SpaceUI.Tabs.TabBackground.Active = false
             SpaceUI.Tabs.TabBackground.AutoButtonColor = false
             SpaceUI.Tabs.TabBackground.ZIndex = 1
-
-            -- TabBackground là hình chữ nhật vuông góc (không tự thừa hưởng UICorner
-            -- 20px của MainFrame) - khi Image hiện lên làm lớp dim, nó tràn ra ngoài
-            -- 4 góc bo tròn của MainFrame/PageHolder, trông như 1 khối vuông chồng
-            -- lên khung Dashboard đã bo góc. Thêm UICorner cùng bán kính (giống hệt
-            -- mainframecorner/pageHolderCorner) để lớp dim khớp đúng viền Dashboard.
-            local tabBackgroundCorner = Instance.new("UICorner", SpaceUI.Tabs.TabBackground)
-            tabBackgroundCorner.CornerRadius = UDim.new(0, 20)
-            table.insert(SpaceUI.Corners, tabBackgroundCorner)
         end
 
         tab.Objects.ActualTab = Instance.new("ImageButton", SpaceUI.Tabs.TabBackground)
@@ -11187,13 +11171,16 @@ ModuleData.onToggles = {}
                 return TextBoxData
             end
 
-            -- ── 4. Dropdown (Chọn tại chỗ, cập nhật tick mượt mà & có mô tả) ──
+            -- ── 4. Dropdown (Hỗ trợ Single-Select & Multi-Select, cập nhật tick mượt mà & có mô tả) ──
             ModuleData.Functions.Settings.Dropdown = function(data)
+                local isMulti = (data and data.MultiSelect == true) or (data and data.SelectLimit and data.SelectLimit > 1) or (typeof(data and data.Default) == "table")
+
                 local DropdownData = {
                     Name = data and data.Name or "Dropdown",
                     Description = data and data.Description or nil,
-                    Default = data and data.Default or "",
-                    SelectLimit = data and data.SelectLimit or 1,
+                    Default = data and data.Default or (isMulti and {} or ""),
+                    SelectLimit = data and data.SelectLimit or (isMulti and 9999 or 1),
+                    MultiSelect = isMulti,
                     Options = data and data.Options or {},
                     Flag = data and data.Flag or "Dropdown",
                     Hide = data and data.Hide or false,
@@ -11204,13 +11191,34 @@ ModuleData.onToggles = {}
                     Buttons = {Selected = {}, Buttons = {}},
                 }
 
-                if SpaceUI.Config.Game.Dropdowns and SpaceUI.Config.Game.Dropdowns[DropdownData.Flag] then
+                if SpaceUI.Config.Game.Dropdowns and SpaceUI.Config.Game.Dropdowns[DropdownData.Flag] ~= nil then
                     DropdownData.Default = SpaceUI.Config.Game.Dropdowns[DropdownData.Flag]
                 end
 
-                local currentSelected = DropdownData.Default
-                if typeof(currentSelected) == "table" then
-                    currentSelected = table.concat(currentSelected, ", ")
+                -- Chuẩn hóa selectedList
+                local selectedList = {}
+                if typeof(DropdownData.Default) == "table" then
+                    for _, v in ipairs(DropdownData.Default) do
+                        table.insert(selectedList, tostring(v))
+                    end
+                elseif typeof(DropdownData.Default) == "string" and DropdownData.Default ~= "" then
+                    table.insert(selectedList, DropdownData.Default)
+                end
+
+                -- Format chuỗi hiển thị trên navRow button theo đúng yêu cầu:
+                -- 1 mục: "A"
+                -- 2 mục: "A, B"
+                -- > 2 mục: "A, B, ..."
+                local function formatDisplayText(list)
+                    if #list == 0 then
+                        return "None"
+                    elseif #list == 1 then
+                        return list[1]
+                    elseif #list == 2 then
+                        return list[1] .. ", " .. list[2]
+                    else
+                        return list[1] .. ", " .. list[2] .. ", ..."
+                    end
                 end
 
                 -- Row Button điều hướng
@@ -11238,7 +11246,7 @@ ModuleData.onToggles = {}
                 local titleLabel = Instance.new("TextLabel", navRow)
                 titleLabel.Name = "Title"
                 titleLabel.Text = DropdownData.Name
-                titleLabel.Size = UDim2.new(0.5, 0, 1, 0)
+                titleLabel.Size = UDim2.new(0.4, 0, 1, 0)
                 titleLabel.BackgroundTransparency = 1
                 titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
                 titleLabel.TextSize = 16
@@ -11247,10 +11255,11 @@ ModuleData.onToggles = {}
                 titleLabel.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Regular)
                 titleLabel.ZIndex = 2
 
+                -- Chừa chỗ cho tên hiển thị rộng rãi, không đè lên mũi tên >
                 local valueLabel = Instance.new("TextLabel", navRow)
                 valueLabel.Name = "CurrentValue"
-                valueLabel.Text = tostring(currentSelected)
-                valueLabel.Size = UDim2.new(0.5, -30, 1, 0)
+                valueLabel.Text = formatDisplayText(selectedList)
+                valueLabel.Size = UDim2.new(0.6, -30, 1, 0)
                 valueLabel.AnchorPoint = Vector2.new(1, 0.5)
                 valueLabel.Position = UDim2.new(1, -25, 0.5, 0)
                 valueLabel.BackgroundTransparency = 1
@@ -11392,10 +11401,14 @@ ModuleData.onToggles = {}
 
                 local renderedOptions = {}
 
-                local function updateItemsVisual(selectedVal)
+                local function isOptionSelected(optStr)
+                    return table.find(selectedList, optStr) ~= nil
+                end
+
+                local function updateItemsVisual()
                     local twInfo = TweenInfo.new(0.3, Enum.EasingStyle.Exponential)
                     for optText, itemData in pairs(renderedOptions) do
-                        local isSel = (optText == tostring(selectedVal))
+                        local isSel = isOptionSelected(optText)
                         if isSel then
                             TweenService:Create(itemData.Check, twInfo, {ImageTransparency = 0.2}):Play()
                             TweenService:Create(itemData.CheckScale, twInfo, {Scale = 1}):Play()
@@ -11411,20 +11424,44 @@ ModuleData.onToggles = {}
                 end
 
                 DropdownData.Functions.SetValue = function(NewData, Save)
-                    if NewData then
-                        local ret = NewData
-                        if typeof(NewData) == "string" then
-                            valueLabel.Text = NewData
-                        elseif typeof(NewData) == "table" then
-                            valueLabel.Text = table.concat(NewData, ", ")
+                    if NewData ~= nil then
+                        if isMulti then
+                            selectedList = {}
+                            if typeof(NewData) == "table" then
+                                for _, v in ipairs(NewData) do
+                                    table.insert(selectedList, tostring(v))
+                                end
+                            elseif typeof(NewData) == "string" and NewData ~= "" then
+                                table.insert(selectedList, NewData)
+                            end
+                            valueLabel.Text = formatDisplayText(selectedList)
+                            updateItemsVisual()
+                            DropdownData.Callback(DropdownData, selectedList)
+                            if Save then
+                                if not SpaceUI.Config.Game.Dropdowns then SpaceUI.Config.Game.Dropdowns = {} end
+                                SpaceUI.Config.Game.Dropdowns[DropdownData.Flag] = selectedList
+                                Assets.Config.Save(SpaceUI.GameSave, SpaceUI.Config.Game)
+                            end
+                        else
+                            local val = typeof(NewData) == "table" and (NewData[1] or "") or tostring(NewData)
+                            selectedList = val ~= "" and {val} or {}
+                            valueLabel.Text = formatDisplayText(selectedList)
+                            updateItemsVisual()
+                            DropdownData.Callback(DropdownData, val)
+                            if Save then
+                                if not SpaceUI.Config.Game.Dropdowns then SpaceUI.Config.Game.Dropdowns = {} end
+                                SpaceUI.Config.Game.Dropdowns[DropdownData.Flag] = val
+                                Assets.Config.Save(SpaceUI.GameSave, SpaceUI.Config.Game)
+                            end
                         end
-                        updateItemsVisual(valueLabel.Text)
-                        DropdownData.Callback(DropdownData, ret)
-                        if Save then
-                            if not SpaceUI.Config.Game.Dropdowns then SpaceUI.Config.Game.Dropdowns = {} end
-                            SpaceUI.Config.Game.Dropdowns[DropdownData.Flag] = ret
-                            Assets.Config.Save(SpaceUI.GameSave, SpaceUI.Config.Game)
-                        end
+                    end
+                end
+
+                DropdownData.Functions.GetValue = function()
+                    if isMulti then
+                        return selectedList
+                    else
+                        return selectedList[1] or ""
                     end
                 end
 
@@ -11486,7 +11523,7 @@ ModuleData.onToggles = {}
                             iPad.PaddingLeft = UDim.new(0, 20)
                             iPad.PaddingRight = UDim.new(0, 20)
 
-                            local isSel = (optStr == tostring(valueLabel.Text))
+                            local isSel = isOptionSelected(optStr)
 
                             local iLabel = Instance.new("TextLabel", itemBtn)
                             iLabel.Text = optStr
@@ -11520,7 +11557,30 @@ ModuleData.onToggles = {}
                             }
 
                             itemBtn.MouseButton1Click:Connect(function()
-                                DropdownData.Functions.SetValue(optStr, true)
+                                if isMulti then
+                                    local idx = table.find(selectedList, optStr)
+                                    if idx then
+                                        table.remove(selectedList, idx)
+                                    else
+                                        if #selectedList < DropdownData.SelectLimit then
+                                            table.insert(selectedList, optStr)
+                                        end
+                                    end
+                                    valueLabel.Text = formatDisplayText(selectedList)
+                                    updateItemsVisual()
+                                    DropdownData.Callback(DropdownData, selectedList)
+                                    if not SpaceUI.Config.Game.Dropdowns then SpaceUI.Config.Game.Dropdowns = {} end
+                                    SpaceUI.Config.Game.Dropdowns[DropdownData.Flag] = selectedList
+                                    Assets.Config.Save(SpaceUI.GameSave, SpaceUI.Config.Game)
+                                else
+                                    selectedList = {optStr}
+                                    valueLabel.Text = optStr
+                                    updateItemsVisual()
+                                    DropdownData.Callback(DropdownData, optStr)
+                                    if not SpaceUI.Config.Game.Dropdowns then SpaceUI.Config.Game.Dropdowns = {} end
+                                    SpaceUI.Config.Game.Dropdowns[DropdownData.Flag] = optStr
+                                    Assets.Config.Save(SpaceUI.GameSave, SpaceUI.Config.Game)
+                                end
                             end)
                         end
                     end
@@ -11842,6 +11902,273 @@ ModuleData.onToggles = {}
                 ModuleData.Settings[KeybindData.Flag] = KeybindData
                 return KeybindData
             end
+
+            -- ── 9. ColorPicker (Color Slider với dải màu RGB Spectrum khi hold và hiện mã màu khi thả) ──
+            ModuleData.Functions.Settings.ColorPicker = function(data)
+                local ColorPickerData = {
+                    Name = data and data.Name or "Color Picker",
+                    Description = data and data.Description or nil,
+                    Default = data and data.Default or Color3.fromRGB(255, 0, 0),
+                    Flag = data and data.Flag or data and data.Name or "ColorPicker",
+                    Hide = data and data.Hide or false,
+                    Callback = data and data.Callback or function() end,
+                    Type = "ColorPickers",
+                    Objects = {},
+                    Functions = {}
+                }
+
+                local function parseColor(c)
+                    if typeof(c) == "Color3" then return c end
+                    if typeof(c) == "table" then
+                        if c.R and c.G and c.B then
+                            local r = c.R > 1 and c.R/255 or c.R
+                            local g = c.G > 1 and c.G/255 or c.G
+                            local b = c.B > 1 and c.B/255 or c.B
+                            return Color3.new(r, g, b)
+                        elseif c.r and c.g and c.b then
+                            local r = c.r > 1 and c.r/255 or c.r
+                            local g = c.g > 1 and c.g/255 or c.g
+                            local b = c.b > 1 and c.b/255 or c.b
+                            return Color3.new(r, g, b)
+                        elseif c[1] and c[2] and c[3] then
+                            local r = c[1] > 1 and c[1]/255 or c[1]
+                            local g = c[2] > 1 and c[2]/255 or c[2]
+                            local b = c[3] > 1 and c[3]/255 or c[3]
+                            return Color3.new(r, g, b)
+                        end
+                    end
+                    if typeof(c) == "string" then
+                        local r, g, b = c:match("(%d+)%s*,%s*(%d+)%s*,%s*(%d+)")
+                        if r and g and b then
+                            return Color3.fromRGB(tonumber(r), tonumber(g), tonumber(b))
+                        end
+                    end
+                    return Color3.fromRGB(255, 0, 0)
+                end
+
+                if SpaceUI.Config.Game.ColorPickers and SpaceUI.Config.Game.ColorPickers[ColorPickerData.Flag] then
+                    ColorPickerData.Default = parseColor(SpaceUI.Config.Game.ColorPickers[ColorPickerData.Flag])
+                else
+                    ColorPickerData.Default = parseColor(ColorPickerData.Default)
+                end
+
+                local currentColor = ColorPickerData.Default
+                local initH, _, _ = currentColor:ToHSV()
+
+                local container = Instance.new("ImageButton", ModuleSettings)
+                container.Name = "colorpicker_" .. ColorPickerData.Flag
+                container.Size = UDim2.new(1, 0, 0, 40)
+                container.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+                container.BackgroundTransparency = 0.7
+                container.ImageTransparency = 1
+                container.AutoButtonColor = false
+                container.BorderSizePixel = 0
+                container.ClipsDescendants = false
+                container.Visible = false
+                container.ZIndex = 2
+                Instance.new("UICorner", container).CornerRadius = UDim.new(1, 0)
+                ColorPickerData.Objects.MainInstance = container
+
+                local descLabel = attachComponentDescription(ColorPickerData, ColorPickerData.Flag)
+
+                -- Depth frame bọc khít y chang slider
+                local depthBg = Instance.new("ImageLabel", container)
+                depthBg.Name = "Background"
+                depthBg.AnchorPoint = Vector2.new(0.5, 0.5)
+                depthBg.Position = UDim2.fromScale(0.5, 0.5)
+                depthBg.Size = UDim2.fromScale(1, 1)
+                depthBg.BackgroundTransparency = 1
+                depthBg.Image = "rbxassetid://16264857615"
+                depthBg.ScaleType = Enum.ScaleType.Slice
+                depthBg.SliceCenter = Rect.new(206, 206, 206, 206)
+                depthBg.ZIndex = 2
+
+                -- Dải màu RGB Spectrum (ẩn khi thả ra, hiện sáng rực rỡ khi hold/kéo)
+                local rgbSpectrumFrame = Instance.new("Frame", container)
+                rgbSpectrumFrame.Name = "RGBSpectrum"
+                rgbSpectrumFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+                rgbSpectrumFrame.Position = UDim2.fromScale(0.5, 0.5)
+                rgbSpectrumFrame.Size = UDim2.fromScale(1, 1)
+                rgbSpectrumFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+                rgbSpectrumFrame.BackgroundTransparency = 1
+                rgbSpectrumFrame.BorderSizePixel = 0
+                rgbSpectrumFrame.ZIndex = 2
+                Instance.new("UICorner", rgbSpectrumFrame).CornerRadius = UDim.new(1, 0)
+
+                local rainbowGradient = Instance.new("UIGradient", rgbSpectrumFrame)
+                rainbowGradient.Name = "RainbowGradient"
+                rainbowGradient.Color = ColorSequence.new{
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+                    ColorSequenceKeypoint.new(0.167, Color3.fromRGB(255, 255, 0)),
+                    ColorSequenceKeypoint.new(0.333, Color3.fromRGB(0, 255, 0)),
+                    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 255)),
+                    ColorSequenceKeypoint.new(0.667, Color3.fromRGB(0, 0, 255)),
+                    ColorSequenceKeypoint.new(0.833, Color3.fromRGB(255, 0, 255)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0))
+                }
+
+                -- Label hiển thị mã màu xxx,xxx,xxx
+                local curR = math.floor(currentColor.R * 255 + 0.5)
+                local curG = math.floor(currentColor.G * 255 + 0.5)
+                local curB = math.floor(currentColor.B * 255 + 0.5)
+
+                local currentValLabel = Instance.new("TextLabel", container)
+                currentValLabel.Name = "current_value"
+                currentValLabel.Text = ColorPickerData.Name .. ": " .. tostring(curR) .. ", " .. tostring(curG) .. ", " .. tostring(curB)
+                currentValLabel.Size = UDim2.new(1, 0, 1, 0)
+                currentValLabel.BackgroundTransparency = 1
+                currentValLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                currentValLabel.TextSize = 15
+                currentValLabel.TextTransparency = 0
+                currentValLabel.TextXAlignment = Enum.TextXAlignment.Center
+                currentValLabel.FontFace = Font.new("rbxassetid://12187365364", Enum.FontWeight.Medium)
+                currentValLabel.ZIndex = 3
+
+                -- Nút kéo Thumb Handle
+                local thumb = Instance.new("TextButton", container)
+                thumb.Name = "Slider"
+                thumb.Size = UDim2.fromOffset(24, 24)
+                thumb.AnchorPoint = Vector2.new(0.5, 0.5)
+                thumb.BackgroundColor3 = currentColor
+                thumb.BackgroundTransparency = 0
+                thumb.Text = ""
+                thumb.AutoButtonColor = false
+                thumb.ZIndex = 4
+                Instance.new("UICorner", thumb).CornerRadius = UDim.new(1, 0)
+
+                local thumbStroke = Instance.new("UIStroke", thumb)
+                thumbStroke.Color = Color3.fromRGB(255, 255, 255)
+                thumbStroke.Thickness = 2
+                thumbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+                local isDragging = false
+
+                local function getThumbScale(rel)
+                    local pad = 16
+                    local totalW = math.max(container.AbsoluteSize.X, 40)
+                    local leftP = pad / totalW
+                    local usable = math.max(1 - (leftP * 2), 0.1)
+                    return leftP + (usable * rel)
+                end
+
+                local function getX(input)
+                    if input and input.Position then
+                        return input.Position.X
+                    end
+                    return UserInputService:GetMouseLocation().X
+                end
+
+                local function updateValueFromX(posX)
+                    local pad = 16
+                    local totalW = math.max(container.AbsoluteSize.X, 40)
+                    local startX = container.AbsolutePosition.X + pad
+                    local usableW = math.max(totalW - (pad * 2), 1)
+                    local rel = math.clamp((posX - startX) / usableW, 0, 1)
+
+                    currentColor = Color3.fromHSV(rel, 1, 1)
+                    thumb.BackgroundColor3 = currentColor
+                    thumb.Position = UDim2.new(getThumbScale(rel), 0, 0.5, 0)
+                end
+
+                thumb.Position = UDim2.new(getThumbScale(initH), 0, 0.5, 0)
+
+                local function startDrag(input)
+                    isDragging = true
+
+                    -- Khi hold: chữ biến mất (fade out) và hiện dải màu RGB (fade in)
+                    TweenService:Create(currentValLabel, TweenInfo.new(0.2, Enum.EasingStyle.Sine), {TextTransparency = 1}):Play()
+                    TweenService:Create(rgbSpectrumFrame, TweenInfo.new(0.25, Enum.EasingStyle.Sine), {BackgroundTransparency = 0}):Play()
+
+                    updateValueFromX(getX(input))
+
+                    SpaceUI.CurrntInputChangeCallback = function(inp)
+                        if isDragging then
+                            updateValueFromX(getX(inp))
+                        end
+                    end
+
+                    SpaceUI.InputEndFunc = function(inp)
+                        if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
+                            isDragging = false
+
+                            -- Khi thả ra: dải màu mất (fade out), hiện lại background gốc và fade in mã màu lại
+                            TweenService:Create(rgbSpectrumFrame, TweenInfo.new(0.3, Enum.EasingStyle.Sine), {BackgroundTransparency = 1}):Play()
+
+                            local r = math.floor(currentColor.R * 255 + 0.5)
+                            local g = math.floor(currentColor.G * 255 + 0.5)
+                            local b = math.floor(currentColor.B * 255 + 0.5)
+
+                            currentValLabel.Text = ColorPickerData.Name .. ": " .. tostring(r) .. ", " .. tostring(g) .. ", " .. tostring(b)
+                            TweenService:Create(currentValLabel, TweenInfo.new(0.3, Enum.EasingStyle.Sine), {TextTransparency = 0}):Play()
+
+                            ColorPickerData.Callback(ColorPickerData, currentColor, {R = r, G = g, B = b})
+                            if not SpaceUI.Config.Game.ColorPickers then SpaceUI.Config.Game.ColorPickers = {} end
+                            SpaceUI.Config.Game.ColorPickers[ColorPickerData.Flag] = {R = r, G = g, B = b}
+                            Assets.Config.Save(SpaceUI.GameSave, SpaceUI.Config.Game)
+
+                            SpaceUI.CurrntInputChangeCallback = function() end
+                        end
+                    end
+                end
+
+                thumb.InputBegan:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                        startDrag(input)
+                    end
+                end)
+                container.InputBegan:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                        startDrag(input)
+                    end
+                end)
+
+                ColorPickerData.Functions.SetValue = function(val, save)
+                    currentColor = parseColor(val)
+                    local h, _, _ = currentColor:ToHSV()
+                    thumb.BackgroundColor3 = currentColor
+                    thumb.Position = UDim2.new(getThumbScale(h), 0, 0.5, 0)
+                    local r = math.floor(currentColor.R * 255 + 0.5)
+                    local g = math.floor(currentColor.G * 255 + 0.5)
+                    local b = math.floor(currentColor.B * 255 + 0.5)
+                    currentValLabel.Text = ColorPickerData.Name .. ": " .. tostring(r) .. ", " .. tostring(g) .. ", " .. tostring(b)
+                    if save then
+                        ColorPickerData.Callback(ColorPickerData, currentColor, {R = r, G = g, B = b})
+                        if not SpaceUI.Config.Game.ColorPickers then SpaceUI.Config.Game.ColorPickers = {} end
+                        SpaceUI.Config.Game.ColorPickers[ColorPickerData.Flag] = {R = r, G = g, B = b}
+                        Assets.Config.Save(SpaceUI.GameSave, SpaceUI.Config.Game)
+                    end
+                end
+
+                ColorPickerData.Functions.GetValue = function()
+                    return currentColor
+                end
+
+                ColorPickerData.Functions.SetVisiblity = function(enabled)
+                    if enabled then
+                        if table.find(ModuleData.Data.ExcludeSettingsVisiblity, ColorPickerData) then
+                            table.remove(ModuleData.Data.ExcludeSettingsVisiblity, table.find(ModuleData.Data.ExcludeSettingsVisiblity, ColorPickerData))
+                        end
+                        if ModuleData.Data.SettingsOpen then
+                            container.Visible = true
+                            if ColorPickerData.Description and ColorPickerData.Description ~= "" then
+                                descLabel.Visible = true
+                            end
+                        end
+                    else
+                        if not table.find(ModuleData.Data.ExcludeSettingsVisiblity, ColorPickerData) then
+                            table.insert(ModuleData.Data.ExcludeSettingsVisiblity, ColorPickerData)
+                        end
+                        container.Visible = false
+                        descLabel.Visible = false
+                    end
+                end
+
+                if ColorPickerData.Hide then ColorPickerData.Functions.SetVisiblity(false) end
+
+                ModuleData.Settings[ColorPickerData.Flag] = ColorPickerData
+                return ColorPickerData
+            end
+            ModuleData.Functions.Settings.ColorSlider = ModuleData.Functions.Settings.ColorPicker
 
             ModuleData.Functions.Destroy = function()
                 for i,v in ModuleData.Connections do
